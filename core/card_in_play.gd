@@ -1,7 +1,7 @@
 class_name CardInPlay
 extends RefCounted
 
-const COLORLESS := "colorless"
+const COLORLESS := "Colorless"
 
 var card: CardData
 var damage: int = 0

@@ -24,9 +24,9 @@ func draw_card() -> bool:
 	return true
 
 
-func first_pokemon_in_hand() -> int:
+func first_basic_pokemon_in_hand() -> int:
 	for i in hand.size():
-		if hand[i].is_pokemon():
+		if hand[i].is_basic_pokemon():
 			return i
 	return -1
 

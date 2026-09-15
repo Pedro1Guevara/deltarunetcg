@@ -1,7 +1,7 @@
 extends Control
 
 const DECK_PLAYER_1 := "fighting_starter"
-const DECK_PLAYER_2 := "water_starter"
+const DECK_PLAYER_2 := "lightning_starter"
 const PRIZE_COUNT := 3
 const FONT_SIZE := 22
 
@@ -100,10 +100,10 @@ func _make_panel_label() -> Label:
 
 
 func _start_match() -> void:
-	var cards: Variant = DataLoader.read_json(DataLoader.CARDS_PATH)
+	var database := DataLoader.load_card_database()
 	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
-	if not cards is Array or not decks is Dictionary:
-		_show_error("Could not load data/cards.json or data/decks.json. See the Output panel.")
+	if database.card_count() == 0 or not decks is Dictionary:
+		_show_error("Could not load data/tcgdex/ or data/decks.json. See the Output panel.")
 		return
 
 	var deck_defs := decks as Dictionary
@@ -111,8 +111,6 @@ func _start_match() -> void:
 		_show_error("decks.json must define '%s' and '%s'." % [DECK_PLAYER_1, DECK_PLAYER_2])
 		return
 
-	var database := CardDatabase.new()
-	database.load_cards(cards as Array)
 
 	_seed = randi()
 	_engine = MatchEngine.new()

@@ -5,6 +5,8 @@ const HAND_SIZE := 7
 const BENCH_LIMIT := 5
 const MAX_SETUP_ATTEMPTS := 50
 const NO_WINNER := -1
+const WEAKNESS_DOUBLE := "\u00d72"
+const RESISTANCE_MINUS_30 := "-30"
 
 var players: Array[PlayerState] = []
 var current_index: int = 0
@@ -51,7 +53,7 @@ func legal_actions() -> Array[Dictionary]:
 
 	for hand_index in player.hand.size():
 		var card := player.hand[hand_index]
-		if card.is_pokemon() and player.bench.size() < BENCH_LIMIT:
+		if card.is_basic_pokemon() and player.bench.size() < BENCH_LIMIT:
 			actions.append({
 				"type": "bench",
 				"hand_index": hand_index,
@@ -123,18 +125,18 @@ func _setup_player(index: int, deck: Array[CardData], prize_count: int) -> Playe
 		_rng.shuffle(player.deck)
 		for _i in HAND_SIZE:
 			player.draw_card()
-		if player.first_pokemon_in_hand() != -1:
+		if player.first_basic_pokemon_in_hand() != -1:
 			break
 		# Known divergence (4.8): the opponent gets nothing for a mulligan.
 		_log("Player %d mulligan (attempt %d)" % [index + 1, attempt + 1])
 		player.deck.append_array(player.hand)
 		player.hand.clear()
 
-	var pokemon_index := player.first_pokemon_in_hand()
+	var pokemon_index := player.first_basic_pokemon_in_hand()
 	if pokemon_index == -1:
-		push_error("MatchEngine: player %d has no Pokemon after %d attempts" % [index + 1, MAX_SETUP_ATTEMPTS])
+		push_error("MatchEngine: player %d has no Basic Pokemon after %d attempts" % [index + 1, MAX_SETUP_ATTEMPTS])
 	else:
-		# Known divergence (4.8): the first Pokemon in hand is chosen automatically.
+		# Known divergence (4.8): the first Basic Pokemon in hand is chosen automatically.
 		var starter := player.hand.pop_at(pokemon_index) as CardData
 		player.active = CardInPlay.new(starter, 0)
 
@@ -193,11 +195,13 @@ func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
 	var defender := opponent_player()
 	var attack := attacker.active.card.attacks[attack_index]
+	# Known divergence: effect text and damage suffixes are not resolved yet; only the printed number is dealt.
 	var dealt := _apply_modifiers(attacker.active.card, defender.active.card, attack.damage)
 	defender.active.damage += dealt
-	_log("%s uses %s: %d damage to %s (%d/%d HP)" % [
+	_log("%s uses %s: %d damage to %s (%d/%d HP)%s" % [
 		attacker.active.card.name, attack.name, dealt, defender.active.card.name,
 		defender.active.remaining_hp(), defender.active.card.hp,
+		"  [effect not implemented]" if attack.has_effect() else "",
 	])
 
 	if defender.active.is_knocked_out():
@@ -213,9 +217,9 @@ func _apply_modifiers(attacker: CardData, defender: CardData, base_damage: int) 
 		return 0
 	var result := base_damage
 	# Weakness before Resistance, each applied once.
-	if defender.weakness_modifier == "x2" and _shares_type(attacker.types, defender.weakness_types):
+	if defender.weakness_modifier == WEAKNESS_DOUBLE and _shares_type(attacker.types, defender.weakness_types):
 		result *= 2
-	if defender.resistance_modifier == "-30" and _shares_type(attacker.types, defender.resistance_types):
+	if defender.resistance_modifier == RESISTANCE_MINUS_30 and _shares_type(attacker.types, defender.resistance_types):
 		result = maxi(result - 30, 0)
 	return result
 

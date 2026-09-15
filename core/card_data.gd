@@ -1,12 +1,27 @@
 class_name CardData
 extends RefCounted
+## One physical card. Field values use TCGdex vocabulary ("Pokemon", "Basic", "Fighting").
+## Built by TcgdexParser; never edited after construction.
 
-const KIND_POKEMON := "pokemon"
-const KIND_ENERGY := "energy"
+const CATEGORY_POKEMON := "Pokemon"
+const CATEGORY_TRAINER := "Trainer"
+const CATEGORY_ENERGY := "Energy"
+const STAGE_BASIC := "Basic"
+const ENERGY_NORMAL := "Normal"
+const ENERGY_SPECIAL := "Special"
 
 var id: String = ""
+var local_id: String = ""
+var set_id: String = ""
 var name: String = ""
-var kind: String = ""
+var category: String = ""
+var rarity: String = ""
+## Base URL without quality or extension, e.g. https://assets.tcgdex.net/en/base/base1/52
+var image_url: String = ""
+
+# Pokemon
+var stage: String = ""
+var evolve_from: String = ""
 var hp: int = 0
 var types: Array[String] = []
 var weakness_types: Array[String] = []
@@ -15,36 +30,27 @@ var resistance_types: Array[String] = []
 var resistance_modifier: String = ""
 var retreat_cost: int = 0
 var attacks: Array[AttackData] = []
+var powers: Array[PowerData] = []
+
+# Trainer cards and Special Energy
+var effect_text: String = ""
+
+# Energy
+var energy_kind: String = ""
 var provides: Array[String] = []
 
 
-static func from_dict(raw: Dictionary) -> CardData:
-	var card := CardData.new()
-	card.id = str(raw.get("id", ""))
-	card.name = str(raw.get("name", card.id))
-	card.kind = str(raw.get("kind", ""))
-	card.hp = int(raw.get("hp", 0))
-	card.types.assign(raw.get("types", []) as Array)
-
-	var weakness := raw.get("weakness", {}) as Dictionary
-	card.weakness_types.assign(weakness.get("types", []) as Array)
-	card.weakness_modifier = str(weakness.get("modifier", ""))
-
-	var resistance := raw.get("resistance", {}) as Dictionary
-	card.resistance_types.assign(resistance.get("types", []) as Array)
-	card.resistance_modifier = str(resistance.get("modifier", ""))
-
-	card.retreat_cost = int(raw.get("retreat_cost", 0))
-	for attack_raw: Variant in raw.get("attacks", []) as Array:
-		card.attacks.append(AttackData.from_dict(attack_raw as Dictionary))
-
-	card.provides.assign(raw.get("provides", []) as Array)
-	return card
-
-
 func is_pokemon() -> bool:
-	return kind == KIND_POKEMON
+	return category == CATEGORY_POKEMON
+
+
+func is_basic_pokemon() -> bool:
+	return is_pokemon() and stage == STAGE_BASIC
+
+
+func is_trainer() -> bool:
+	return category == CATEGORY_TRAINER
 
 
 func is_energy() -> bool:
-	return kind == KIND_ENERGY
+	return category == CATEGORY_ENERGY
