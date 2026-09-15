@@ -1,0 +1,10 @@
+{
+  "fighting_starter": {
+    "name": "Fighting Starter",
+    "cards": { "machop": 8, "diglett": 6, "fighting_energy": 16 }
+  },
+  "water_starter": {
+    "name": "Water Starter",
+    "cards": { "squirtle": 8, "staryu": 6, "water_energy": 16 }
+  }
+}
