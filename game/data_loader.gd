@@ -3,6 +3,8 @@ extends RefCounted
 
 const TCGDEX_DIR := "res://data/tcgdex"
 const DECKS_PATH := "res://data/decks.json"
+const FUNCTIONS_PATH := "res://data/effects/functions.json"
+const CARD_EFFECTS_PATH := "res://data/effects/card_effects.json"
 
 
 ## Reads every set file in data/tcgdex/ into a CardDatabase and reports its problems
@@ -33,6 +35,27 @@ static func load_card_database() -> CardDatabase:
 		database.card_count(), database.errors.size(), database.warnings.size(),
 	])
 	return database
+
+
+## Reads data/effects/ and validates it against the database, reporting problems to the
+## Output panel. Missing files leave the library empty: every attack then deals its printed damage.
+static func load_effect_library(database: CardDatabase) -> EffectLibrary:
+	var library := EffectLibrary.new()
+	var functions: Variant = read_json(FUNCTIONS_PATH) if FileAccess.file_exists(FUNCTIONS_PATH) else {}
+	var card_effects: Variant = read_json(CARD_EFFECTS_PATH) if FileAccess.file_exists(CARD_EFFECTS_PATH) else {}
+	if not functions is Dictionary or not card_effects is Dictionary:
+		push_error("DataLoader: data/effects/ could not be read; card effects are disabled")
+		return library
+
+	library.load_data(functions as Dictionary, card_effects as Dictionary, database)
+	for message in library.errors:
+		push_error(message)
+	for message in library.warnings:
+		push_warning(message)
+	print("DataLoader: %d functions, %d card effect entries in use, %d errors, %d warnings" % [
+		library.function_count(), library.valid_binding_count(), library.errors.size(), library.warnings.size(),
+	])
+	return library
 
 
 ## Returns the parsed JSON, or null if the file is missing or invalid.

@@ -5,6 +5,8 @@ const HAND_SIZE := 7
 const BENCH_LIMIT := 5
 const MAX_SETUP_ATTEMPTS := 50
 const NO_WINNER := -1
+## Both players won at the same time and in the same number of ways: play Sudden Death.
+const SUDDEN_DEATH := -2
 const WEAKNESS_DOUBLE := "\u00d72"
 const RESISTANCE_MINUS_30 := "-30"
 
@@ -13,8 +15,13 @@ var current_index: int = 0
 var turn: int = 0
 var winner: int = NO_WINNER
 var events: Array[String] = []
+## Card effects (Design Document 7). Null means every attack resolves as its printed damage.
+var effects: EffectLibrary = null
 
 var _rng: Rng
+## An attack waiting for a player's choice (Design Document 7.6).
+var _pending_resolver: EffectResolver = null
+var _pending_context: EffectContext = null
 
 
 ## Prize counts are parameters, never constants: the run supplies the NPC value.
@@ -24,6 +31,8 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], prize_count_a: int,
 	events.clear()
 	winner = NO_WINNER
 	turn = 0
+	_pending_resolver = null
+	_pending_context = null
 	players.append(_setup_player(0, deck_a, prize_count_a))
 	players.append(_setup_player(1, deck_b, prize_count_b))
 	# _begin_turn switches the active player first, so player 1 (index 0) opens.
@@ -43,9 +52,29 @@ func opponent_player() -> PlayerState:
 	return players[_opponent_index()]
 
 
+func is_waiting_for_choice() -> bool:
+	return _pending_context != null
+
+
+## The question being asked while an attack waits for a choice, or an empty string.
+func choice_prompt() -> String:
+	return str(_pending_context.choice.get("prompt", "")) if _pending_context != null else ""
+
+
 func legal_actions() -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
 	if is_over():
+		return actions
+
+	# While a choice is open, answering it is the only legal action.
+	if _pending_context != null:
+		var options := _pending_context.choice.get("options", []) as Array
+		for index in options.size():
+			actions.append({
+				"type": "choose",
+				"option": index,
+				"label": str((options[index] as Dictionary)["label"]),
+			})
 		return actions
 
 	var player := current_player()
@@ -87,7 +116,7 @@ func legal_actions() -> Array[Dictionary]:
 		var attacks := player.active.card.attacks
 		for attack_index in attacks.size():
 			var attack := attacks[attack_index]
-			if player.active.can_pay(attack.cost):
+			if player.active.can_pay(attack.cost) and _attack_requirements_met(attack):
 				actions.append({
 					"type": "attack",
 					"attack_index": attack_index,
@@ -115,6 +144,8 @@ func apply(action: Dictionary) -> void:
 		"end_turn":
 			_log("Player %d ends the turn" % (current_index + 1))
 			_begin_turn()
+		"choose":
+			_do_choose(int(action["option"]))
 
 
 func _setup_player(index: int, deck: Array[CardData], prize_count: int) -> PlayerState:
@@ -159,6 +190,9 @@ func _begin_turn() -> void:
 	if player.deck.is_empty():
 		_log("Player %d cannot draw: the opponent takes a prize" % (current_index + 1))
 		_take_prize(_opponent_index())
+		if players[_opponent_index()].prizes.is_empty():
+			winner = _opponent_index()
+			_log("Player %d took the last prize and wins" % (winner + 1))
 		return
 
 	player.draw_card()
@@ -183,7 +217,7 @@ func _do_attach(hand_index: int, slot: int) -> void:
 func _do_retreat(slot: int) -> void:
 	var player := current_player()
 	var retreating := player.active
-	var paid := retreating.detach_last_energy(retreating.card.retreat_cost)
+	var paid := retreating.detach_energy_units(retreating.card.retreat_cost)
 	player.discard.append_array(paid)
 	player.active = player.bench[slot]
 	player.bench[slot] = retreating
@@ -193,23 +227,181 @@ func _do_retreat(slot: int) -> void:
 
 func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
-	var defender := opponent_player()
 	var attack := attacker.active.card.attacks[attack_index]
-	# Known divergence: effect text and damage suffixes are not resolved yet; only the printed number is dealt.
-	var dealt := _apply_modifiers(attacker.active.card, defender.active.card, attack.damage)
-	defender.active.damage += dealt
-	_log("%s uses %s: %d damage to %s (%d/%d HP)%s" % [
-		attacker.active.card.name, attack.name, dealt, defender.active.card.name,
-		defender.active.remaining_hp(), defender.active.card.hp,
-		"  [effect not implemented]" if attack.has_effect() else "",
-	])
+	_log("%s uses %s" % [attacker.active.card.name, attack.name])
 
-	if defender.active.is_knocked_out():
-		_knock_out(_opponent_index())
+	var context := _attack_context(attack)
+	var binding := _attack_binding(attack)
+	if binding.is_empty():
+		if attack.has_effect():
+			# Known divergence (4.8): without a card effect entry only the printed number is dealt.
+			_log("  [effect not implemented]")
+		deal_attack_damage(context, attack.damage)
+		_finish_attack()
+		return
 
+	var resolver := EffectResolver.new(effects, context)
+	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+		_finish_attack()
+	else:
+		_pending_resolver = resolver
+		_pending_context = context
+
+
+func _do_choose(option: int) -> void:
+	var options := _pending_context.choice["options"] as Array
+	var picked := options[option] as Dictionary
+	_log("  Player %d chooses: %s" % [current_index + 1, picked["label"]])
+	_pending_context.selection.append(picked["value"])
+	if _pending_resolver.resume():
+		_pending_resolver = null
+		_pending_context = null
+		_finish_attack()
+
+
+func _finish_attack() -> void:
+	_resolve_knockouts()
 	# Attacking passes priority.
 	if not is_over():
 		_begin_turn()
+
+
+# --- Mutations available to atomic effects ---------------------------------------------
+
+## Deals attack damage to the defending Pokemon through the damage pipeline (4.5).
+func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
+	var defender := context.defender
+	if defender == null:
+		return 0
+	var dealt := _apply_modifiers(context.source.card, defender.card, base_damage)
+	defender.damage += dealt
+	_log("  %d damage to %s (%d/%d HP)" % [dealt, defender.card.name, defender.remaining_hp(), defender.card.hp])
+	return dealt
+
+
+## Damage without Weakness or Resistance, such as an attacker damaging itself.
+func deal_direct_damage(target: CardInPlay, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	target.damage += amount
+	_log("  %s takes %d damage (%d/%d HP)" % [target.card.name, amount, target.remaining_hp(), target.card.hp])
+	return amount
+
+
+## Discards the given Energy cards from a Pokemon into its owner's discard pile.
+func discard_energy_cards(target: CardInPlay, cards: Array[CardData]) -> int:
+	var owner := owner_of(target)
+	var discarded := 0
+	for energy in cards:
+		var index := target.attached_energy.find(energy)
+		if index == -1:
+			continue
+		target.attached_energy.remove_at(index)
+		if owner != null:
+			owner.discard.append(energy)
+		discarded += 1
+		_log("  %s discards %s" % [target.card.name, energy.name])
+	return discarded
+
+
+func draw_cards(player: PlayerState, count: int) -> int:
+	var drawn := 0
+	for _i in maxi(count, 0):
+		if not player.draw_card():
+			break
+		drawn += 1
+	_log("  Player %d draws %d card%s" % [players.find(player) + 1, drawn, "" if drawn == 1 else "s"])
+	return drawn
+
+
+func flip_coin() -> bool:
+	var heads := _rng.coin_flip()
+	_log("  Coin flip: %s" % ("heads" if heads else "tails"))
+	return heads
+
+
+func owner_of(pokemon: CardInPlay) -> PlayerState:
+	for player in players:
+		if player.active == pokemon or player.bench.has(pokemon):
+			return player
+	return null
+
+
+func log_event(text: String) -> void:
+	_log(text)
+
+
+# --- Attack resolution helpers ----------------------------------------------------------
+
+func _attack_context(attack: AttackData) -> EffectContext:
+	var context := EffectContext.new()
+	context.engine = self
+	context.kind = EffectContext.KIND_ATTACK
+	context.source = current_player().active
+	context.defender = opponent_player().active
+	context.player = current_player()
+	context.opponent = opponent_player()
+	context.attack = attack
+	return context
+
+
+func _attack_binding(attack: AttackData) -> Dictionary:
+	if effects == null:
+		return {}
+	return effects.binding_for(current_player().active.card.id, EffectLibrary.SECTION_ATTACKS, attack.name)
+
+
+func _attack_requirements_met(attack: AttackData) -> bool:
+	var binding := _attack_binding(attack)
+	if binding.is_empty():
+		return true
+	var resolver := EffectResolver.new(effects, _attack_context(attack))
+	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
+
+
+## Resolves every Active Pokemon knocked out by the attack at once, as the rulebook does:
+## all of them are discarded, every prize is taken, and only then are wins checked. A player
+## wins by taking their last prize, or when an opponent has no Benched Pokemon to promote.
+## If both win, the one who won in more ways is the winner; otherwise it is Sudden Death.
+func _resolve_knockouts() -> void:
+	var knocked_out: Array[int] = []
+	for index: int in [_opponent_index(), current_index]:
+		var side := players[index]
+		if side.active != null and side.active.is_knocked_out():
+			knocked_out.append(index)
+	if knocked_out.is_empty():
+		return
+
+	for index in knocked_out:
+		var side := players[index]
+		_log("%s is knocked out" % side.active.card.name)
+		side.discard_from_play(side.active)
+		side.active = null
+
+	var ways := [0, 0]
+	for index in knocked_out:
+		var taker := 1 - index
+		_take_prize(taker)
+		if players[taker].prizes.is_empty():
+			ways[taker] = maxi(int(ways[taker]), 1)
+	for index in knocked_out:
+		if players[index].bench.is_empty():
+			ways[1 - index] = int(ways[1 - index]) + 1
+
+	if int(ways[0]) > 0 or int(ways[1]) > 0:
+		if int(ways[0]) == int(ways[1]):
+			winner = SUDDEN_DEATH
+			_log("Both players win at the same time: Sudden Death")
+		else:
+			winner = 0 if int(ways[0]) > int(ways[1]) else 1
+			_log("Player %d wins" % (winner + 1))
+		return
+
+	for index in knocked_out:
+		# Known divergence (4.8): bench[0] is promoted automatically.
+		var side := players[index]
+		side.active = side.bench.pop_at(0) as CardInPlay
+		_log("Player %d promotes %s" % [index + 1, side.active.card.name])
 
 
 func _apply_modifiers(attacker: CardData, defender: CardData, base_damage: int) -> int:
@@ -231,37 +423,12 @@ func _shares_type(attacker_types: Array[String], target_types: Array[String]) ->
 	return false
 
 
-func _knock_out(defender_index: int) -> void:
-	var defender := players[defender_index]
-	var attacker_index := 1 - defender_index
-	var knocked_out := defender.active
-	defender.discard_from_play(knocked_out)
-	defender.active = null
-	_log("%s is knocked out" % knocked_out.card.name)
-
-	_take_prize(attacker_index)
-	if is_over():
-		return
-
-	if defender.bench.is_empty():
-		winner = attacker_index
-		_log("Player %d has no Pokemon in play. Player %d wins" % [defender_index + 1, attacker_index + 1])
-		return
-
-	# Known divergence (4.8): bench[0] is promoted automatically.
-	defender.active = defender.bench.pop_at(0) as CardInPlay
-	_log("Player %d promotes %s" % [defender_index + 1, defender.active.card.name])
-
-
 func _take_prize(taker_index: int) -> void:
 	var taker := players[taker_index]
 	if taker.prizes.is_empty():
 		return
 	taker.hand.append(taker.prizes.pop_back() as CardData)
 	_log("Player %d takes a prize (%d left)" % [taker_index + 1, taker.prizes.size()])
-	if taker.prizes.is_empty():
-		winner = taker_index
-		_log("Player %d took the last prize and wins" % (taker_index + 1))
 
 
 func _opponent_index() -> int:

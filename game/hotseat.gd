@@ -1,7 +1,7 @@
 extends Control
 
-const DECK_PLAYER_1 := "fighting_starter"
-const DECK_PLAYER_2 := "lightning_starter"
+const DECK_PLAYER_1 := "effects_fire_lightning"
+const DECK_PLAYER_2 := "effects_colorless"
 const PRIZE_COUNT := 3
 const FONT_SIZE := 22
 
@@ -100,6 +100,10 @@ func _make_panel_label() -> Label:
 
 
 func _start_match() -> void:
+	_start_with_prizes(PRIZE_COUNT)
+
+
+func _start_with_prizes(prize_count: int) -> void:
 	var database := DataLoader.load_card_database()
 	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
 	if database.card_count() == 0 or not decks is Dictionary:
@@ -114,19 +118,24 @@ func _start_match() -> void:
 
 	_seed = randi()
 	_engine = MatchEngine.new()
+	_engine.effects = DataLoader.load_effect_library(database)
 	_engine.start(
 		database.build_deck(deck_defs[DECK_PLAYER_1] as Dictionary),
 		database.build_deck(deck_defs[DECK_PLAYER_2] as Dictionary),
-		PRIZE_COUNT,
-		PRIZE_COUNT,
+		prize_count,
+		prize_count,
 		Rng.new(_seed),
 	)
 	_refresh()
 
 
 func _refresh() -> void:
-	if _engine.is_over():
+	if _engine.winner == MatchEngine.SUDDEN_DEATH:
+		_status_label.text = "Turn %d  |  Seed %d  |  Both players won: Sudden Death" % [_engine.turn, _seed]
+	elif _engine.is_over():
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d wins" % [_engine.turn, _seed, _engine.winner + 1]
+	elif _engine.is_waiting_for_choice():
+		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.current_index + 1, _engine.choice_prompt()]
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
 
@@ -142,6 +151,13 @@ func _refresh() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.pressed.connect(_on_action_pressed.bind(action))
 		_actions_box.add_child(button)
+
+	if _engine.winner == MatchEngine.SUDDEN_DEATH:
+		var sudden_death := Button.new()
+		sudden_death.text = "Play Sudden Death (1 Prize each)"
+		sudden_death.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		sudden_death.pressed.connect(_start_with_prizes.bind(1))
+		_actions_box.add_child(sudden_death)
 
 	var lines := PackedStringArray(_engine.events)
 	lines.reverse()

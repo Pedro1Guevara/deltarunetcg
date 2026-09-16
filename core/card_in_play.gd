@@ -51,11 +51,13 @@ func retreat_cost() -> Array[String]:
 	return cost
 
 
-## Known divergence (4.8): removes the last-attached energy instead of letting the player choose.
-func detach_last_energy(count: int) -> Array[CardData]:
+## Removes last-attached Energy cards until they provide at least units Energy, so a
+## Double Colorless Energy pays two. Known divergence (4.8): the player does not choose.
+func detach_energy_units(units: int) -> Array[CardData]:
 	var removed: Array[CardData] = []
-	for _i in count:
-		if attached_energy.is_empty():
-			break
-		removed.append(attached_energy.pop_back() as CardData)
+	var paid := 0
+	while paid < units and not attached_energy.is_empty():
+		var energy := attached_energy.pop_back() as CardData
+		removed.append(energy)
+		paid += maxi(energy.provides.size(), 1)
 	return removed

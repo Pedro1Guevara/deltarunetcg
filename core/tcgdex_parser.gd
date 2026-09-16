@@ -9,6 +9,7 @@ extends RefCounted
 ##     entry per type: {"type": "Psychic", "value": "×2"}. Weakness uses the × sign.
 ##   - Attack "damage" is omitted, a number, or a string such as "10+", "30x", "50-" or "?".
 ##   - Basic Energy cards do not say what they provide. It is derived from the name.
+##   - Special Energy states what it provides in its text: "Provides {C}{C} energy."
 ##   - "abilities" holds Pokemon Powers, with type "Pokemon Power".
 ##   - Trainer cards carry their text in "effect". Some, like Clefairy Doll, also print HP;
 ##     they are still Trainer cards.
@@ -16,6 +17,10 @@ extends RefCounted
 const DAMAGE_SUFFIXES := ["+", "x", "×", "-", "?"]
 const BASIC_ENERGY_NAME_SUFFIX := " Energy"
 const ENERGY_TYPES := ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Colorless"]
+## Energy symbols as TCGdex writes them in Special Energy text, e.g. "Provides {C}{C} energy."
+const ENERGY_SYMBOLS := {
+	"G": "Grass", "R": "Fire", "W": "Water", "L": "Lightning", "P": "Psychic", "F": "Fighting", "C": "Colorless",
+}
 
 ## Problems that make a card unusable. parse() returns null when it adds one.
 var errors: Array[String] = []
@@ -153,11 +158,28 @@ func _parse_energy(raw: Dictionary, card: CardData) -> void:
 				return
 			card.provides.append(energy_type)
 		CardData.ENERGY_SPECIAL:
-			warnings.append("%s: %s is Special Energy; what it provides comes from card effects, which do not exist yet" % [card.id, card.name])
+			card.provides.assign(_provided_symbols(card.effect_text))
+			if card.provides.is_empty():
+				warnings.append("%s: %s is Special Energy and its text does not say what it provides" % [card.id, card.name])
 		"":
 			pass
 		_:
 			errors.append("%s: unknown energyType '%s'" % [card.id, card.energy_kind])
+
+
+## Reads "Provides {C}{C} energy." into ["Colorless", "Colorless"]. Empty when the text does not match.
+func _provided_symbols(text: String) -> Array[String]:
+	var result: Array[String] = []
+	var pattern := RegEx.create_from_string("^Provides ((?:\\{[A-Z]\\})+) [Ee]nergy")
+	var found := pattern.search(text)
+	if found == null:
+		return result
+	for symbol in RegEx.create_from_string("\\{([A-Z])\\}").search_all(found.get_string(1)):
+		var letter := symbol.get_string(1)
+		if not ENERGY_SYMBOLS.has(letter):
+			return []
+		result.append(str(ENERGY_SYMBOLS[letter]))
+	return result
 
 
 ## Turns [{"type": "Psychic", "value": "×2"}, ...] into {"types": [...], "modifier": "×2"}.
