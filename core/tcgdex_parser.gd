@@ -11,9 +11,6 @@ extends RefCounted
 ##   - Basic Energy cards do not say what they provide. It is derived from the name.
 ##   - Special Energy states what it provides in its text: "Provides {C}{C} energy."
 ##   - "abilities" holds Pokemon Powers, with type "Pokemon Power".
-##   - "evolveFrom" is only meaningful on Stage1 and Stage2 cards. TCGdex also sets it on some
-##     WOTC Basic Pokemon, naming baby Pokemon printed years later (Snorlax from Munchlax);
-##     it is ignored there. The fossil evolutions (Aerodactyl, Kabuto, Omanyte) lack it.
 ##   - Trainer cards carry their text in "effect". Some, like Clefairy Doll, also print HP;
 ##     they are still Trainer cards.
 
@@ -72,10 +69,7 @@ func parse(raw: Dictionary) -> CardData:
 
 func _parse_pokemon(raw: Dictionary, card: CardData) -> void:
 	card.stage = _required_string(raw, "stage", card.id)
-	if card.stage != CardData.STAGE_BASIC:
-		card.evolve_from = str(raw.get("evolveFrom", ""))
-		if card.evolve_from.is_empty():
-			warnings.append("%s: %s is a %s card with no evolveFrom; it cannot evolve from anything" % [card.id, card.name, card.stage])
+	card.evolve_from = str(raw.get("evolveFrom", ""))
 
 	if not raw.has("hp"):
 		errors.append("%s: Pokemon without hp" % card.id)

@@ -10,8 +10,6 @@ var active: CardInPlay = null
 var bench: Array[CardInPlay] = []
 var energy_attached_this_turn := false
 var retreated_this_turn := false
-## Turns this player has started. Evolution is not allowed during a player's first turn.
-var turns_started: int = 0
 
 
 func reset_turn_flags() -> void:
@@ -38,8 +36,6 @@ func has_pokemon_in_play() -> bool:
 
 
 func discard_from_play(pokemon: CardInPlay) -> void:
-	discard.append_array(pokemon.evolved_from)
-	pokemon.evolved_from.clear()
 	discard.append(pokemon.card)
 	discard.append_array(pokemon.attached_energy)
 	pokemon.attached_energy.clear()

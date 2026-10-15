@@ -22,15 +22,6 @@ var _rng: Rng
 ## An attack waiting for a player's choice (Design Document 7.6).
 var _pending_resolver: EffectResolver = null
 var _pending_context: EffectContext = null
-## A rules choice the engine itself asks: an Active Pokemon at setup, a promotion after a
-## knockout, or which Energy pays a retreat. Empty when none is open.
-## {"chooser": int, "prompt": String, "options": [{"label", "value"}], "resume": String, "data": Dictionary}
-var _choice: Dictionary = {}
-## Remaining setup steps, in order: {"player": int, "step": "active" | "bench" | "compensation", ...}
-var _setup_steps: Array[Dictionary] = []
-var _mulligans: Array[int] = [0, 0]
-var _promotion_queue: Array[int] = []
-var _turn_ends_after_promotions: bool = false
 
 
 ## Prize counts are parameters, never constants: the run supplies the NPC value.
@@ -42,24 +33,11 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], prize_count_a: int,
 	turn = 0
 	_pending_resolver = null
 	_pending_context = null
-	_choice = {}
-	_promotion_queue.clear()
-	_turn_ends_after_promotions = false
-	_mulligans = [0, 0]
 	players.append(_setup_player(0, deck_a, prize_count_a))
 	players.append(_setup_player(1, deck_b, prize_count_b))
-
-	# Setup follows the rulebook: each player places an Active Pokemon and may bench Basic
-	# Pokemon; then the player who took fewer mulligans may draw one card for each extra
-	# mulligan the opponent took, and may bench any Basic Pokemon drawn that way.
-	_setup_steps.clear()
-	for index in 2:
-		_setup_steps.append({"player": index, "step": "active"})
-		_setup_steps.append({"player": index, "step": "bench"})
-	var extra := _mulligans[0] - _mulligans[1]
-	if extra != 0:
-		_setup_steps.append({"player": 1 if extra > 0 else 0, "step": "compensation", "count": absi(extra)})
-	_advance_setup()
+	# _begin_turn switches the active player first, so player 1 (index 0) opens.
+	current_index = 1
+	_begin_turn()
 
 
 func is_over() -> bool:
@@ -75,27 +53,12 @@ func opponent_player() -> PlayerState:
 
 
 func is_waiting_for_choice() -> bool:
-	return not _open_choice().is_empty()
+	return _pending_context != null
 
 
-## The question being asked, or an empty string.
+## The question being asked while an attack waits for a choice, or an empty string.
 func choice_prompt() -> String:
-	return str(_open_choice().get("prompt", ""))
-
-
-## The player who must answer the open choice, or -1.
-func choice_chooser() -> int:
-	return int(_open_choice().get("chooser", -1))
-
-
-func _open_choice() -> Dictionary:
-	if _pending_context != null:
-		return {
-			"chooser": current_index,
-			"prompt": _pending_context.choice.get("prompt", ""),
-			"options": _pending_context.choice.get("options", []),
-		}
-	return _choice
+	return str(_pending_context.choice.get("prompt", "")) if _pending_context != null else ""
 
 
 func legal_actions() -> Array[Dictionary]:
@@ -104,9 +67,8 @@ func legal_actions() -> Array[Dictionary]:
 		return actions
 
 	# While a choice is open, answering it is the only legal action.
-	var open := _open_choice()
-	if not open.is_empty():
-		var options := open["options"] as Array
+	if _pending_context != null:
+		var options := _pending_context.choice.get("options", []) as Array
 		for index in options.size():
 			actions.append({
 				"type": "choose",
@@ -142,20 +104,6 @@ func legal_actions() -> Array[Dictionary]:
 					"label": "Attach %s to %s (bench %d)" % [card.name, player.bench[slot].card.name, slot + 1],
 				})
 
-	for hand_index in player.hand.size():
-		var evolution := player.hand[hand_index]
-		if not _is_evolution_card(evolution):
-			continue
-		for slot in range(-1, player.bench.size()):
-			var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
-			if target != null and can_evolve(player, target, evolution):
-				actions.append({
-					"type": "evolve",
-					"hand_index": hand_index,
-					"slot": slot,
-					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, "active" if slot == -1 else "bench %d" % (slot + 1)],
-				})
-
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(player.active.retreat_cost()):
 		for slot in player.bench.size():
 			actions.append({
@@ -189,8 +137,6 @@ func apply(action: Dictionary) -> void:
 			_do_bench(int(action["hand_index"]))
 		"attach":
 			_do_attach(int(action["hand_index"]), int(action["slot"]))
-		"evolve":
-			_do_evolve(int(action["hand_index"]), int(action["slot"]))
 		"retreat":
 			_do_retreat(int(action["slot"]))
 		"attack":
@@ -212,16 +158,19 @@ func _setup_player(index: int, deck: Array[CardData], prize_count: int) -> Playe
 			player.draw_card()
 		if player.first_basic_pokemon_in_hand() != -1:
 			break
-		_mulligans[index] += 1
+		# Known divergence (4.8): the opponent gets nothing for a mulligan.
 		_log("Player %d mulligan (attempt %d)" % [index + 1, attempt + 1])
 		player.deck.append_array(player.hand)
 		player.hand.clear()
 
-	if player.first_basic_pokemon_in_hand() == -1:
+	var pokemon_index := player.first_basic_pokemon_in_hand()
+	if pokemon_index == -1:
 		push_error("MatchEngine: player %d has no Basic Pokemon after %d attempts" % [index + 1, MAX_SETUP_ATTEMPTS])
+	else:
+		# Known divergence (4.8): the first Basic Pokemon in hand is chosen automatically.
+		var starter := player.hand.pop_at(pokemon_index) as CardData
+		player.active = CardInPlay.new(starter, 0)
 
-	# Prizes come off the deck, so dealing them before the Active Pokemon is chosen from the
-	# hand changes nothing.
 	for _i in prize_count:
 		if player.deck.is_empty():
 			break
@@ -230,113 +179,11 @@ func _setup_player(index: int, deck: Array[CardData], prize_count: int) -> Playe
 	return player
 
 
-## Runs the setup steps until one needs a choice. Copies of the same card are one option.
-## Placing the Active Pokemon asks only when there is more than one option; benching and
-## mulligan draws are optional, so they always ask while there is something to decide.
-func _advance_setup() -> void:
-	while not _setup_steps.is_empty():
-		var step := _setup_steps[0]
-		var index := int(step["player"])
-		var player := players[index]
-		match str(step["step"]):
-			"active":
-				var options := _basic_options(player.hand, "Make %s the Active Pokemon")
-				if options.size() <= 1:
-					if options.size() == 1:
-						_place_active(index, (options[0] as Dictionary)["value"] as CardData)
-					_setup_steps.pop_front()
-					continue
-				_ask_setup(index, "Choose your Active Pokemon", options)
-				return
-			"bench":
-				var allowed: Array[CardData] = player.hand
-				if step.has("cards"):
-					allowed = []
-					for card: Variant in step["cards"] as Array:
-						if player.hand.has(card):
-							allowed.append(card as CardData)
-				var options := _basic_options(allowed, "Bench %s")
-				if options.is_empty() or player.bench.size() >= BENCH_LIMIT:
-					_setup_steps.pop_front()
-					continue
-				options.append({"label": "Finish placing Pokemon", "value": null})
-				_ask_setup(index, "Bench Basic Pokemon before the game starts", options)
-				return
-			"compensation":
-				var count := int(step["count"])
-				var options: Array = []
-				for amount in range(count, -1, -1):
-					options.append({"label": "Draw %d card%s for the opponent's mulligans" % [amount, "" if amount == 1 else "s"], "value": amount})
-				_ask_setup(index, "Your opponent took %d more mulligan%s" % [count, "" if count == 1 else "s"], options)
-				return
-
-	# _begin_turn switches the active player first, so player 1 (index 0) opens.
-	current_index = 1
-	_begin_turn()
-
-
-func _answer_setup(value: Variant) -> void:
-	var step := _setup_steps[0]
-	var index := int(step["player"])
-	var player := players[index]
-	match str(step["step"]):
-		"active":
-			_place_active(index, value as CardData)
-			_setup_steps.pop_front()
-		"bench":
-			if value == null:
-				_setup_steps.pop_front()
-			else:
-				var card := value as CardData
-				player.hand.erase(card)
-				player.bench.append(CardInPlay.new(card, 0))
-				_log("Player %d benches %s during setup" % [index + 1, card.name])
-		"compensation":
-			_setup_steps.pop_front()
-			var drawn: Array[CardData] = []
-			for _i in int(value):
-				if not player.draw_card():
-					break
-				drawn.append(player.hand.back())
-			_log("Player %d draws %d card%s for mulligans" % [index + 1, drawn.size(), "" if drawn.size() == 1 else "s"])
-			if not drawn.is_empty():
-				_setup_steps.push_front({"player": index, "step": "bench", "cards": drawn})
-	_advance_setup()
-
-
-func _basic_options(cards: Array[CardData], label_format: String) -> Array:
-	var options: Array = []
-	var offered: Array[String] = []
-	for card in cards:
-		if card.is_basic_pokemon() and not offered.has(card.id):
-			offered.append(card.id)
-			options.append({"label": label_format % card.name, "value": card})
-	return options
-
-
-func _ask_setup(index: int, prompt: String, options: Array) -> void:
-	_choice = {
-		"chooser": index,
-		"prompt": prompt,
-		"options": options,
-		"resume": "setup",
-		"data": {},
-	}
-
-
-func _place_active(index: int, card: CardData) -> void:
-	var player := players[index]
-	player.hand.erase(card)
-	player.active = CardInPlay.new(card, 0)
-	_log("Player %d starts with %s" % [index + 1, card.name])
-
-
 func _begin_turn() -> void:
 	current_index = _opponent_index()
 	turn += 1
 	var player := current_player()
 	player.reset_turn_flags()
-	player.turns_started += 1
 	_log("--- Turn %d: Player %d ---" % [turn, current_index + 1])
 
 	# Project rule (4.7): deck-out costs a prize instead of losing.
@@ -358,30 +205,6 @@ func _do_bench(hand_index: int) -> void:
 	_log("Player %d benches %s" % [current_index + 1, card.name])
 
 
-## Evolution rules (5.1): the card evolves from the target's name, one stage at a time;
-## the target has been in play since before this turn; and it is not the player's first turn.
-func can_evolve(player: PlayerState, target: CardInPlay, evolution: CardData) -> bool:
-	if not _is_evolution_card(evolution) or evolution.evolve_from != target.card.name:
-		return false
-	var expected_stage := "Stage1" if target.card.stage == CardData.STAGE_BASIC else "Stage2" if target.card.stage == "Stage1" else ""
-	if evolution.stage != expected_stage:
-		return false
-	return player.turns_started > 1 and target.turn_played < turn
-
-
-func _is_evolution_card(card: CardData) -> bool:
-	return card.is_pokemon() and not card.is_basic_pokemon() and not card.evolve_from.is_empty()
-
-
-func _do_evolve(hand_index: int, slot: int) -> void:
-	var player := current_player()
-	var evolution := player.hand.pop_at(hand_index) as CardData
-	var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
-	var previous := target.card.name
-	target.evolve(evolution, turn)
-	_log("Player %d evolves %s into %s" % [current_index + 1, previous, evolution.name])
-
-
 func _do_attach(hand_index: int, slot: int) -> void:
 	var player := current_player()
 	var energy := player.hand.pop_at(hand_index) as CardData
@@ -392,68 +215,10 @@ func _do_attach(hand_index: int, slot: int) -> void:
 
 
 func _do_retreat(slot: int) -> void:
-	var options := _retreat_payment_options(current_player().active)
-	if options.size() <= 1:
-		var payment: Array = [] if options.is_empty() else (options[0] as Dictionary)["value"] as Array
-		_complete_retreat(slot, payment)
-		return
-	_choice = {
-		"chooser": current_index,
-		"prompt": "Choose the Energy to discard to retreat %s" % current_player().active.card.name,
-		"options": options,
-		"resume": "retreat",
-		"data": {"slot": slot},
-	}
-
-
-## Every distinct way to pay the retreat cost without discarding a card the payment does
-## not need. Copies of the same card are interchangeable, so each combination appears once.
-func _retreat_payment_options(active: CardInPlay) -> Array:
-	var cost := active.card.retreat_cost
-	if cost <= 0:
-		return []
-	var cards := active.attached_energy
-	var options: Array = []
-	var seen: Array[String] = []
-	for mask in range((1 << cards.size()) - 1, 0, -1):
-		var chosen: Array = []
-		var units := 0
-		for index in cards.size():
-			if mask & (1 << index):
-				chosen.append(cards[index])
-				units += _energy_units(cards[index])
-		if units < cost:
-			continue
-		var minimal := true
-		for card: Variant in chosen:
-			if units - _energy_units(card as CardData) >= cost:
-				minimal = false
-				break
-		if not minimal:
-			continue
-		var names: Array[String] = []
-		for card: Variant in chosen:
-			names.append((card as CardData).name)
-		names.sort()
-		var key := " + ".join(PackedStringArray(names))
-		if seen.has(key):
-			continue
-		seen.append(key)
-		options.append({"label": "Discard %s" % key, "value": chosen})
-	options.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["label"]) < str(b["label"]))
-	return options
-
-
-func _energy_units(card: CardData) -> int:
-	return maxi(card.provides.size(), 1)
-
-
-func _complete_retreat(slot: int, payment: Array) -> void:
 	var player := current_player()
 	var retreating := player.active
-	for energy: Variant in payment:
-		retreating.attached_energy.erase(energy)
-		player.discard.append(energy as CardData)
+	var paid := retreating.detach_energy_units(retreating.card.retreat_cost)
+	player.discard.append_array(paid)
 	player.active = player.bench[slot]
 	player.bench[slot] = retreating
 	player.retreated_this_turn = true
@@ -484,76 +249,21 @@ func _do_attack(attack_index: int) -> void:
 
 
 func _do_choose(option: int) -> void:
-	var open := _open_choice()
-	var picked := (open["options"] as Array)[option] as Dictionary
-	_log("  Player %d chooses: %s" % [int(open["chooser"]) + 1, picked["label"]])
-
-	if _pending_context != null:
-		_pending_context.selection.append(picked["value"])
-		if _pending_resolver.resume():
-			_pending_resolver = null
-			_pending_context = null
-			_finish_attack()
-		return
-
-	var choice := _choice
-	_choice = {}
-	match str(choice["resume"]):
-		"setup":
-			_answer_setup(picked["value"])
-		"promote":
-			_promote(int(choice["chooser"]), int(picked["value"]))
-			_promotion_queue.pop_front()
-			if _advance_promotions() and _turn_ends_after_promotions:
-				_turn_ends_after_promotions = false
-				_begin_turn()
-		"retreat":
-			_complete_retreat(int((choice["data"] as Dictionary)["slot"]), picked["value"] as Array)
+	var options := _pending_context.choice["options"] as Array
+	var picked := options[option] as Dictionary
+	_log("  Player %d chooses: %s" % [current_index + 1, picked["label"]])
+	_pending_context.selection.append(picked["value"])
+	if _pending_resolver.resume():
+		_pending_resolver = null
+		_pending_context = null
+		_finish_attack()
 
 
 func _finish_attack() -> void:
 	_resolve_knockouts()
-	if is_over():
-		return
-	# Attacking passes priority, once every knocked out Pokemon has been replaced.
-	if _advance_promotions():
+	# Attacking passes priority.
+	if not is_over():
 		_begin_turn()
-	else:
-		_turn_ends_after_promotions = true
-
-
-## Each player whose Active Pokemon was knocked out chooses a replacement from the bench,
-## the defending player first. A bench of one is promoted without asking.
-func _advance_promotions() -> bool:
-	while not _promotion_queue.is_empty():
-		var index := _promotion_queue[0]
-		var side := players[index]
-		if side.bench.size() == 1:
-			_promote(index, 0)
-			_promotion_queue.pop_front()
-			continue
-		var options: Array = []
-		for slot in side.bench.size():
-			var pokemon := side.bench[slot]
-			options.append({
-				"label": "Promote %s (%d/%d HP)" % [pokemon.card.name, pokemon.remaining_hp(), pokemon.card.hp],
-				"value": slot,
-			})
-		_choice = {
-			"chooser": index,
-			"prompt": "Choose a new Active Pokemon",
-			"options": options,
-			"resume": "promote",
-			"data": {},
-		}
-		return false
-	return true
-
-
-func _promote(index: int, slot: int) -> void:
-	var side := players[index]
-	side.active = side.bench.pop_at(slot) as CardInPlay
-	_log("Player %d promotes %s" % [index + 1, side.active.card.name])
 
 
 # --- Mutations available to atomic effects ---------------------------------------------
@@ -687,7 +397,11 @@ func _resolve_knockouts() -> void:
 			_log("Player %d wins" % (winner + 1))
 		return
 
-	_promotion_queue.assign(knocked_out)
+	for index in knocked_out:
+		# Known divergence (4.8): bench[0] is promoted automatically.
+		var side := players[index]
+		side.active = side.bench.pop_at(0) as CardInPlay
+		_log("Player %d promotes %s" % [index + 1, side.active.card.name])
 
 
 func _apply_modifiers(attacker: CardData, defender: CardData, base_damage: int) -> int:

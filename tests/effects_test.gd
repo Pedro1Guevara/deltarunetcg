@@ -20,24 +20,12 @@ func energies(ids: Array) -> Array[CardData]:
 		out.append(db.make(id))
 	return out
 
-## Answers setup quickly: first Active option, no benching, no mulligan draws.
-func finish_setup(engine: MatchEngine) -> void:
-	while engine.is_waiting_for_choice():
-		var actions := engine.legal_actions()
-		var pick := actions[0]
-		for action in actions:
-			var label := str(action["label"])
-			if label.begins_with("Finish") or label.begins_with("Draw 0"):
-				pick = action
-		engine.apply(pick)
-
 ## Player 1 (index 0) to act with attacker vs defender.
 func setup(attacker_id: String, attached: Array, defender_id: String, defender_attached: Array = []) -> MatchEngine:
 	var decks := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
 	var engine := MatchEngine.new()
 	engine.effects = lib
 	engine.start(db.build_deck(decks["fighting_starter"]), db.build_deck(decks["lightning_starter"]), 3, 3, Rng.new(7))
-	finish_setup(engine)
 	engine.current_index = 0
 	for p in engine.players:
 		p.bench.clear()
@@ -139,8 +127,7 @@ func _run() -> void:
 
 	print("== energy cards and units")
 	expect(db.make(DCE).provides == ["Colorless", "Colorless"], "Double Colorless Energy provides two Colorless")
-	expect(db.warnings.size() == 4 and "\n".join(PackedStringArray(db.warnings)).contains("no evolveFrom"), "the only parse warnings are the four fossil evolutions without evolveFrom: %s" % [db.warnings])
-	expect(db.make("base2-11").evolve_from.is_empty(), "a WOTC Basic keeps no evolveFrom even when TCGdex names a later baby Pokemon")
+	expect(db.warnings.is_empty(), "no parse warnings left: %s" % [db.warnings])
 	var ps2 := setup("base1-10", [P, P], "base1-65", [DCE, L])
 	attack(ps2, "Psychic")
 	expect(last_defender.damage == 30, "Psychic counts Energy cards: DCE + Lightning is 2, deals 30 (%d)" % last_defender.damage)
@@ -160,180 +147,7 @@ func _run() -> void:
 		if action["type"] == "retreat":
 			rt.apply(action)
 			break
-	expect(rt.players[0].bench[0].energy_pool() == ["Fighting"], "retreat cost 2 is paid by the DCE alone, without asking")
-	var rc := setup("base1-7", [G, G, DCE], "base2-11")
-	rc.players[0].bench.append(CardInPlay.new(db.make("base1-26"), 0))
-	for action in rc.legal_actions():
-		if action["type"] == "retreat":
-			rc.apply(action)
-			break
-	var retreat_labels: Array = []
-	for action in rc.legal_actions():
-		retreat_labels.append(action["label"])
-	expect(retreat_labels == ["Discard Double Colorless Energy", "Discard Fighting Energy + Fighting Energy"], "retreat offers only payments without spare cards: %s" % [retreat_labels])
-	for action in rc.legal_actions():
-		if str(action["label"]).contains("Fighting Energy + Fighting Energy"):
-			rc.apply(action)
-	expect(rc.players[0].bench[0].energy_pool() == ["Colorless", "Colorless"], "paying with two Fighting keeps the DCE")
-	expect(rc.players[0].active.card.id == "base1-26" and rc.players[0].retreated_this_turn, "the retreat completed after the choice")
-
-	print("== promotion and setup choices")
-	var pr := setup("base1-7", [G, G, G], "base1-67")
-	pr.players[1].bench.append(CardInPlay.new(db.make("base1-61"), 0))
-	pr.players[1].bench.append(CardInPlay.new(db.make("base1-26"), 0))
-	expect(attack(pr, "Special Punch"), "Special Punch is legal")
-	expect(pr.is_waiting_for_choice() and pr.choice_chooser() == 1, "the knocked out player chooses the replacement")
-	expect(pr.current_index == 0, "the turn does not pass before the promotion")
-	for action in pr.legal_actions():
-		if str(action["label"]).contains("Dratini"):
-			pr.apply(action)
-	expect(pr.players[1].active.card.id == "base1-26" and pr.players[1].bench.size() == 1, "Dratini was promoted by choice")
-	expect(pr.current_index == 1, "the turn passed after the promotion")
-
-	var decks_for_setup := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
-	var asked := false
-	for trial in 20:
-		var st := MatchEngine.new()
-		st.effects = lib
-		st.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
-		if not (st.is_waiting_for_choice() and st.choice_prompt() == "Choose your Active Pokemon"):
-			continue
-		asked = true
-		var first_chooser := st.choice_chooser()
-		expect(st.turn == 0 and st.players[first_chooser].active == null, "setup waits before turn 1 with no Active Pokemon")
-		var hand_before_choice := st.players[first_chooser].hand.size()
-		st.apply(st.legal_actions()[0])
-		expect(st.players[first_chooser].active != null and st.players[first_chooser].hand.size() == hand_before_choice - 1, "the chosen Basic left the hand and became Active")
-		while st.is_waiting_for_choice():
-			st.apply(st.legal_actions()[0])
-		expect(st.turn == 1 and st.players[0].active != null and st.players[1].active != null, "turn 1 starts once both have chosen")
-		break
-	expect(asked, "at least one of 20 setups asked for an Active Pokemon")
-
-	print("== setup bench and mulligan draws")
-	var benched_in_setup := false
-	for trial in 20:
-		var sb := MatchEngine.new()
-		sb.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
-		if sb.is_waiting_for_choice() and sb.choice_prompt() == "Choose your Active Pokemon":
-			sb.apply(sb.legal_actions()[0])
-		if not (sb.is_waiting_for_choice() and sb.choice_prompt().begins_with("Bench") and sb.choice_chooser() == 0):
-			continue
-		var hand_size := sb.players[0].hand.size()
-		sb.apply(sb.legal_actions()[0])
-		for action in sb.legal_actions():
-			if str(action["label"]).begins_with("Finish"):
-				sb.apply(action)
-				break
-		expect(sb.players[0].bench.size() == 1 and sb.players[0].hand.size() == hand_size - 1, "a Basic benched during setup left the hand")
-		finish_setup(sb)
-		expect(sb.turn == 1 and sb.players[0].bench.size() == 1, "the setup bench is still there on turn 1")
-		benched_in_setup = true
-		break
-	expect(benched_in_setup, "a setup offered benching")
-
-	var one_basic := {"cards": {"base1-52": 1, "base1-97": 29}}
-	var compensated := false
-	for trial in 200:
-		var mg := MatchEngine.new()
-		mg.start(db.build_deck(one_basic), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
-		var mulligans := mg.get("_mulligans") as Array
-		if int(mulligans[0]) <= int(mulligans[1]):
-			continue
-		var extra := int(mulligans[0]) - int(mulligans[1])
-		while mg.is_waiting_for_choice() and not mg.choice_prompt().contains("more mulligan"):
-			var actions := mg.legal_actions()
-			var pick := actions[0]
-			for action in actions:
-				if str(action["label"]).begins_with("Finish"):
-					pick = action
-			mg.apply(pick)
-		expect(mg.is_waiting_for_choice() and mg.choice_chooser() == 1, "the player with fewer mulligans is offered the draws (%d extra)" % extra)
-		var draw_options := mg.legal_actions()
-		expect(draw_options.size() == extra + 1, "options run from %d cards down to 0" % extra)
-		var hand_before_draws := mg.players[1].hand.duplicate()
-		mg.apply(draw_options[0])
-		expect(mg.players[1].hand.size() == hand_before_draws.size() + extra, "drew %d cards" % extra)
-		if mg.is_waiting_for_choice() and mg.choice_prompt().begins_with("Bench"):
-			var only_drawn := true
-			for action in mg.legal_actions():
-				var label := str(action["label"])
-				if label.begins_with("Bench"):
-					var in_old_hand := false
-					for card: CardData in hand_before_draws:
-						if label == "Bench %s" % card.name:
-							in_old_hand = true
-					var drawn_same_name := false
-					for card in mg.players[1].hand:
-						if not hand_before_draws.has(card) and label == "Bench %s" % card.name:
-							drawn_same_name = true
-					if in_old_hand and not drawn_same_name:
-						only_drawn = false
-			expect(only_drawn, "benching after the draws offers only Basic Pokemon drawn for mulligans")
-		finish_setup(mg)
-		expect(mg.turn == 1, "turn 1 starts after the mulligan draws")
-		compensated = true
-		break
-	expect(compensated, "found a setup where only one player took extra mulligans")
-
-	print("== evolution")
-	var ev := setup("base1-46", [F, F, F], "base2-11")
-	ev.players[0].active.damage = 20
-	var charmeleon := db.make("base1-24")
-	var charizard := db.make("base1-4")
-	ev.players[0].hand.append(charmeleon)
-	ev.players[0].hand.append(charizard)
-	ev.turn = 5
-	ev.players[0].turns_started = 3
-	var evolve_labels: Array = []
-	for action in ev.legal_actions():
-		if action["type"] == "evolve":
-			evolve_labels.append(action["label"])
-	expect(evolve_labels == ["Evolve Charmander into Charmeleon (active)"], "Charmeleon can evolve Charmander; Charizard cannot skip a stage: %s" % [evolve_labels])
-	for action in ev.legal_actions():
-		if action["type"] == "evolve":
-			ev.apply(action)
-	var evolved := ev.players[0].active
-	expect(evolved.card.id == "base1-24" and evolved.evolved_from.size() == 1, "the active is now Charmeleon with Charmander under it")
-	expect(evolved.damage == 20 and evolved.attached_energy.size() == 3, "damage and Energy stay after evolving")
-	var twice := false
-	for action in ev.legal_actions():
-		if action["type"] == "evolve":
-			twice = true
-	expect(not twice, "a Pokemon cannot evolve twice in the same turn")
-	expect(attack(ev, "Flamethrower"), "the evolved Pokemon uses its new attacks")
-
-	var ev2 := setup("base1-46", [F], "base2-11")
-	ev2.players[0].hand.append(db.make("base1-24"))
-	ev2.turn = 5
-	ev2.players[0].turns_started = 3
-	ev2.players[0].active.turn_played = 5
-	var blocked := true
-	for action in ev2.legal_actions():
-		if action["type"] == "evolve":
-			blocked = false
-	expect(blocked, "a Pokemon put into play this turn cannot evolve")
-	ev2.players[0].active.turn_played = 3
-	ev2.players[0].turns_started = 1
-	blocked = true
-	for action in ev2.legal_actions():
-		if action["type"] == "evolve":
-			blocked = false
-	expect(blocked, "nothing evolves during a player's first turn")
-	ev2.players[0].turns_started = 2
-	var allowed := false
-	for action in ev2.legal_actions():
-		if action["type"] == "evolve":
-			allowed = true
-	expect(allowed, "evolution is allowed from the player's second turn")
-
-	var ko_stack := setup("base1-7", [G, G, G], "base1-24")
-	ko_stack.players[1].active.evolved_from.append(db.make("base1-46"))
-	ko_stack.players[1].active.damage = 70
-	ko_stack.players[1].bench.append(CardInPlay.new(db.make("base1-61"), 0))
-	var discard_before := ko_stack.players[1].discard.size()
-	attack(ko_stack, "Jab")
-	expect(ko_stack.players[1].discard.size() == discard_before + 2, "a knocked out evolved Pokemon discards the cards under it too")
+	expect(rt.players[0].bench[0].energy_pool() == ["Fighting"], "retreat cost 2 is paid by the DCE alone")
 
 	print("== choosing Energy to discard")
 	var fs := setup("base1-4", [F, F, F, F, DCE], "base1-3")
@@ -480,12 +294,10 @@ func _run() -> void:
 	picker.seed = 99
 	var wins := [0, 0]
 	var warnings_seen := 0
-	var evolutions_seen := 0
 	for game in 300:
 		var engine := MatchEngine.new()
 		engine.effects = lib
-		var pairing := ["effects_fire_lightning", "effects_colorless"] if game % 2 == 0 else ["evolution_fire", "evolution_fighting_grass"]
-		engine.start(db.build_deck(decks[pairing[0]]), db.build_deck(decks[pairing[1]]), 3, 3, Rng.new(game))
+		engine.start(db.build_deck(decks["effects_fire_lightning"]), db.build_deck(decks["effects_colorless"]), 3, 3, Rng.new(game))
 		var steps := 0
 		while not engine.is_over() and steps < 5000:
 			var actions := engine.legal_actions()
@@ -499,9 +311,9 @@ func _run() -> void:
 			for p in engine.players:
 				var n := p.deck.size() + p.hand.size() + p.discard.size() + p.prizes.size() + p.bench.size()
 				if p.active != null:
-					n += 1 + p.active.attached_energy.size() + p.active.evolved_from.size()
+					n += 1 + p.active.attached_energy.size()
 				for b in p.bench:
-					n += b.attached_energy.size() + b.evolved_from.size()
+					n += b.attached_energy.size()
 				if n != 30:
 					push_error("card count %d" % n)
 					failures += 1
@@ -513,11 +325,8 @@ func _run() -> void:
 		for line in engine.events:
 			if line.contains("[effect warning]"):
 				warnings_seen += 1
-			if line.contains(" evolves "):
-				evolutions_seen += 1
 	expect(true, "300 games finished with 30 cards per side; wins %s" % [wins])
 	expect(warnings_seen == 0, "no runtime effect warnings (%d)" % warnings_seen)
-	expect(evolutions_seen > 0, "the evolution decks evolved during the simulation (%d times)" % evolutions_seen)
 
 	print("FAILURES: ", failures)
 	quit(1 if failures > 0 else 0)

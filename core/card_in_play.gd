@@ -7,21 +7,11 @@ var card: CardData
 var damage: int = 0
 var attached_energy: Array[CardData] = []
 var turn_played: int = 0
-## The cards this Pokemon evolved from, oldest first. They stay under it and share its fate.
-var evolved_from: Array[CardData] = []
 
 
 func _init(played_card: CardData, played_on_turn: int) -> void:
 	card = played_card
 	turn_played = played_on_turn
-
-
-## Places an evolution card on top. Damage and attached cards stay; the Pokemon counts as
-## new in play, so it cannot evolve again this turn.
-func evolve(into: CardData, turn: int) -> void:
-	evolved_from.append(card)
-	card = into
-	turn_played = turn
 
 
 func remaining_hp() -> int:
@@ -59,3 +49,15 @@ func retreat_cost() -> Array[String]:
 	for _i in card.retreat_cost:
 		cost.append(COLORLESS)
 	return cost
+
+
+## Removes last-attached Energy cards until they provide at least units Energy, so a
+## Double Colorless Energy pays two. Known divergence (4.8): the player does not choose.
+func detach_energy_units(units: int) -> Array[CardData]:
+	var removed: Array[CardData] = []
+	var paid := 0
+	while paid < units and not attached_energy.is_empty():
+		var energy := attached_energy.pop_back() as CardData
+		removed.append(energy)
+		paid += maxi(energy.provides.size(), 1)
+	return removed

@@ -38,34 +38,5 @@
       "base1-97": 16,
       "base1-96": 2
     }
-  },
-  "evolution_fire": {
-    "name": "Evolution: Fire",
-    "cards": {
-      "base1-46": 3,
-      "base1-24": 2,
-      "base1-4": 1,
-      "base1-28": 3,
-      "base1-23": 2,
-      "base1-60": 2,
-      "base1-98": 15,
-      "base1-96": 2
-    }
-  },
-  "evolution_fighting_grass": {
-    "name": "Evolution: Fighting and Grass",
-    "cards": {
-      "base1-52": 3,
-      "base1-34": 2,
-      "base1-8": 1,
-      "base1-55": 3,
-      "base1-37": 2,
-      "base1-11": 1,
-      "base1-48": 2,
-      "base2-34": 1,
-      "base1-97": 7,
-      "base1-99": 6,
-      "base1-96": 2
-    }
   }
 }
