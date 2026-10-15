@@ -1,7 +1,7 @@
 extends Control
 
-const DECK_PLAYER_1 := "effects_fire_lightning"
-const DECK_PLAYER_2 := "effects_colorless"
+const DECK_PLAYER_1 := "evolution_fire"
+const DECK_PLAYER_2 := "evolution_fighting_grass"
 const PRIZE_COUNT := 3
 const FONT_SIZE := 22
 
@@ -84,10 +84,22 @@ func _build_ui() -> void:
 	_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_scroll.add_child(_log_label)
 
-	var new_match_button := Button.new()
-	new_match_button.text = "New match"
-	new_match_button.pressed.connect(_start_match)
-	side_panel.add_child(new_match_button)
+	var controls := WindowControls.new()
+	add_child(controls)
+
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 12)
+	side_panel.add_child(buttons)
+	for entry: Array in [
+		["New match", _start_match],
+		["Window / Fullscreen (F11)", WindowControls.toggle_windowed],
+		["Quit (Esc)", controls.quit],
+	]:
+		var button := Button.new()
+		button.text = str(entry[0])
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(entry[1] as Callable)
+		buttons.add_child(button)
 
 
 func _make_panel_label() -> Label:
@@ -135,7 +147,7 @@ func _refresh() -> void:
 	elif _engine.is_over():
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d wins" % [_engine.turn, _seed, _engine.winner + 1]
 	elif _engine.is_waiting_for_choice():
-		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.current_index + 1, _engine.choice_prompt()]
+		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, _engine.choice_prompt()]
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
 
@@ -174,7 +186,8 @@ func _describe_player(index: int) -> String:
 	var lines := PackedStringArray()
 
 	var header := "PLAYER %d" % (index + 1)
-	if not _engine.is_over() and _engine.current_index == index:
+	var actor := _engine.choice_chooser() if _engine.is_waiting_for_choice() else _engine.current_index
+	if not _engine.is_over() and actor == index:
 		header += "   <- to act"
 	lines.append(header)
 	lines.append("Prizes left: %d   Deck: %d   Discard: %d   Hand: %d" % [
@@ -200,7 +213,8 @@ func _describe_player(index: int) -> String:
 
 func _describe_in_play(pokemon: CardInPlay) -> String:
 	var energy := ", ".join(PackedStringArray(pokemon.energy_pool()))
-	return "%s  %d/%d HP  [%s]" % [pokemon.card.name, pokemon.remaining_hp(), pokemon.card.hp, energy]
+	var stage := "" if pokemon.card.stage == CardData.STAGE_BASIC else " (%s)" % pokemon.card.stage
+	return "%s%s  %d/%d HP  [%s]" % [pokemon.card.name, stage, pokemon.remaining_hp(), pokemon.card.hp, energy]
 
 
 func _show_error(message: String) -> void:
