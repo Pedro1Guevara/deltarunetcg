@@ -18,7 +18,7 @@ extends SceneTree
 ## image, because TCGdex text is not always complete: it drops Energy symbols, for example.
 
 const OUTPUT_PATH := "res://reports/effect_review.md"
-const CARD_EFFECTS_PATH := "res://data/effects/card_effects.json"
+const CARD_EFFECTS_PATH := DataLoader.CARD_EFFECTS_PATH
 const SELF_TOKEN := "{self}"
 
 const KIND_ATTACK := "attack"
@@ -44,7 +44,7 @@ var _lines: PackedStringArray = PackedStringArray()
 
 
 func _initialize() -> void:
-	var database := DataLoader.load_card_database()
+	var database := DataLoader.load_legacy_card_database()
 	if database.card_count() == 0:
 		printerr("No cards loaded. Run tools/import_tcgdex.gd first.")
 		quit(1)

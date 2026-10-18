@@ -116,8 +116,8 @@ func _start_match() -> void:
 
 
 func _start_with_prizes(prize_count: int) -> void:
-	var database := DataLoader.load_card_database()
-	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
+	var database := DataLoader.load_legacy_card_database()
+	var decks: Variant = DataLoader.read_json(DataLoader.LEGACY_DECKS_PATH)
 	if database.card_count() == 0 or not decks is Dictionary:
 		_show_error("Could not load data/tcgdex/ or data/decks.json. See the Output panel.")
 		return
@@ -130,7 +130,7 @@ func _start_with_prizes(prize_count: int) -> void:
 
 	_seed = randi()
 	_engine = MatchEngine.new()
-	_engine.effects = DataLoader.load_effect_library(database)
+	_engine.effects = DataLoader.load_effect_library(database, DataLoader.LEGACY_CARD_EFFECTS_PATH)
 	_engine.start(
 		database.build_deck(deck_defs[DECK_PLAYER_1] as Dictionary),
 		database.build_deck(deck_defs[DECK_PLAYER_2] as Dictionary),

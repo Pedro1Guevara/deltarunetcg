@@ -33,7 +33,7 @@ func finish_setup(engine: MatchEngine) -> void:
 
 ## Player 1 (index 0) to act with attacker vs defender.
 func setup(attacker_id: String, attached: Array, defender_id: String, defender_attached: Array = []) -> MatchEngine:
-	var decks := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
+	var decks := DataLoader.read_json(DataLoader.LEGACY_DECKS_PATH) as Dictionary
 	var engine := MatchEngine.new()
 	engine.effects = lib
 	engine.start(db.build_deck(decks["fighting_starter"]), db.build_deck(decks["lightning_starter"]), 3, 3, Rng.new(7))
@@ -67,8 +67,8 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 func _run() -> void:
-	db = DataLoader.load_card_database()
-	lib = DataLoader.load_effect_library(db)
+	db = DataLoader.load_legacy_card_database()
+	lib = DataLoader.load_effect_library(db, DataLoader.LEGACY_CARD_EFFECTS_PATH)
 	print("== load")
 	expect(lib.errors.is_empty(), "no validation errors: %s" % [lib.errors])
 	expect(lib.valid_binding_count() == 74, "74 card effect entries in use (%d)" % lib.valid_binding_count())
@@ -190,7 +190,7 @@ func _run() -> void:
 	expect(pr.players[1].active.card.id == "base1-26" and pr.players[1].bench.size() == 1, "Dratini was promoted by choice")
 	expect(pr.current_index == 1, "the turn passed after the promotion")
 
-	var decks_for_setup := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
+	var decks_for_setup := DataLoader.read_json(DataLoader.LEGACY_DECKS_PATH) as Dictionary
 	var asked := false
 	for trial in 20:
 		var st := MatchEngine.new()
@@ -475,7 +475,7 @@ func _run() -> void:
 	expect(not bad.binding_for("base1-24", "attacks", "Flamethrower").is_empty(), "a valid entry in the same file still resolves")
 
 	print("== simulation")
-	var decks := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
+	var decks := DataLoader.read_json(DataLoader.LEGACY_DECKS_PATH) as Dictionary
 	var picker := RandomNumberGenerator.new()
 	picker.seed = 99
 	var wins := [0, 0]
