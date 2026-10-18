@@ -196,11 +196,11 @@ func _run() -> void:
 		var st := MatchEngine.new()
 		st.effects = lib
 		st.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
-		if not (st.is_waiting_for_choice() and st.choice_prompt() == "Choose your Active Pokemon"):
+		if not (st.is_waiting_for_choice() and st.choice_prompt() == "Choose your Battling Darkner"):
 			continue
 		asked = true
 		var first_chooser := st.choice_chooser()
-		expect(st.turn == 0 and st.players[first_chooser].active == null, "setup waits before turn 1 with no Active Pokemon")
+		expect(st.turn == 0 and st.players[first_chooser].active == null, "setup waits before turn 1 with no Battling Darkner")
 		var hand_before_choice := st.players[first_chooser].hand.size()
 		st.apply(st.legal_actions()[0])
 		expect(st.players[first_chooser].active != null and st.players[first_chooser].hand.size() == hand_before_choice - 1, "the chosen Basic left the hand and became Active")
@@ -208,16 +208,16 @@ func _run() -> void:
 			st.apply(st.legal_actions()[0])
 		expect(st.turn == 1 and st.players[0].active != null and st.players[1].active != null, "turn 1 starts once both have chosen")
 		break
-	expect(asked, "at least one of 20 setups asked for an Active Pokemon")
+	expect(asked, "at least one of 20 setups asked for an Battling Darkner")
 
 	print("== setup bench and mulligan draws")
 	var benched_in_setup := false
 	for trial in 20:
 		var sb := MatchEngine.new()
 		sb.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
-		if sb.is_waiting_for_choice() and sb.choice_prompt() == "Choose your Active Pokemon":
+		if sb.is_waiting_for_choice() and sb.choice_prompt() == "Choose your Battling Darkner":
 			sb.apply(sb.legal_actions()[0])
-		if not (sb.is_waiting_for_choice() and sb.choice_prompt().begins_with("Bench") and sb.choice_chooser() == 0):
+		if not (sb.is_waiting_for_choice() and sb.choice_prompt().begins_with("Put Basic Darkners on the Field before the game starts") and sb.choice_chooser() == 0):
 			continue
 		var hand_size := sb.players[0].hand.size()
 		sb.apply(sb.legal_actions()[0])
@@ -254,18 +254,18 @@ func _run() -> void:
 		var hand_before_draws := mg.players[1].hand.duplicate()
 		mg.apply(draw_options[0])
 		expect(mg.players[1].hand.size() == hand_before_draws.size() + extra, "drew %d cards" % extra)
-		if mg.is_waiting_for_choice() and mg.choice_prompt().begins_with("Bench"):
+		if mg.is_waiting_for_choice() and mg.choice_prompt().begins_with("Put Basic Darkners on the Field before the game starts"):
 			var only_drawn := true
 			for action in mg.legal_actions():
 				var label := str(action["label"])
 				if label.begins_with("Bench"):
 					var in_old_hand := false
 					for card: CardData in hand_before_draws:
-						if label == "Bench %s" % card.name:
+						if label == "Put %s on the Field" % card.name:
 							in_old_hand = true
 					var drawn_same_name := false
 					for card in mg.players[1].hand:
-						if not hand_before_draws.has(card) and label == "Bench %s" % card.name:
+						if not hand_before_draws.has(card) and label == "Put %s on the Field" % card.name:
 							drawn_same_name = true
 					if in_old_hand and not drawn_same_name:
 						only_drawn = false
@@ -289,7 +289,7 @@ func _run() -> void:
 	for action in ev.legal_actions():
 		if action["type"] == "evolve":
 			evolve_labels.append(action["label"])
-	expect(evolve_labels == ["Evolve Charmander into Charmeleon (active)"], "Charmeleon can evolve Charmander; Charizard cannot skip a stage: %s" % [evolve_labels])
+	expect(evolve_labels == ["Evolve Charmander into Charmeleon (Battle Zone)"], "Charmeleon can evolve Charmander; Charizard cannot skip a stage: %s" % [evolve_labels])
 	for action in ev.legal_actions():
 		if action["type"] == "evolve":
 			ev.apply(action)

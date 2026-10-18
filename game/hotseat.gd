@@ -190,16 +190,16 @@ func _describe_player(index: int) -> String:
 	if not _engine.is_over() and actor == index:
 		header += "   <- to act"
 	lines.append(header)
-	lines.append("Prizes left: %d   Deck: %d   Discard: %d   Hand: %d" % [
+	lines.append("Mercy cards left: %d   Deck: %d   Discard: %d   Hand: %d" % [
 		player.prizes.size(), player.deck.size(), player.discard.size(), player.hand.size(),
 	])
 	lines.append("")
-	lines.append("Active: %s" % (_describe_in_play(player.active) if player.active != null else "none"))
+	lines.append("Battle Zone: %s" % (_describe_in_play(player.active) if player.active != null else "none"))
 
 	if player.bench.is_empty():
-		lines.append("Bench: empty")
+		lines.append("Field: empty")
 	else:
-		lines.append("Bench:")
+		lines.append("Field:")
 		for slot in player.bench.size():
 			lines.append("   %d) %s" % [slot + 1, _describe_in_play(player.bench[slot])])
 

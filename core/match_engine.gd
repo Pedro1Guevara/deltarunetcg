@@ -124,7 +124,7 @@ func legal_actions() -> Array[Dictionary]:
 			actions.append({
 				"type": "bench",
 				"hand_index": hand_index,
-				"label": "Bench %s" % card.name,
+				"label": "Put %s on the Field" % card.name,
 			})
 		elif card.is_energy() and not player.energy_attached_this_turn:
 			if player.active != null:
@@ -132,14 +132,14 @@ func legal_actions() -> Array[Dictionary]:
 					"type": "attach",
 					"hand_index": hand_index,
 					"slot": -1,
-					"label": "Attach %s to %s (active)" % [card.name, player.active.card.name],
+					"label": "Attach %s to %s (Battle Zone)" % [card.name, player.active.card.name],
 				})
 			for slot in player.bench.size():
 				actions.append({
 					"type": "attach",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Attach %s to %s (bench %d)" % [card.name, player.bench[slot].card.name, slot + 1],
+					"label": "Attach %s to %s (Field %d)" % [card.name, player.bench[slot].card.name, slot + 1],
 				})
 
 	for hand_index in player.hand.size():
@@ -161,7 +161,7 @@ func legal_actions() -> Array[Dictionary]:
 			actions.append({
 				"type": "retreat",
 				"slot": slot,
-				"label": "Retreat %s for %s" % [player.active.card.name, player.bench[slot].card.name],
+				"label": "Flee %s for %s" % [player.active.card.name, player.bench[slot].card.name],
 			})
 
 	if player.active != null and opponent.active != null:
@@ -240,13 +240,13 @@ func _advance_setup() -> void:
 		var player := players[index]
 		match str(step["step"]):
 			"active":
-				var options := _basic_options(player.hand, "Make %s the Active Pokemon")
+				var options := _basic_options(player.hand, "Make %s the Battling Darkner")
 				if options.size() <= 1:
 					if options.size() == 1:
 						_place_active(index, (options[0] as Dictionary)["value"] as CardData)
 					_setup_steps.pop_front()
 					continue
-				_ask_setup(index, "Choose your Active Pokemon", options)
+				_ask_setup(index, "Choose your Battling Darkner", options)
 				return
 			"bench":
 				var allowed: Array[CardData] = player.hand
@@ -255,12 +255,12 @@ func _advance_setup() -> void:
 					for card: Variant in step["cards"] as Array:
 						if player.hand.has(card):
 							allowed.append(card as CardData)
-				var options := _basic_options(allowed, "Bench %s")
+				var options := _basic_options(allowed, "Put %s on the Field")
 				if options.is_empty() or player.bench.size() >= BENCH_LIMIT:
 					_setup_steps.pop_front()
 					continue
-				options.append({"label": "Finish placing Pokemon", "value": null})
-				_ask_setup(index, "Bench Basic Pokemon before the game starts", options)
+				options.append({"label": "Finish placing Darkners", "value": null})
+				_ask_setup(index, "Put Basic Darkners on the Field before the game starts", options)
 				return
 			"compensation":
 				var count := int(step["count"])
@@ -290,7 +290,7 @@ func _answer_setup(value: Variant) -> void:
 				var card := value as CardData
 				player.hand.erase(card)
 				player.bench.append(CardInPlay.new(card, 0))
-				_log("Player %d benches %s during setup" % [index + 1, card.name])
+				_log("Player %d puts %s on the Field during setup" % [index + 1, card.name])
 		"compensation":
 			_setup_steps.pop_front()
 			var drawn: Array[CardData] = []
@@ -355,7 +355,7 @@ func _do_bench(hand_index: int) -> void:
 	var player := current_player()
 	var card := player.hand.pop_at(hand_index) as CardData
 	player.bench.append(CardInPlay.new(card, turn))
-	_log("Player %d benches %s" % [current_index + 1, card.name])
+	_log("Player %d puts %s on the Field" % [current_index + 1, card.name])
 
 
 ## Evolution rules (5.1): the card evolves from the target's name, one stage at a time;
@@ -399,7 +399,7 @@ func _do_retreat(slot: int) -> void:
 		return
 	_choice = {
 		"chooser": current_index,
-		"prompt": "Choose the Energy to discard to retreat %s" % current_player().active.card.name,
+		"prompt": "Choose the Energy to discard to flee %s" % current_player().active.card.name,
 		"options": options,
 		"resume": "retreat",
 		"data": {"slot": slot},
@@ -541,7 +541,7 @@ func _advance_promotions() -> bool:
 			})
 		_choice = {
 			"chooser": index,
-			"prompt": "Choose a new Active Pokemon",
+			"prompt": "Choose a new Battling Darkner",
 			"options": options,
 			"resume": "promote",
 			"data": {},
@@ -714,7 +714,7 @@ func _take_prize(taker_index: int) -> void:
 	if taker.prizes.is_empty():
 		return
 	taker.hand.append(taker.prizes.pop_back() as CardData)
-	_log("Player %d takes a prize (%d left)" % [taker_index + 1, taker.prizes.size()])
+	_log("Player %d takes a Mercy card (%d left)" % [taker_index + 1, taker.prizes.size()])
 
 
 func _opponent_index() -> int:
