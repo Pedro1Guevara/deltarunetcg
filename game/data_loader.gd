@@ -15,7 +15,7 @@ const LEGACY_CARD_EFFECTS_PATH := "res://data/legacy/card_effects.json"
 ## Reads every set file in data/legacy/tcgdex/ into a CardDatabase and reports its problems
 ## to the Output panel. Returns an empty database if no set could be read.
 static func load_legacy_card_database() -> CardDatabase:
-	var database := CardDatabase.new()
+	var database := CardDatabase.new(TcgdexParser.new())
 	var files := DirAccess.get_files_at(LEGACY_TCGDEX_DIR)
 	if files.is_empty():
 		push_error("DataLoader: no set files in %s. Run tools/import_tcgdex.gd" % LEGACY_TCGDEX_DIR)

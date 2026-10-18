@@ -1,12 +1,16 @@
 class_name CardDatabase
 extends RefCounted
-## Holds raw TCGdex card objects and builds fresh CardData instances from them.
+## Holds raw card objects and builds fresh CardData instances from them through its parser.
 
 var errors: Array[String] = []
 var warnings: Array[String] = []
 
 var _raw_by_id: Dictionary = {}
-var _parser := TcgdexParser.new()
+var _parser: CardParser
+
+
+func _init(parser: CardParser) -> void:
+	_parser = parser
 
 
 ## Adds every card of one data/tcgdex/<set>.json document. Cards that fail to parse

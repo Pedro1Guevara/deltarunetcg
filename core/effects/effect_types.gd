@@ -13,7 +13,14 @@ const ALL := [INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, POKEMON, PLAYER]
 const LITERAL := [INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY]
 
 const ANY_ENERGY := "Any"
-const ENERGY_TYPES := ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Colorless"]
+const ENERGY_TYPES := [
+	# Deltarune
+	"Holy", "Electric", "Virus", "Flower", "Fighting", "Fun", "Chaos", "Order", "Creative", "Darkness",
+	# WOTC, kept while the legacy test data uses them
+	"Grass", "Fire", "Water", "Lightning", "Psychic",
+	# Cost symbol shared by both
+	"Colorless",
+]
 
 const SELF := "$self"
 const DEFENDER := "$defender"

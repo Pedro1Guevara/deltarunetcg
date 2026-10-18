@@ -1,5 +1,5 @@
 class_name TcgdexParser
-extends RefCounted
+extends CardParser
 ## Converts TCGdex card objects into CardData. Pure logic: no file access.
 ##
 ## TCGdex conventions this parser relies on, verified against Base Set, Jungle and Fossil:
@@ -24,17 +24,6 @@ const ENERGY_TYPES := ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighti
 const ENERGY_SYMBOLS := {
 	"G": "Grass", "R": "Fire", "W": "Water", "L": "Lightning", "P": "Psychic", "F": "Fighting", "C": "Colorless",
 }
-
-## Problems that make a card unusable. parse() returns null when it adds one.
-var errors: Array[String] = []
-## Problems that leave the card usable but incomplete.
-var warnings: Array[String] = []
-
-
-func clear_messages() -> void:
-	errors.clear()
-	warnings.clear()
-
 
 func parse(raw: Dictionary) -> CardData:
 	var card := CardData.new()

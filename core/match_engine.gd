@@ -153,7 +153,7 @@ func legal_actions() -> Array[Dictionary]:
 					"type": "evolve",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, "active" if slot == -1 else "bench %d" % (slot + 1)],
+					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, "Battle Zone" if slot == -1 else "Field %d" % (slot + 1)],
 				})
 
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(player.active.retreat_cost()):
