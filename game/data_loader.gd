@@ -2,6 +2,8 @@
 class_name DataLoader
 extends RefCounted
 
+const CARDS_PATH := "res://data/cards.json"
+
 const DECKS_PATH := "res://data/decks.json"
 const FUNCTIONS_PATH := "res://data/effects/functions.json"
 const CARD_EFFECTS_PATH := "res://data/effects/card_effects.json"
@@ -10,6 +12,20 @@ const CARD_EFFECTS_PATH := "res://data/effects/card_effects.json"
 const LEGACY_TCGDEX_DIR := "res://data/legacy/tcgdex"
 const LEGACY_DECKS_PATH := "res://data/legacy/decks.json"
 const LEGACY_CARD_EFFECTS_PATH := "res://data/legacy/card_effects.json"
+
+
+## Reads data/cards.json through the Deltarune translator into a CardDatabase and reports
+## its problems to the Output panel. Returns an empty database if the file cannot be read.
+static func load_card_database() -> CardDatabase:
+	var database := CardDatabase.new(DeltaruneCardTranslator.new())
+	var document: Variant = read_json(CARDS_PATH)
+	if not document is Array:
+		push_error("DataLoader: %s must be a JSON array of cards" % CARDS_PATH)
+		return database
+
+	database.load_cards(document as Array)
+	_report(database)
+	return database
 
 
 ## Reads every set file in data/legacy/tcgdex/ into a CardDatabase and reports its problems
@@ -32,6 +48,10 @@ static func load_legacy_card_database() -> CardDatabase:
 		if document is Dictionary:
 			database.load_set(document as Dictionary)
 
+	_report(database)
+	return database
+
+static func _report(database: CardDatabase) -> void:
 	for message in database.errors:
 		push_error(message)
 	for message in database.warnings:
@@ -39,9 +59,7 @@ static func load_legacy_card_database() -> CardDatabase:
 	print("DataLoader: %d cards loaded, %d errors, %d warnings" % [
 		database.card_count(), database.errors.size(), database.warnings.size(),
 	])
-	return database
-
-
+	
 ## Reads the function catalog and the given card effects file, and validates them against the
 ## database, reporting problems to the Output panel. Missing files leave the library empty:
 ## every attack then deals its printed damage.
