@@ -15,6 +15,8 @@ var current_index: int = 0
 var turn: int = 0
 var winner: int = NO_WINNER
 var events: Array[String] = []
+## The rules of the round being played. Set by start().
+var rules: MatchRules
 ## Card effects (Design Document 7). Null means every attack resolves as its printed damage.
 var effects: EffectLibrary = null
 
@@ -34,7 +36,9 @@ var _turn_ends_after_promotions: bool = false
 
 
 ## Prize counts are parameters, never constants: the run supplies the NPC value.
-func start(deck_a: Array[CardData], deck_b: Array[CardData], prize_count_a: int, prize_count_b: int, rng: Rng) -> void:
+## Every round rule comes from match_rules (MatchRules), never from constants.
+func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchRules, rng: Rng) -> void:
+	rules = match_rules
 	_rng = rng
 	players.clear()
 	events.clear()
@@ -46,8 +50,8 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], prize_count_a: int,
 	_promotion_queue.clear()
 	_turn_ends_after_promotions = false
 	_mulligans = [0, 0]
-	players.append(_setup_player(0, deck_a, prize_count_a))
-	players.append(_setup_player(1, deck_b, prize_count_b))
+	players.append(_setup_player(0, deck_a, rules.prize_count))
+	players.append(_setup_player(1, deck_b, rules.prize_count))
 
 	# Setup follows the rulebook: each player places an Active Pokemon and may bench Basic
 	# Pokemon; then the player who took fewer mulligans may draw one card for each extra

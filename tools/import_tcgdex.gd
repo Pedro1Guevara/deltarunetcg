@@ -13,7 +13,7 @@ extends SceneTree
 ##   --api=URL                  API root. Default: https://api.tcgdex.net/v2/en
 ##
 ## Output:
-##   res://data/tcgdex/<set>.json          {"set": {...}, "cards": [...]}
+##   res://data/legacy/tcgdex/<set>.json          {"set": {...}, "cards": [...]}
 ##   res://assets/tcgdex/<set>/<id>.png    Kept out of git by a generated .gitignore
 ##
 ## Card objects are stored as the API returns them, except for market prices: "pricing"
@@ -26,7 +26,7 @@ extends SceneTree
 
 const DEFAULT_API := "https://api.tcgdex.net/v2/en"
 const DEFAULT_SETS := ["base1", "base2", "base3"]
-const DATA_DIR := "res://data/tcgdex"
+const DATA_DIR := "res://data/legacy/tcgdex"
 const IMAGE_DIR := "res://assets/tcgdex"
 const PRICING_FIELD := "pricing"
 const MAX_ATTEMPTS := 3

@@ -1,26 +1,26 @@
 {
   "deltarune_chaos": {
-    "name": "Chaos Test",
-    "cards": {
-      "jevil": 4,
-      "electro_dasher": 4,
-      "chaos_energy": 8,
-      "petal_feather": 1,
-      "glowshard": 1,
-      "kris": 1,
-      "rude_buster": 1
-    }
+	"name": "Chaos Test",
+	"cards": {
+	  "jevil": 4,
+	  "electro_dasher": 4,
+	  "chaos_energy": 14,
+	  "petal_feather": 2,
+	  "glowshard": 2,
+	  "kris": 2,
+	  "rude_buster": 2
+	}
   },
   "deltarune_holy": {
-    "name": "Holy Test",
-    "cards": {
-      "water_cooler": 3,
-      "guei": 3,
-      "cuptain": 2,
-      "holy_energy": 9,
-      "sharp_knife": 1,
-      "susie": 1,
-      "cyber_city": 1
-    }
+	"name": "Holy Test",
+	"cards": {
+	  "water_cooler": 4,
+	  "guei": 4,
+	  "cuptain": 4,
+	  "holy_energy": 12,
+	  "sharp_knife": 2,
+	  "susie": 2,
+	  "cyber_city": 2
+	}
   }
 }

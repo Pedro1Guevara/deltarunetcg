@@ -2,7 +2,6 @@ extends Control
 
 const DECK_PLAYER_1 := "deltarune_chaos"
 const DECK_PLAYER_2 := "deltarune_holy"
-const PRIZE_COUNT := 4
 const FONT_SIZE := 22
 
 var _engine := MatchEngine.new()
@@ -112,10 +111,10 @@ func _make_panel_label() -> Label:
 
 
 func _start_match() -> void:
-	_start_with_prizes(PRIZE_COUNT)
+	_start_with_rules(MatchRules.deltarune())
 
 
-func _start_with_prizes(prize_count: int) -> void:
+func _start_with_rules(match_rules: MatchRules) -> void:
 	var database := DataLoader.load_card_database()
 	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
 	if database.card_count() == 0 or not decks is Dictionary:
@@ -134,8 +133,7 @@ func _start_with_prizes(prize_count: int) -> void:
 	_engine.start(
 		database.build_deck(deck_defs[DECK_PLAYER_1] as Dictionary),
 		database.build_deck(deck_defs[DECK_PLAYER_2] as Dictionary),
-		prize_count,
-		prize_count,
+		match_rules,
 		Rng.new(_seed),
 	)
 	_refresh()
@@ -168,7 +166,7 @@ func _refresh() -> void:
 		var sudden_death := Button.new()
 		sudden_death.text = "Play Sudden Death (1 Prize each)"
 		sudden_death.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		sudden_death.pressed.connect(_start_with_prizes.bind(1))
+		sudden_death.pressed.connect(_start_with_rules.bind(_engine.rules.with_prize_count(1)))
 		_actions_box.add_child(sudden_death)
 
 	var lines := PackedStringArray(_engine.events)

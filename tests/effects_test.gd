@@ -36,7 +36,7 @@ func setup(attacker_id: String, attached: Array, defender_id: String, defender_a
 	var decks := DataLoader.read_json(DataLoader.LEGACY_DECKS_PATH) as Dictionary
 	var engine := MatchEngine.new()
 	engine.effects = lib
-	engine.start(db.build_deck(decks["fighting_starter"]), db.build_deck(decks["lightning_starter"]), 3, 3, Rng.new(7))
+	engine.start(db.build_deck(decks["fighting_starter"]), db.build_deck(decks["lightning_starter"]), MatchRules.legacy(), Rng.new(7))
 	finish_setup(engine)
 	engine.current_index = 0
 	for p in engine.players:
@@ -195,7 +195,7 @@ func _run() -> void:
 	for trial in 20:
 		var st := MatchEngine.new()
 		st.effects = lib
-		st.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
+		st.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), MatchRules.legacy(), Rng.new(trial))
 		if not (st.is_waiting_for_choice() and st.choice_prompt() == "Choose your Battling Darkner"):
 			continue
 		asked = true
@@ -214,7 +214,7 @@ func _run() -> void:
 	var benched_in_setup := false
 	for trial in 20:
 		var sb := MatchEngine.new()
-		sb.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
+		sb.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), MatchRules.legacy(), Rng.new(trial))
 		if sb.is_waiting_for_choice() and sb.choice_prompt() == "Choose your Battling Darkner":
 			sb.apply(sb.legal_actions()[0])
 		if not (sb.is_waiting_for_choice() and sb.choice_prompt().begins_with("Put Basic Darkners on the Field before the game starts") and sb.choice_chooser() == 0):
@@ -236,7 +236,7 @@ func _run() -> void:
 	var compensated := false
 	for trial in 200:
 		var mg := MatchEngine.new()
-		mg.start(db.build_deck(one_basic), db.build_deck(decks_for_setup["lightning_starter"]), 3, 3, Rng.new(trial))
+		mg.start(db.build_deck(one_basic), db.build_deck(decks_for_setup["lightning_starter"]), MatchRules.legacy(), Rng.new(trial))
 		var mulligans := mg.get("_mulligans") as Array
 		if int(mulligans[0]) <= int(mulligans[1]):
 			continue
@@ -485,7 +485,7 @@ func _run() -> void:
 		var engine := MatchEngine.new()
 		engine.effects = lib
 		var pairing := ["effects_fire_lightning", "effects_colorless"] if game % 2 == 0 else ["evolution_fire", "evolution_fighting_grass"]
-		engine.start(db.build_deck(decks[pairing[0]]), db.build_deck(decks[pairing[1]]), 3, 3, Rng.new(game))
+		engine.start(db.build_deck(decks[pairing[0]]), db.build_deck(decks[pairing[1]]), MatchRules.legacy(), Rng.new(game))
 		var steps := 0
 		while not engine.is_over() and steps < 5000:
 			var actions := engine.legal_actions()
