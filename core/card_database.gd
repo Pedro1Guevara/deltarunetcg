@@ -13,8 +13,6 @@ func _init(parser: CardParser) -> void:
 	_parser = parser
 
 
-# core/card_database.gd — reemplaza load_set() por estas dos funciones y el helper
-
 ## Adds every card of one data/legacy/tcgdex/<set>.json document.
 func load_set(set_document: Dictionary) -> void:
 	load_cards(set_document.get("cards", []) as Array)

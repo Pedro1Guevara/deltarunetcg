@@ -33,10 +33,6 @@ func first_basic_pokemon_in_hand() -> int:
 	return -1
 
 
-func has_pokemon_in_play() -> bool:
-	return active != null or not bench.is_empty()
-
-
 func discard_from_play(pokemon: CardInPlay) -> void:
 	discard.append_array(pokemon.evolved_from)
 	pokemon.evolved_from.clear()

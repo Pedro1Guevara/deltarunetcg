@@ -20,19 +20,17 @@ var _rng: Rng
 ## An attack waiting for a player's choice (Design Document 7.6).
 var _pending_resolver: EffectResolver = null
 var _pending_context: EffectContext = null
-## A rules choice the engine itself asks: an Active Pokemon at setup, a promotion after a
-## knockout, or which Energy pays a retreat. Empty when none is open.
-## {"chooser": int, "prompt": String, "options": [{"label", "value"}], "resume": String, "data": Dictionary}
+
+## A rules choice the engine itself asks: the coin call or an Active Pokemon at setup, a
+## promotion after a knockout, or which Energy pays a retreat. Empty when none is open.
 var _choice: Dictionary = {}
-## Remaining setup steps, in order: {"player": int, "step": "active" | "bench" | "compensation", ...}
+## Remaining setup steps, in order: {"player": int, "step": "coin_call" | "active" | "bench" | "compensation", ...}
 var _setup_steps: Array[Dictionary] = []
 var _mulligans: Array[int] = [0, 0]
 var _first_player: int = 0
 var _promotion_queue: Array[int] = []
 var _turn_ends_after_promotions: bool = false
 
-
-## Prize counts are parameters, never constants: the run supplies the NPC value.
 ## Every round rule comes from match_rules (MatchRules), never from constants.
 func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchRules, rng: Rng) -> void:
 	rules = match_rules
@@ -123,7 +121,6 @@ func legal_actions() -> Array[Dictionary]:
 	var player := current_player()
 	var opponent := opponent_player()
 
-	# core/match_engine.gd — en legal_actions(), reemplaza el primer loop de la mano
 	# Copies of the same card are interchangeable: one set of actions per distinct card.
 	var offered := {}
 	for hand_index in player.hand.size():

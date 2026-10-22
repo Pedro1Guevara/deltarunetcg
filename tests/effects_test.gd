@@ -1,35 +1,9 @@
 ## Headless checks for the card effect system. Run from the project root:
 ##   godot --headless --path . --script res://tests/effects_test.gd
 ## Exits with code 0 when every check passes.
-extends SceneTree
+extends TestCase
 
-var db: CardDatabase
 var lib: EffectLibrary
-var failures := 0
-
-func expect(cond: bool, label: String) -> void:
-	if cond:
-		print("  ok   ", label)
-	else:
-		print("  FAIL ", label)
-		failures += 1
-
-func energies(ids: Array) -> Array[CardData]:
-	var out: Array[CardData] = []
-	for id: String in ids:
-		out.append(db.make(id))
-	return out
-
-## Answers setup quickly: first Active option, no benching, no mulligan draws.
-func finish_setup(engine: MatchEngine) -> void:
-	while engine.is_waiting_for_choice():
-		var actions := engine.legal_actions()
-		var pick := actions[0]
-		for action in actions:
-			var label := str(action["label"])
-			if label.begins_with("Finish") or label.begins_with("Draw 0"):
-				pick = action
-		engine.apply(pick)
 
 ## Player 1 (index 0) to act with attacker vs defender.
 func setup(attacker_id: String, attached: Array, defender_id: String, defender_attached: Array = []) -> MatchEngine:
@@ -42,13 +16,8 @@ func setup(attacker_id: String, attached: Array, defender_id: String, defender_a
 	for p in engine.players:
 		p.bench.clear()
 		p.reset_turn_flags()
-	var a := CardInPlay.new(db.make(attacker_id), 0)
-	a.attached_energy.assign(energies(attached))
-	engine.players[0].active = a
-	var d := CardInPlay.new(db.make(defender_id), 0)
-	d.attached_energy.assign(energies(defender_attached))
-	engine.players[1].active = d
-	engine.events.clear()
+	engine.players[0].active = in_play(attacker_id, attached)
+	engine.players[1].active = in_play(defender_id, defender_attached)
 	return engine
 
 var last_defender: CardInPlay
@@ -63,8 +32,6 @@ func attack(engine: MatchEngine, name: String) -> bool:
 			return true
 	return false
 
-func _initialize() -> void:
-	_run.call_deferred()
 
 func _run() -> void:
 	db = DataLoader.load_legacy_card_database()
@@ -519,5 +486,4 @@ func _run() -> void:
 	expect(warnings_seen == 0, "no runtime effect warnings (%d)" % warnings_seen)
 	expect(evolutions_seen > 0, "the evolution decks evolved during the simulation (%d times)" % evolutions_seen)
 
-	print("FAILURES: ", failures)
-	quit(1 if failures > 0 else 0)
+	finish()

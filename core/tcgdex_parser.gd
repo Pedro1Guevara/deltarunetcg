@@ -19,7 +19,7 @@ extends CardParser
 
 const DAMAGE_SUFFIXES := ["+", "x", "×", "-", "?"]
 const BASIC_ENERGY_NAME_SUFFIX := " Energy"
-const ENERGY_TYPES := ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Colorless"]
+const ENERGY_TYPES := CardTypes.LEGACY + [CardTypes.COLORLESS]
 ## Energy symbols as TCGdex writes them in Special Energy text, e.g. "Provides {C}{C} energy."
 const ENERGY_SYMBOLS := {
 	"G": "Grass", "R": "Fire", "W": "Water", "L": "Lightning", "P": "Psychic", "F": "Fighting", "C": "Colorless",

@@ -32,11 +32,12 @@ const ENERGY_KINDS := {
 }
 const ORIENTATIONS := [CardData.ORIENTATION_PORTRAIT, CardData.ORIENTATION_LANDSCAPE]
 
-const TYPES := ["Holy", "Electric", "Virus", "Flower", "Fighting", "Fun", "Chaos", "Order", "Creative", "Darkness"]
-const COLORLESS := "Colorless"
+## Every type a card may name. Colorless is valid in every type field: which cards use it is
+## a design choice, not a rule the translator enforces.
+const TYPES := CardTypes.DELTARUNE + [CardTypes.COLORLESS]
 const DAMAGE_SUFFIXES := ["", "+", "x"]
 
-## Game rule (Design Document 4.3). Filled here so the engine keeps reading it per card.
+# Filled here so the engine keeps reading it per card.
 const WEAKNESS_MODIFIER := "+20"
 const RESISTANCE_MODIFIER := "-20"
 const ABILITY_KIND := "Ability"
@@ -95,15 +96,15 @@ func _translate_darkner(raw: Dictionary, card: CardData) -> void:
 
 	card.hp = _int(raw, "hp", card.id, 1, -1)
 
-	card.types.assign(_types(raw.get("types"), card.id, "types", false))
+	card.types.assign(_types(raw.get("types"), card.id, "types"))
 	if card.types.is_empty():
 		errors.append("%s: Darkner without types" % card.id)
 
 	# Evolutions print no Weakness or Resistance: they inherit them (Design Document 3.2).
-	card.weakness_types.assign(_types(raw.get("weakness_types"), card.id, "weakness_types", false))
+	card.weakness_types.assign(_types(raw.get("weakness_types"), card.id, "weakness_types"))
 	if not card.weakness_types.is_empty():
 		card.weakness_modifier = WEAKNESS_MODIFIER
-	card.resistance_types.assign(_types(raw.get("resistance_types"), card.id, "resistance_types", false))
+	card.resistance_types.assign(_types(raw.get("resistance_types"), card.id, "resistance_types"))
 	if not card.resistance_types.is_empty():
 		card.resistance_modifier = RESISTANCE_MODIFIER
 
@@ -139,7 +140,7 @@ func _translate_attack(value: Variant, card_id: String) -> AttackData:
 	_check_fields(raw, ATTACK_FIELDS, card_id, "attack")
 	var attack := AttackData.new()
 	attack.name = _required_string(raw, "name", card_id)
-	attack.cost.assign(_types(raw.get("cost"), card_id, "attack '%s' cost" % attack.name, true))
+	attack.cost.assign(_types(raw.get("cost"), card_id, "attack '%s' cost" % attack.name))
 	attack.damage = _int(raw, "damage", card_id, 0, -1)
 	attack.damage_suffix = str(raw.get("damage_suffix", ""))
 	if not DAMAGE_SUFFIXES.has(attack.damage_suffix):
@@ -160,7 +161,7 @@ func _translate_act(raw: Dictionary, card: CardData) -> void:
 func _translate_energy(raw: Dictionary, card: CardData) -> void:
 	card.energy_kind = _lookup(ENERGY_KINDS, _required_string(raw, "energy_kind", card.id), card.id, "energy_kind")
 	card.effect_text = str(raw.get("text", ""))
-	card.provides.assign(_types(raw.get("provides"), card.id, "provides", false))
+	card.provides.assign(_types(raw.get("provides"), card.id, "provides"))
 	if card.provides.is_empty():
 		errors.append("%s: Energy that provides nothing" % card.id)
 
@@ -175,13 +176,12 @@ func _lookup(table: Dictionary, key: String, card_id: String, field: String) -> 
 		return ""
 	return str(table[key])
 
-
-## Reads an array of type names. Colorless is only valid in costs: it is a cost symbol.
-func _types(value: Variant, card_id: String, field: String, allow_colorless: bool) -> Array[String]:
+## Reads an array of type names, each of which must be in TYPES.
+func _types(value: Variant, card_id: String, field: String) -> Array[String]:
 	var result: Array[String] = []
 	for item: Variant in _array(value, card_id, field):
 		var type := str(item)
-		if TYPES.has(type) or (allow_colorless and type == COLORLESS):
+		if TYPES.has(type):
 			result.append(type)
 		else:
 			errors.append("%s: %s has unknown type '%s'" % [card_id, field, type])

@@ -1,4 +1,3 @@
-# game/data_loader.gd
 class_name DataLoader
 extends RefCounted
 
@@ -59,7 +58,7 @@ static func _report(database: CardDatabase) -> void:
 	print("DataLoader: %d cards loaded, %d errors, %d warnings" % [
 		database.card_count(), database.errors.size(), database.warnings.size(),
 	])
-	
+
 ## Reads the function catalog and the given card effects file, and validates them against the
 ## database, reporting problems to the Output panel. Missing files leave the library empty:
 ## every attack then deals its printed damage.
