@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://dr0rp8p7uag46"]
+
+[ext_resource type="Script" uid="uid://fjetrpdptc7i" path="res://game/screen/debug/hotseat/hotseat.gd" id="1_hotseat"]
+
+[node name="Hotseat" type="Control" unique_id=789347259]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_hotseat")

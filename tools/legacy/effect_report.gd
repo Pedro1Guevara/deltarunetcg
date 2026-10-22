@@ -330,7 +330,7 @@ func _distinct(entries: Array[Dictionary], key: String) -> Dictionary:
 ## Relative link from reports/ to the card art, so the printed card can be checked when
 ## the TCGdex text is incomplete (it drops Energy symbols, for example).
 func _image_link(card: CardData) -> String:
-	return "[image](../assets/tcgdex/%s/%s.png)" % [card.set_id, card.id]
+	return "[image](../assets/legacy/tcgdex/%s/%s.png)" % [card.set_id, card.id]
 
 
 ## JSON reads every number as a float; whole numbers are shown without ".0".

@@ -1,0 +1,590 @@
+[
+	{
+		"id": "holy_energy",
+		"name": "Holy Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Holy"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "electric_energy",
+		"name": "Electric Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Electric"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "virus_energy",
+		"name": "Virus Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Virus"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "flower_energy",
+		"name": "Flower Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Flower"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "fighting_energy",
+		"name": "Fighting Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Fighting"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "fun_energy",
+		"name": "Fun Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Fun"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "chaos_energy",
+		"name": "Chaos Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Chaos"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "order_energy",
+		"name": "Order Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Order"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "creative_energy",
+		"name": "Creative Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Creative"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "darkness_energy",
+		"name": "Darkness Energy",
+		"category": "energy",
+		"energy_kind": "basic",
+		"provides": [
+			"Darkness"
+		],
+		"text": "",
+		"artist": "",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "jevil",
+		"name": "Jevil",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 80.0,
+		"types": [
+			"Chaos"
+		],
+		"weakness_types": [
+			"Fun"
+		],
+		"resistance_types": [
+			"Creative"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Slash",
+				"cost": [
+					"Colorless"
+				],
+				"damage": 20.0,
+				"damage_suffix": "",
+				"text": ""
+			},
+			{
+				"name": "Chaos Bomb",
+				"cost": [
+					"Chaos",
+					"Colorless"
+				],
+				"damage": 0.0,
+				"damage_suffix": "",
+				"text": "This attack does 20 damage to each Darkner on your opponent's Field (Do not apply weakness or resistance to those Darkners)."
+			}
+		],
+		"abilities": [],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "electro_dasher",
+		"name": "Electro-Dasher",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 60.0,
+		"types": [
+			"Chaos"
+		],
+		"weakness_types": [
+			"Fun"
+		],
+		"resistance_types": [
+			"Creative"
+		],
+		"flee_cost": 0.0,
+		"attacks": [
+			{
+				"name": "Violent Transit",
+				"cost": [
+					"Chaos"
+				],
+				"damage": 10.0,
+				"damage_suffix": "",
+				"text": "Switch this Darkner with 1 Darkner on your Field."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Relentless Stampede",
+				"text": "Whenever you damage 1 of your opponent's Darkners using an attack from your Battling Darkner, flip a coin. If heads, place 1 damage counter on every Darkner that was damaged by that attack."
+			}
+		],
+		"artist": "HazelXNutz",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "water_cooler",
+		"name": "Water Cooler",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 60.0,
+		"types": [
+			"Holy"
+		],
+		"weakness_types": [
+			"Creative"
+		],
+		"resistance_types": [
+			"Fighting"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Refreshing Splash",
+				"cost": [
+					"Holy",
+					"Colorless"
+				],
+				"damage": 30.0,
+				"damage_suffix": "",
+				"text": "Use 25% TP. If you do, heal 20 damage from each Darkner on your field."
+			}
+		],
+		"abilities": [],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "miss_mizzle",
+		"name": "Miss Mizzle",
+		"category": "darkner",
+		"stage": "evolution",
+		"evolves_from": "Water Cooler",
+		"hp": 100.0,
+		"types": [
+			"Holy"
+		],
+		"weakness_types": [],
+		"resistance_types": [],
+		"flee_cost": 0.0,
+		"attacks": [],
+		"abilities": [
+			{
+				"name": "Vow of Majesty",
+				"text": "As long as this Darkner is in the Battle Zone, prevent all damage done to Darkners on your Field by attacks from your opponent's Battling Darkner."
+			}
+		],
+		"artist": "Umi_wow",
+		"image": "",
+		"orientation": "landscape"
+	},
+	{
+		"id": "guei",
+		"name": "Guei",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 80.0,
+		"types": [
+			"Holy"
+		],
+		"weakness_types": [
+			"Creative"
+		],
+		"resistance_types": [
+			"Chaos"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Flash Melt",
+				"cost": [
+					"Holy",
+					"Colorless"
+				],
+				"damage": 40.0,
+				"damage_suffix": "+",
+				"text": "If this Darkner has 5 or more energy attached, this attack does 80 more damage. Shuffle all energy attached to this Darkner into your deck."
+			}
+		],
+		"abilities": [],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "cuptain",
+		"name": "Cuptain",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 40.0,
+		"types": [
+			"Fighting"
+		],
+		"weakness_types": [
+			"Holy"
+		],
+		"resistance_types": [
+			"Fun"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Overrun",
+				"cost": [
+					"Colorless"
+				],
+				"damage": 10.0,
+				"damage_suffix": "x",
+				"text": "This attack does 10 damage for each Cuptain you have in play."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Selfless Devotion",
+				"text": "As often as you like during your turn (before your attack) you may use this ability. Place 2 Damage Counters on this Darkner. If you do, attach 1 Basic Energy from your discard pile to 1 Darkner on your field."
+			}
+		],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "shuttah",
+		"name": "Shuttah",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 60.0,
+		"types": [
+			"Creative"
+		],
+		"weakness_types": [
+			"Electric"
+		],
+		"resistance_types": [
+			"Virus"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Quick Selfie",
+				"cost": [
+					"Colorless",
+					"Colorless"
+				],
+				"damage": 0.0,
+				"damage_suffix": "",
+				"text": "Discard all energy cards attached to this Darkner. Put 2 damage counters on 1 of your opponent's Darkners. If your opponent's Darkner is knocked out by this attack, take another turn after this one. If 1 of your Darkners used Quick Selfie during your last turn, this attack can't be used."
+			}
+		],
+		"abilities": [],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "tenna",
+		"name": "Tenna",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 100.0,
+		"types": [
+			"Fun"
+		],
+		"weakness_types": [
+			"Order"
+		],
+		"resistance_types": [
+			"Flower"
+		],
+		"flee_cost": 2.0,
+		"attacks": [
+			{
+				"name": "Showtime!",
+				"cost": [
+					"Fun",
+					"Fun",
+					"Fun",
+					"Fun",
+					"Fun"
+				],
+				"damage": 70.0,
+				"damage_suffix": "",
+				"text": "This attacks costs 1 Energy less for each Darkner on your Field."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Captive Audience",
+				"text": "As long as this Darkner is in your Battle Zone, you cannot play any non-Evolution Darkners onto your Field from your hand."
+			}
+		],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "titan",
+		"name": "Titan",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 160.0,
+		"types": [
+			"Darkness"
+		],
+		"weakness_types": [],
+		"resistance_types": [],
+		"flee_cost": 4.0,
+		"attacks": [
+			{
+				"name": "Reckless Shatter",
+				"cost": [
+					"Darkness",
+					"Darkness"
+				],
+				"damage": 80.0,
+				"damage_suffix": "",
+				"text": "Discard the top card of your deck. If you do, discard the top 2 cards of your opponent's deck."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Pure Darkness",
+				"text": "You can only play this Darkner if you have 3 or more Titan Spawn in play."
+			}
+		],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "titan_spawn",
+		"name": "Titan Spawn",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 70.0,
+		"types": [
+			"Darkness"
+		],
+		"weakness_types": [],
+		"resistance_types": [],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Bump",
+				"cost": [
+					"Darkness"
+				],
+				"damage": 20.0,
+				"damage_suffix": "",
+				"text": "Switch out your opponent's Battling Darkner to their Field (Your opponent chooses their new Battling Darkner)."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Hazy Memory",
+				"text": "Whenever this Darkner is knocked out during your opponent's turn, you may use 25% TP and put it into your hand instead of your discard pile."
+			}
+		],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "petal_feather",
+		"name": "Petal Feather",
+		"category": "act",
+		"subtype": "item",
+		"text": "Switch your Battling Darkner with 1 Darkner on your Field.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "glowshard",
+		"name": "Glowshard",
+		"category": "act",
+		"subtype": "item",
+		"text": "Search your deck for a basic energy card, put it into your hand, then shuffle your deck.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "sharp_knife",
+		"name": "Sharp Knife",
+		"category": "act",
+		"subtype": "item",
+		"text": "Search your deck for an Area card and put it into your hand. Then, shuffle your deck.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "kris",
+		"name": "Kris",
+		"category": "act",
+		"subtype": "lightner",
+		"text": "Shuffle your hand into your deck. Then, draw 6 cards.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "susie",
+		"name": "Susie",
+		"category": "act",
+		"subtype": "lightner",
+		"text": "Switch in 1 Darkner from your opponent's Field to their Battle Zone.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "mewers_live",
+		"name": "Mewers Live",
+		"category": "act",
+		"subtype": "area",
+		"text": "The TP cost of all Spell cards that cost 50% TP or less is increased by 25%.",
+		"artist": "@jeheheart",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "cyber_city",
+		"name": "Cyber City",
+		"category": "act",
+		"subtype": "area",
+		"text": "The Flee cost of all Darkners in play is 1 energy more, except for any {Electric} Darkners.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "second_sanctuary",
+		"name": "Second Sanctuary",
+		"category": "act",
+		"subtype": "area",
+		"text": "Both player's Battling Darkners have their weaknesses and resistances swapped.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "rude_buster",
+		"name": "Rude Buster",
+		"category": "act",
+		"subtype": "spell",
+		"tp_cost": 1.0,
+		"text": "Flip a coin. If heads, choose a basic energy attached to 1 of your opponent's Darkners and discard it.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "revive_song",
+		"name": "Revive Song",
+		"category": "act",
+		"subtype": "spell",
+		"tp_cost": 1.0,
+		"text": "Put either a basic energy card or a Darkner from your discard pile into your hand.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	}
+]

@@ -1,141 +1,75 @@
-# Card Framework - Claude Code Project Guide
+# Deltarune TCG — Working Context
 
-## Project Overview
+Single-player fangame of the Deltarune fan TCG by Sylkwyrm, a card game built on the Pokémon TCG ruleset. Godot 4.7.2, GDScript with static typing. The player fights CPU opponents with prebuilt decks, one combat at a time, best of three rounds. No overworld.
 
-**Card Framework** is a Godot 4.x addon for building 2D card games (Solitaire, TCGs, deck-builders, etc.). Lightweight, extensible, with drag-and-drop, JSON-driven card data, and editor previews.
+This file is the working context for Claude Code. The specification lives in two documents; read them before changing rules, card data or architecture:
 
-- **Engine**: Godot 4.6+
-- **License**: MIT
-- **Status**: Production-ready, current version tracked in `README.md`
+- `ProjectObjectives_DeltaruneTCG_v1` — what is being built and why.
+- `DesignDocument_DeltaruneTCG_v1` — rules, card schema, example cards, architecture, current build vs design, frozen systems, open items.
 
-For user-facing setup, install steps, and feature highlights, see `README.md`. This file is the contributor/Claude context guide.
+If a rule is not in the Design Document, it has not been decided. Ask; do not assume a value.
 
-## Architecture
+## Status
 
-### Core Components
-```
-CardManager (root orchestrator, move history)
-├── CardFactory (abstract) → JsonCardFactory (concrete)
-├── CardContainer (abstract) → Pile | Hand
-├── Card (extends DraggableObject)
-└── DropZone (interaction sensor)
-```
+The repository was a Pokémon TCG roguelite (WOTC cards). In October 2026 it pivoted to Deltarune TCG, reusing the build. Section 10 of the Design Document lists every difference between the current code and the new rules. The roguelite structure and Spare/Fight are **frozen**: do not implement them.
 
-### Design Patterns
-- **Factory** — `CardFactory` / `JsonCardFactory` for card creation
-- **Template Method** — `CardContainer` exposes virtual hooks (`check_card_can_be_dropped`, etc.)
-- **Observer** — signal-driven movement and interaction callbacks
-- **Strategy** — drag-and-drop pluggability via `DraggableObject`
+The first Deltarune prototype is defined after the documents are approved. Do not plan stages beyond the current one.
 
-### Repo Layout
-- `addons/card-framework/` — framework source (the addon itself)
-- `example1/` — minimal demo
-- `freecell/` — full FreeCell implementation
-- `docs/` — `GETTING_STARTED.md`, `API.md`, `CHANGELOG.md`, `index.md`
-- `scripts/` — release automation (`create-release.ps1` / `.sh`)
+## Language
 
-## Code Standards
+Conversation in Spanish. Code, identifiers, comments and documents in English. Responses that are code: only the code unless an explanation is asked for. Avoid heavy use of bullet points in explanations.
 
-### GDScript
-- Strong typing on signatures: `func create_card(name: String) -> Card`
-- `snake_case` for vars/funcs, `PascalCase` for classes
-- `##` doc comments on public APIs
-- `@export` for designer-tunable properties
-- `@tool` blocks must guard editor-only logic (the framework supports in-editor preview)
+## Methodology
 
-### Godot 4.x
-- `class_name` for reusable types
-- `@onready` for node references
-- Signals over direct coupling
-- `Curve` / `Resource` types for tunable configuration
+- Prototype-driven: each prototype answers one specific design question and is played before the next is planned.
+- No infrastructure ahead of a question that needs it.
+- Work step by step; confirm each stage before moving on.
+- Rule divergences are fixed in code, not only documented.
 
-### Framework Rules
-- Extend, don't modify: subclass `CardContainer`, `Card`, or `CardFactory` rather than editing core
-- Maintain JSON schema compatibility when extending card data
-- `CardManager` stays the central orchestrator — containers and factories register through it
+## Repository layout
 
-## Extension Patterns
+Layers are top-level folders (Design Document 8.2). Dependencies point one way: `core/` references nothing; `ai/`, `meta/` and `net/` reference only `core/` and never each other; `game/` may reference all of them. Create a layer folder only when its first file is written.
 
-### Custom Container
-```gdscript
-class_name MyContainer
-extends CardContainer
+- `addons/card-framework/`, `example1/`, `freecell/`, `docs/`, `scripts/` — the card-framework fork (chun92/card-framework). **Never modify anything that ships with the fork.** Extend it by subclassing.
+- `core/` — rules engine. Pure GDScript, every class extends RefCounted. No scene tree, input, threads or file I/O. `cards/` (card model; `parsers/` turns JSON into CardData), `match/` (MatchEngine and round state), `rules/` (pure checks and calculations), `effects/`, `rng.gd`.
+- `ai/` — CPU opponents. `meta/` — story progression (and the frozen roguelite). `net/` — multiplayer, out of scope. None exist yet.
+- `game/` — the Godot app. `app/`, `services/` (DataLoader, SaveService), `presentation/` (CardText: words the player reads), `ui/` (reusable widgets such as CardChip), `screens/` (`debug/hotseat/` today).
+- `data/` — `cards/cards.json`, `decks/decks.json`, `effects/` (`functions.json`, `card_effects.json`), `legacy/` (WOTC regression fixture).
+- `assets/` — images, sounds, fonts and the Godot resources built only from them (Theme, TileSet, SpriteFrames); never scripts or scenes. Card art is `assets/cards/fronts/<card_id>.png`. Board graphics in `board/`, menus and HUD in `ui/`, type icons in `icons/types/`. `legacy/tcgdex/` holds downloaded WOTC art, not committed.
+- `tests/` — headless checks extending `tests/support/test_case.gd`: `godot --headless --path . --script res://tests/core/<file>.gd` (legacy suite in `tests/legacy/`).
+- `tools/` — scripts run by hand; `legacy/` for the WOTC importer and effect report.
+- Move files from the Godot editor's FileSystem dock so `.tscn` paths and `.uid` files follow.
 
-func check_card_can_be_dropped(cards: Array) -> bool:
-    return true  # game-specific rules
+## Engine contracts
 
-func on_card_move_done(card: Card) -> void:
-    # post-movement hook (scoring, win check, etc.)
-    pass
-```
+- `MatchEngine` is the only object that mutates game state. Ownership flows MatchEngine → PlayerState → CardInPlay → CardData.
+- Every decision goes through `legal_actions()` / `apply()`. The engine does not know who answers. Choices can be answered by the player who is not taking the turn (Bump, Hazy Memory), so the seam must say which player answers.
+- `Rng` is the only source of shuffles and coin flips.
+- Legality never reads a printed cost. Spell TP costs, attack Energy costs and Flee costs are computed as effective costs through one continuous-effects layer, which also filters `legal_actions()`.
+- TP is an integer number of quarters, 0 to 4.
+- The number of Mercy Cards taken per knockout and the round-start draw advantage are values effects can modify, never constants.
 
-### Custom Card
-```gdscript
-class_name GameCard
-extends Card
+## Card effects
 
-@export var power: int
-@export var cost: int
+- Effects are compositions of atomic effects declared in JSON, never per-card code and never interpreted from card text.
+- Functions are generic and named by mechanic, not by card or attack. Cards with the same mechanic share one function and differ only in arguments.
+- One dictionary per card binds each attack, Ability, ACT card or Special Energy to a function and its arguments.
+- No default values in effect data: every argument is declared explicitly. Neutral zeros exist only as a runtime safety net.
+- Effect definitions do not store card text.
+- Energy in effects: distinguish counting Energy cards from counting Energy units.
 
-func _ready():
-    super._ready()
-    # initialize from card_info
-```
+## Card data
 
-## Key Configuration
+- Cards are written in the Deltarune schema (Design Document 6.2) in `data/cards/cards.json`. TCGdex is no longer a source.
+- A dictionary-based translator (Design Document 6.3) converts each card into the engine's Pokémon vocabulary on load: darkner → Pokemon, act → Trainer with `trainer_type` (item → Item, lightner → Supporter, area → Stadium), flee_cost → retreat_cost, abilities → powers. New concepts are translated as far as they share mechanics and kept apart for the rest: a Spell is a Trainer with `trainer_type` Spell and a `tp_cost`; a Deltarune evolution is stage BREAK.
+- Transcribe types by type, never by icon: a type can be printed with alternate icons (Order as a balance scale, Electric as a swirl, Fighting with a second axe design). Type names stay as they are (Holy, Chaos…); they have no Pokémon equivalent.
+- Weakness and Resistance are stored per card as types only. The translator fills the modifiers (+20 / −20) from the game rule. The type chart is a design standard, not something the engine derives.
+- Evolutions work like XY BREAK: they keep the previous card's attacks, Abilities, Weakness, Resistance and Flee cost; their HP replaces the previous HP.
 
-### CardManager
-- `card_size` — default card dimensions
-- `card_factory_scene` — assigned factory
-- `debug_mode` — visualizes drop-zone sensors
+## Naming
 
-### JsonCardFactory
-- `card_asset_dir` — card image directory
-- `card_info_dir` — JSON card definitions
-- `back_image` — default card back
+Internally the engine stays a Pokémon TCG engine. Do not rename existing classes, functions, variables or action types (`active`, `bench`, `prizes`, `retreat`, `is_basic_pokemon()` stay as they are). New concepts use the Pokémon equivalent when one exists (`supporter`, `stadium`) and their Deltarune name only when there is none (`spell`, `tp`).
 
-### Hand
-- `hand_anchor` — `HandAnchor` enum controls fan alignment
+Everything the player sees speaks Deltarune: labels, prompts, logs and UI text. Darkner, ACT card (Item, Lightner, Area, Spell), Battle Zone, Field (the bench only, four slots), Mercy Cards, Flee, damage counters (as in the Pokémon TCG), TP. Note the spelling **Lightner**.
 
-### JSON Card Schema
-```json
-{
-    "name": "club_2",
-    "front_image": "cardClubs2.png",
-    "suit": "club",
-    "value": "2"
-}
-```
-
-## Common Patterns
-
-- **Movement**: `card.move(target_position, rotation_degrees)`; `moving_speed` controls animation; completion via `on_card_move_done()`
-- **Undo/redo**: `move_cards()` records to `CardManager` history
-- **Performance**: `factory.preload_card_data()`, `Pile.max_stack_display` for large stacks
-- **Editor preview**: framework uses `@tool` across containers and factories — layout/preview updates live from the Inspector
-- **Container parents**: `Pile`/`Hand` work as children of Godot `Container` nodes (use `global_position` for sensor math)
-
-## Troubleshooting
-
-- **Cards not appearing** — check `card_asset_dir` and image filenames match JSON `front_image`
-- **JSON errors** — validate syntax and required fields (`name`, `front_image`)
-- **Drag-and-drop dead** — confirm `enable_drop_zone = true` on the container
-- **Sensor misalignment** — likely a `position` vs `global_position` issue when nested in a `Container`
-- **Slow with large decks** — toggle `debug_mode`, then preload data and cap `max_stack_display`
-
-## Validation Before Marking Work Done
-
-- Run both `example1/example1.tscn` and `freecell/scenes/menu/menu.tscn`
-- Check the Godot editor for `@tool` errors (preview must not crash the editor)
-- Confirm JSON-driven cards still load from `card_info_dir`
-
-## Release Process
-
-Full procedure in `scripts/README.md`. Quick reference:
-
-1. Bump version in `README.md`, `addons/card-framework/README.md`, and add a `docs/CHANGELOG.md` entry
-2. Build archive: `./scripts/create-release.sh X.Y.Z` (or `.\scripts\create-release.ps1 X.Y.Z`) → outputs `releases/card-framework-vX.Y.Z-full.zip`
-3. Smoke test the archive in Godot (both example scenes)
-4. Tag and push: `git tag -a vX.Y.Z -m "Release vX.Y.Z" && git push origin vX.Y.Z`
-5. Create GitHub Release, upload the `-full.zip`
-6. Update the Asset Library entry if it's a new major/minor
+Tests that match on label or prompt text must change in the same commit as the text they match.

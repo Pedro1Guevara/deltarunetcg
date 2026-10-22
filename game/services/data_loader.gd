@@ -1,9 +1,9 @@
 class_name DataLoader
 extends RefCounted
 
-const CARDS_PATH := "res://data/cards.json"
+const CARDS_PATH := "res://data/cards/cards.json"
 
-const DECKS_PATH := "res://data/decks.json"
+const DECKS_PATH := "res://data/decks/decks.json"
 const FUNCTIONS_PATH := "res://data/effects/functions.json"
 const CARD_EFFECTS_PATH := "res://data/effects/card_effects.json"
 
