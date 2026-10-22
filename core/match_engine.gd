@@ -374,7 +374,7 @@ func _begin_turn() -> void:
 			return
 		# Legacy roguelite rule: deck-out costs a prize instead of losing.
 		_log("Player %d cannot draw: the opponent takes a Mercy Card" % (current_index + 1))
-		_take_prize(_opponent_index())
+		_take_prize(_opponent_index(), 1)
 		if players[_opponent_index()].prizes.is_empty():
 			winner = _opponent_index()
 			_log("Player %d took the last Mercy Card and wins" % (winner + 1))
@@ -698,8 +698,10 @@ func _resolve_knockouts() -> void:
 	if knocked_out.is_empty():
 		return
 
+	var knocked_out_cards := {}
 	for index in knocked_out:
 		var side := players[index]
+		knocked_out_cards[index] = side.active
 		_log("%s is knocked out" % side.active.card.name)
 		side.discard_from_play(side.active)
 		side.active = null
@@ -707,7 +709,7 @@ func _resolve_knockouts() -> void:
 	var ways := [0, 0]
 	for index in knocked_out:
 		var taker := 1 - index
-		_take_prize(taker)
+		_take_prize(taker, _prizes_for_knockout(knocked_out_cards[index] as CardInPlay))
 		if players[taker].prizes.is_empty():
 			ways[taker] = maxi(int(ways[taker]), 1)
 	for index in knocked_out:
@@ -763,13 +765,20 @@ func _shares_type(attacker_types: Array[String], target_types: Array[String]) ->
 	return false
 
 
-func _take_prize(taker_index: int) -> void:
+## Moves count prizes from the taker's pile to their hand, stopping when the pile is empty.
+func _take_prize(taker_index: int, count: int) -> void:
 	var taker := players[taker_index]
-	if taker.prizes.is_empty():
-		return
-	taker.hand.append(taker.prizes.pop_back() as CardData)
-	_log("Player %d takes a Mercy card (%d left)" % [taker_index + 1, taker.prizes.size()])
+	for _i in count:
+		if taker.prizes.is_empty():
+			return
+		taker.hand.append(taker.prizes.pop_back() as CardData)
+		_log("Player %d takes a Mercy Card (%d left)" % [taker_index + 1, taker.prizes.size()])
 
+
+## Mercy Cards taken for knocking out this Darkner. Effects that
+## change it will be read here once the continuous-effects layer exists.
+func _prizes_for_knockout(_knocked_out: CardInPlay) -> int:
+	return rules.prizes_per_knockout
 
 func _opponent_index() -> int:
 	return 1 - current_index

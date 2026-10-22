@@ -128,12 +128,14 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 	_seed = randi()
 	_engine = MatchEngine.new()
 	_engine.effects = DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
-	_engine.start(
-		database.build_deck(deck_defs[DECK_PLAYER_1] as Dictionary),
-		database.build_deck(deck_defs[DECK_PLAYER_2] as Dictionary),
-		match_rules,
-		Rng.new(_seed),
-	)
+
+	var deck_1 := database.build_deck(deck_defs[DECK_PLAYER_1] as Dictionary)
+	var deck_2 := database.build_deck(deck_defs[DECK_PLAYER_2] as Dictionary)
+	# Test decks are smaller than the rules require on purpose: report, do not block.
+	for entry: Array in [[DECK_PLAYER_1, deck_1], [DECK_PLAYER_2, deck_2]]:
+		for problem in DeckValidator.validate(entry[1] as Array[CardData], match_rules):
+			push_warning("Deck %s %s" % [entry[0], problem])
+	_engine.start(deck_1, deck_2, match_rules, Rng.new(_seed))
 	_refresh()
 
 
