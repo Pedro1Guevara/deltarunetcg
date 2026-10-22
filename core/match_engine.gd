@@ -164,7 +164,7 @@ func legal_actions() -> Array[Dictionary]:
 				"label": "Flee %s for %s" % [player.active.card.name, player.bench[slot].card.name],
 			})
 
-	if player.active != null and opponent.active != null:
+	if player.active != null and opponent.active != null and _attacks_allowed():
 		var attacks := player.active.card.attacks
 		for attack_index in attacks.size():
 			var attack := attacks[attack_index]
@@ -339,13 +339,18 @@ func _begin_turn() -> void:
 	player.turns_started += 1
 	_log("--- Turn %d: Player %d ---" % [turn, current_index + 1])
 
-	# Project rule (4.7): deck-out costs a prize instead of losing.
 	if player.deck.is_empty():
-		_log("Player %d cannot draw: the opponent takes a prize" % (current_index + 1))
+		if rules.deck_out_loses:
+			# Deltarune (Design Document 4.5): a player who cannot draw loses the round.
+			winner = _opponent_index()
+			_log("Player %d cannot draw and loses the round" % (current_index + 1))
+			return
+		# Legacy roguelite rule: deck-out costs a prize instead of losing.
+		_log("Player %d cannot draw: the opponent takes a Mercy Card" % (current_index + 1))
 		_take_prize(_opponent_index())
 		if players[_opponent_index()].prizes.is_empty():
 			winner = _opponent_index()
-			_log("Player %d took the last prize and wins" % (winner + 1))
+			_log("Player %d took the last Mercy Card and wins" % (winner + 1))
 		return
 
 	player.draw_card()
@@ -640,6 +645,10 @@ func _attack_binding(attack: AttackData) -> Dictionary:
 		return {}
 	return effects.binding_for(current_player().active.card.id, EffectLibrary.SECTION_ATTACKS, attack.name)
 
+## Current standard rule (Design Document 4.2): the player going first cannot attack on
+## their first turn. Turn 1 is always that turn, since start() resets the counter.
+func _attacks_allowed() -> bool:
+	return rules.first_player_can_attack or turn > 1
 
 func _attack_requirements_met(attack: AttackData) -> bool:
 	var binding := _attack_binding(attack)
