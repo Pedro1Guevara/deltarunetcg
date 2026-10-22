@@ -8,7 +8,7 @@ var _engine := MatchEngine.new()
 var _seed: int = 0
 
 var _status_label: Label
-var _player_labels: Array[Label] = []
+var _player_panels: Array[VBoxContainer] = []
 var _actions_box: VBoxContainer
 var _log_label: Label
 
@@ -43,12 +43,12 @@ func _build_ui() -> void:
 	board.add_child(_status_label)
 
 	# Player 2 on top, player 1 at the bottom.
-	_player_labels.resize(2)
-	_player_labels[1] = _make_panel_label()
-	board.add_child(_player_labels[1])
+	_player_panels.resize(2)
+	_player_panels[1] = _make_panel()
+	board.add_child(_player_panels[1])
 	board.add_child(HSeparator.new())
-	_player_labels[0] = _make_panel_label()
-	board.add_child(_player_labels[0])
+	_player_panels[0] = _make_panel()
+	board.add_child(_player_panels[0])
 
 	# Right column: legal actions, log, new match.
 	var side_panel := VBoxContainer.new()
@@ -101,13 +101,11 @@ func _build_ui() -> void:
 		buttons.add_child(button)
 
 
-func _make_panel_label() -> Label:
-	var label := Label.new()
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return label
+func _make_panel() -> VBoxContainer:
+	var panel := VBoxContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	return panel
 
 
 func _start_match() -> void:
@@ -150,7 +148,7 @@ func _refresh() -> void:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
 
 	for index in 2:
-		_player_labels[index].text = _describe_player(index)
+		_fill_player_panel(index)
 
 	for child in _actions_box.get_children():
 		_actions_box.remove_child(child)
@@ -179,43 +177,53 @@ func _on_action_pressed(action: Dictionary) -> void:
 	_refresh()
 
 
-func _describe_player(index: int) -> String:
-	var player := _engine.players[index]
-	var lines := PackedStringArray()
+func _fill_player_panel(index: int) -> void:
+	var panel := _player_panels[index]
+	for child in panel.get_children():
+		panel.remove_child(child)
+		child.queue_free()
 
+	var player := _engine.players[index]
 	var header := "PLAYER %d" % (index + 1)
 	var actor := _engine.choice_chooser() if _engine.is_waiting_for_choice() else _engine.current_index
 	if not _engine.is_over() and actor == index:
 		header += "   <- to act"
-	lines.append(header)
-	lines.append("Mercy cards left: %d   Deck: %d   Discard: %d   Hand: %d" % [
+	_add_text(panel, header)
+	_add_text(panel, "Mercy Cards left: %d   Deck: %d   Discard: %d   Hand: %d" % [
 		player.prizes.size(), player.deck.size(), player.discard.size(), player.hand.size(),
 	])
-	lines.append("")
-	lines.append("Battle Zone: %s" % (_describe_in_play(player.active) if player.active != null else "none"))
 
-	if player.bench.is_empty():
-		lines.append("Field: empty")
+	var battle_zone := HBoxContainer.new()
+	_add_text(battle_zone, "Battle Zone:")
+	if player.active != null:
+		battle_zone.add_child(CardChip.for_in_play(player.active))
 	else:
-		lines.append("Field:")
-		for slot in player.bench.size():
-			lines.append("   %d) %s" % [slot + 1, _describe_in_play(player.bench[slot])])
+		_add_text(battle_zone, "none")
+	panel.add_child(battle_zone)
 
-	var hand_names := PackedStringArray()
+	_add_text(panel, "Field:" if not player.bench.is_empty() else "Field: empty")
+	for slot in player.bench.size():
+		var row := HBoxContainer.new()
+		_add_text(row, "   %d)" % (slot + 1))
+		row.add_child(CardChip.for_in_play(player.bench[slot]))
+		panel.add_child(row)
+
+	var hand := HFlowContainer.new()
+	hand.add_theme_constant_override("h_separation", 16)
+	_add_text(hand, "Hand:")
 	for card in player.hand:
-		hand_names.append(card.name)
-	lines.append("")
-	lines.append("Hand: %s" % ", ".join(hand_names))
-	return "\n".join(lines)
+		hand.add_child(CardChip.for_card(card))
+	panel.add_child(hand)
 
 
-func _describe_in_play(pokemon: CardInPlay) -> String:
-	var energy := ", ".join(PackedStringArray(pokemon.energy_pool()))
-	var stage := "" if pokemon.card.stage == CardData.STAGE_BASIC else " (%s)" % pokemon.card.stage
-	return "%s%s  %d/%d HP  [%s]" % [pokemon.card.name, stage, pokemon.remaining_hp(), pokemon.card.hp, energy]
+func _add_text(parent: Control, text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	parent.add_child(label)
 
 
 func _show_error(message: String) -> void:
 	_status_label.text = message
-	for label in _player_labels:
-		label.text = ""
+	for panel in _player_panels:
+		for child in panel.get_children():
+			child.queue_free()
