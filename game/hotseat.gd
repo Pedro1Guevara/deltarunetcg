@@ -11,7 +11,7 @@ var _status_label: Label
 var _player_panels: Array[VBoxContainer] = []
 var _actions_box: VBoxContainer
 var _log_label: Label
-
+var _open_group: String = ""
 
 func _ready() -> void:
 	var ui_theme := Theme.new()
@@ -153,12 +153,31 @@ func _refresh() -> void:
 	for child in _actions_box.get_children():
 		_actions_box.remove_child(child)
 		child.queue_free()
+
+	var order: Array[String] = []
+	var groups := {}
 	for action in _engine.legal_actions():
-		var button := Button.new()
-		button.text = str(action["label"])
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.pressed.connect(_on_action_pressed.bind(action))
-		_actions_box.add_child(button)
+		var key := _group_key(action)
+		if key.is_empty():
+			key = "single:%d" % order.size()
+		if not groups.has(key):
+			groups[key] = []
+			order.append(key)
+		(groups[key] as Array).append(action)
+
+	for key in order:
+		var members := groups[key] as Array
+		if members.size() == 1:
+			_add_action_button(members[0] as Dictionary, "")
+			continue
+		var header := Button.new()
+		header.text = "%s  %s" % [key, "▾" if key == _open_group else "▸"]
+		header.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		header.pressed.connect(_on_group_pressed.bind(key))
+		_actions_box.add_child(header)
+		if key == _open_group:
+			for action: Dictionary in members:
+				_add_action_button(action, "      ↳ ")
 
 	if _engine.winner == MatchEngine.SUDDEN_DEATH:
 		var sudden_death := Button.new()
@@ -172,7 +191,35 @@ func _refresh() -> void:
 	_log_label.text = "\n".join(lines)
 
 
+## Actions that share a first choice (which card) and differ in a second (which target)
+## are grouped under one button. Ungrouped actions return an empty key.
+func _group_key(action: Dictionary) -> String:
+	var player := _engine.current_player()
+	match str(action["type"]):
+		"attach":
+			return "Attach %s" % player.hand[int(action["hand_index"])].name
+		"evolve":
+			return "Evolve into %s" % player.hand[int(action["hand_index"])].name
+		"retreat":
+			return "Flee %s" % player.active.card.name
+	return ""
+
+
+func _add_action_button(action: Dictionary, prefix: String) -> void:
+	var button := Button.new()
+	button.text = prefix + str(action["label"])
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.pressed.connect(_on_action_pressed.bind(action))
+	_actions_box.add_child(button)
+
+
+func _on_group_pressed(key: String) -> void:
+	_open_group = "" if key == _open_group else key
+	_refresh()
+
+
 func _on_action_pressed(action: Dictionary) -> void:
+	_open_group = ""
 	_engine.apply(action)
 	_refresh()
 

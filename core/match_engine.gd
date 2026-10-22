@@ -118,8 +118,14 @@ func legal_actions() -> Array[Dictionary]:
 	var player := current_player()
 	var opponent := opponent_player()
 
+	# core/match_engine.gd — en legal_actions(), reemplaza el primer loop de la mano
+	# Copies of the same card are interchangeable: one set of actions per distinct card.
+	var offered := {}
 	for hand_index in player.hand.size():
 		var card := player.hand[hand_index]
+		if offered.has(card.id):
+			continue
+		offered[card.id] = true
 		if card.is_basic_pokemon() and player.bench.size() < rules.bench_limit:
 			actions.append({
 				"type": "bench",
@@ -142,10 +148,12 @@ func legal_actions() -> Array[Dictionary]:
 					"label": "Attach %s to %s (Field %d)" % [card.name, player.bench[slot].card.name, slot + 1],
 				})
 
+	var offered_evolutions := {}
 	for hand_index in player.hand.size():
 		var evolution := player.hand[hand_index]
-		if not _is_evolution_card(evolution):
+		if not _is_evolution_card(evolution) or offered_evolutions.has(evolution.id):
 			continue
+		offered_evolutions[evolution.id] = true
 		for slot in range(-1, player.bench.size()):
 			var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
 			if target != null and can_evolve(player, target, evolution):
