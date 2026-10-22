@@ -27,6 +27,7 @@ var _choice: Dictionary = {}
 ## Remaining setup steps, in order: {"player": int, "step": "active" | "bench" | "compensation", ...}
 var _setup_steps: Array[Dictionary] = []
 var _mulligans: Array[int] = [0, 0]
+var _first_player: int = 0
 var _promotion_queue: Array[int] = []
 var _turn_ends_after_promotions: bool = false
 
@@ -46,6 +47,7 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	_promotion_queue.clear()
 	_turn_ends_after_promotions = false
 	_mulligans = [0, 0]
+	_first_player = 0
 	players.append(_setup_player(0, deck_a, rules.prize_count))
 	players.append(_setup_player(1, deck_b, rules.prize_count))
 
@@ -53,6 +55,9 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	# Pokemon; then the player who took fewer mulligans may draw one card for each extra
 	# mulligan the opponent took, and may bench any Basic Pokemon drawn that way.
 	_setup_steps.clear()
+	if rules.random_first_player:
+		var caller := 0 if _rng.coin_flip() else 1
+		_setup_steps.append({"player": caller, "step": "coin_call"})
 	for index in 2:
 		_setup_steps.append({"player": index, "step": "active"})
 		_setup_steps.append({"player": index, "step": "bench"})
@@ -247,6 +252,12 @@ func _advance_setup() -> void:
 		var index := int(step["player"])
 		var player := players[index]
 		match str(step["step"]):
+			"coin_call":
+				_ask_setup(index, "Call the coin flip: whoever wins goes first", [
+					{"label": "Heads", "value": true},
+					{"label": "Tails", "value": false},
+				])
+				return
 			"active":
 				var options := _basic_options(player.hand, "Make %s the Battling Darkner")
 				if options.size() <= 1:
@@ -278,8 +289,8 @@ func _advance_setup() -> void:
 				_ask_setup(index, "Your opponent took %d more mulligan%s" % [count, "" if count == 1 else "s"], options)
 				return
 
-	# _begin_turn switches the active player first, so player 1 (index 0) opens.
-	current_index = 1
+	# _begin_turn switches the current player first, so start from the other one.
+	current_index = 1 - _first_player
 	_begin_turn()
 
 
@@ -288,6 +299,14 @@ func _answer_setup(value: Variant) -> void:
 	var index := int(step["player"])
 	var player := players[index]
 	match str(step["step"]):
+		"coin_call":
+			_setup_steps.pop_front()
+			var heads := _rng.coin_flip()
+			var called_heads := bool(value)
+			_first_player = index if called_heads == heads else 1 - index
+			_log("Player %d calls %s. Coin flip: %s. Player %d goes first" % [
+				index + 1, "heads" if called_heads else "tails", "heads" if heads else "tails", _first_player + 1,
+			])
 		"active":
 			_place_active(index, value as CardData)
 			_setup_steps.pop_front()
