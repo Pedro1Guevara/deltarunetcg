@@ -1,14 +1,10 @@
 class_name MatchEngine
 extends RefCounted
 
-const HAND_SIZE := 7
-const BENCH_LIMIT := 5
 const MAX_SETUP_ATTEMPTS := 50
 const NO_WINNER := -1
 ## Both players won at the same time and in the same number of ways: play Sudden Death.
 const SUDDEN_DEATH := -2
-const WEAKNESS_DOUBLE := "\u00d72"
-const RESISTANCE_MINUS_30 := "-30"
 
 var players: Array[PlayerState] = []
 var current_index: int = 0
@@ -124,7 +120,7 @@ func legal_actions() -> Array[Dictionary]:
 
 	for hand_index in player.hand.size():
 		var card := player.hand[hand_index]
-		if card.is_basic_pokemon() and player.bench.size() < BENCH_LIMIT:
+		if card.is_basic_pokemon() and player.bench.size() < rules.bench_limit:
 			actions.append({
 				"type": "bench",
 				"hand_index": hand_index,
@@ -212,7 +208,7 @@ func _setup_player(index: int, deck: Array[CardData], prize_count: int) -> Playe
 
 	for attempt in MAX_SETUP_ATTEMPTS:
 		_rng.shuffle(player.deck)
-		for _i in HAND_SIZE:
+		for _i in rules.hand_size:
 			player.draw_card()
 		if player.first_basic_pokemon_in_hand() != -1:
 			break
@@ -260,7 +256,7 @@ func _advance_setup() -> void:
 						if player.hand.has(card):
 							allowed.append(card as CardData)
 				var options := _basic_options(allowed, "Put %s on the Field")
-				if options.is_empty() or player.bench.size() >= BENCH_LIMIT:
+				if options.is_empty() or player.bench.size() >= rules.bench_limit:
 					_setup_steps.pop_front()
 					continue
 				options.append({"label": "Finish placing Darkners", "value": null})
@@ -693,17 +689,35 @@ func _resolve_knockouts() -> void:
 
 	_promotion_queue.assign(knocked_out)
 
-
+## Weakness before Resistance, each applied once, floored at zero. The modifier is read from
+## the defending card, so WOTC cards (×2, -30) and Deltarune cards (+20, -20) both work.
 func _apply_modifiers(attacker: CardData, defender: CardData, base_damage: int) -> int:
 	if base_damage <= 0:
 		return 0
 	var result := base_damage
-	# Weakness before Resistance, each applied once.
-	if defender.weakness_modifier == WEAKNESS_DOUBLE and _shares_type(attacker.types, defender.weakness_types):
-		result *= 2
-	if defender.resistance_modifier == RESISTANCE_MINUS_30 and _shares_type(attacker.types, defender.resistance_types):
-		result = maxi(result - 30, 0)
-	return result
+	if _shares_type(attacker.types, defender.weakness_types):
+		result = _modified_damage(result, defender.weakness_modifier, defender.id)
+	if _shares_type(attacker.types, defender.resistance_types):
+		result = _modified_damage(result, defender.resistance_modifier, defender.id)
+	return maxi(result, 0)
+
+
+## Applies a printed modifier: "×2" or "x2" multiplies, "+20" adds, "-20" subtracts.
+## An unreadable modifier changes nothing and is reported.
+func _modified_damage(damage: int, modifier: String, card_id: String) -> int:
+	if modifier.length() < 2 or not modifier.substr(1).is_valid_int():
+		push_error("MatchEngine: %s has an unreadable modifier '%s'" % [card_id, modifier])
+		return damage
+	var amount := modifier.substr(1).to_int()
+	match modifier[0]:
+		"\u00d7", "x":
+			return damage * amount
+		"+":
+			return damage + amount
+		"-":
+			return damage - amount
+	push_error("MatchEngine: %s has an unreadable modifier '%s'" % [card_id, modifier])
+	return damage
 
 
 func _shares_type(attacker_types: Array[String], target_types: Array[String]) -> bool:
