@@ -1,4 +1,3 @@
-# core/deck_validator.gd — archivo nuevo
 class_name DeckValidator
 extends RefCounted
 ## Checks a deck against the round rules (Design Document 4.1). Pure logic: it reports

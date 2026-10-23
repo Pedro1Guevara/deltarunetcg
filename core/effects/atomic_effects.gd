@@ -193,15 +193,9 @@ static func _count_units(pool: Array[String], energy_type: String) -> int:
 ## Colorless with other types first so as much of the given type as possible is left.
 static func _count_unpaid_units(context: EffectContext, energy_type: String) -> int:
 	var pool := context.source.energy_pool()
-	var colorless_needed := 0
-	for requirement in context.attack.cost:
-		if requirement == CardInPlay.COLORLESS:
-			colorless_needed += 1
-			continue
-		var index := pool.find(requirement)
-		if index == -1:
-			return 0
-		pool.remove_at(index)
+	var colorless_needed := EnergyPayment.pay_typed(pool, context.attack.cost)
+	if colorless_needed == -1:
+		return 0
 
 	if energy_type != EffectTypes.ANY_ENERGY:
 		var others := 0

@@ -1,7 +1,7 @@
 class_name CardInPlay
 extends RefCounted
 
-const COLORLESS := "Colorless"
+const COLORLESS := CardTypes.COLORLESS
 
 var card: CardData
 var damage: int = 0
@@ -39,19 +39,8 @@ func energy_pool() -> Array[String]:
 	return pool
 
 
-## Typed requirements are matched first; Colorless is checked against what remains.
 func can_pay(cost: Array[String]) -> bool:
-	var pool := energy_pool()
-	var colorless_needed := 0
-	for requirement in cost:
-		if requirement == COLORLESS:
-			colorless_needed += 1
-			continue
-		var index := pool.find(requirement)
-		if index == -1:
-			return false
-		pool.remove_at(index)
-	return pool.size() >= colorless_needed
+	return EnergyPayment.can_pay(energy_pool(), cost)
 
 
 func retreat_cost() -> Array[String]:

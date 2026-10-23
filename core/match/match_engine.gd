@@ -135,12 +135,15 @@ func legal_actions() -> Array[Dictionary]:
 				"label": "Put %s on the Field" % card.name,
 			})
 		elif card.is_energy() and not player.energy_attached_this_turn:
-			if player.active != null:
+			for slot in range(-1, player.bench.size()):
+				var target := _in_play_at(player, slot)
+				if target == null:
+					continue
 				actions.append({
 					"type": "attach",
 					"hand_index": hand_index,
-					"slot": -1,
-					"label": "Attach %s to %s (Battle Zone)" % [card.name, player.active.card.name],
+					"slot": slot,
+					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, _slot_name(slot)],
 				})
 			for slot in player.bench.size():
 				actions.append({
@@ -157,13 +160,13 @@ func legal_actions() -> Array[Dictionary]:
 			continue
 		offered_evolutions[evolution.id] = true
 		for slot in range(-1, player.bench.size()):
-			var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
+			var target := _in_play_at(player, slot)
 			if target != null and can_evolve(player, target, evolution):
 				actions.append({
 					"type": "evolve",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, "Battle Zone" if slot == -1 else "Field %d" % (slot + 1)],
+					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, _slot_name(slot)],
 				})
 
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(player.active.retreat_cost()):
@@ -405,7 +408,7 @@ func _is_evolution_card(card: CardData) -> bool:
 func _do_evolve(hand_index: int, slot: int) -> void:
 	var player := current_player()
 	var evolution := player.hand.pop_at(hand_index) as CardData
-	var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
+	var target := _in_play_at(player, slot)
 	var previous := target.card.name
 	target.evolve(evolution, turn)
 	_log("Player %d evolves %s into %s" % [current_index + 1, previous, evolution.name])
@@ -414,67 +417,26 @@ func _do_evolve(hand_index: int, slot: int) -> void:
 func _do_attach(hand_index: int, slot: int) -> void:
 	var player := current_player()
 	var energy := player.hand.pop_at(hand_index) as CardData
-	var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
+	var target := _in_play_at(player, slot)
 	target.attached_energy.append(energy)
 	player.energy_attached_this_turn = true
 	_log("Player %d attaches %s to %s" % [current_index + 1, energy.name, target.card.name])
 
 
 func _do_retreat(slot: int) -> void:
-	var options := _retreat_payment_options(current_player().active)
+	var retreating := current_player().active
+	var options := EnergyPayment.discard_options(retreating.attached_energy, retreating.card.retreat_cost)
 	if options.size() <= 1:
 		var payment: Array = [] if options.is_empty() else (options[0] as Dictionary)["value"] as Array
 		_complete_retreat(slot, payment)
 		return
 	_choice = {
 		"chooser": current_index,
-		"prompt": "Choose the Energy to discard to flee %s" % current_player().active.card.name,
+		"prompt": "Choose the Energy to discard to flee %s" % retreating.card.name,
 		"options": options,
 		"resume": "retreat",
 		"data": {"slot": slot},
 	}
-
-
-## Every distinct way to pay the retreat cost without discarding a card the payment does
-## not need. Copies of the same card are interchangeable, so each combination appears once.
-func _retreat_payment_options(active: CardInPlay) -> Array:
-	var cost := active.card.retreat_cost
-	if cost <= 0:
-		return []
-	var cards := active.attached_energy
-	var options: Array = []
-	var seen: Array[String] = []
-	for mask in range((1 << cards.size()) - 1, 0, -1):
-		var chosen: Array = []
-		var units := 0
-		for index in cards.size():
-			if mask & (1 << index):
-				chosen.append(cards[index])
-				units += _energy_units(cards[index])
-		if units < cost:
-			continue
-		var minimal := true
-		for card: Variant in chosen:
-			if units - _energy_units(card as CardData) >= cost:
-				minimal = false
-				break
-		if not minimal:
-			continue
-		var names: Array[String] = []
-		for card: Variant in chosen:
-			names.append((card as CardData).name)
-		names.sort()
-		var key := " + ".join(PackedStringArray(names))
-		if seen.has(key):
-			continue
-		seen.append(key)
-		options.append({"label": "Discard %s" % key, "value": chosen})
-	options.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["label"]) < str(b["label"]))
-	return options
-
-
-func _energy_units(card: CardData) -> int:
-	return maxi(card.provides.size(), 1)
 
 
 func _complete_retreat(slot: int, payment: Array) -> void:
@@ -592,7 +554,7 @@ func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
 	if defender == null:
 		return 0
-	var dealt := _apply_modifiers(context.source.card, defender.card, base_damage)
+	var dealt := Damage.apply_modifiers(context.source.card, defender.card, base_damage)
 	defender.damage += dealt
 	_log("  %d damage to %s (%d/%d HP)" % [dealt, defender.card.name, defender.remaining_hp(), defender.card.hp])
 	return dealt
@@ -724,43 +686,6 @@ func _resolve_knockouts() -> void:
 
 	_promotion_queue.assign(knocked_out)
 
-## Weakness before Resistance, each applied once, floored at zero. The modifier is read from
-## the defending card, so WOTC cards (×2, -30) and Deltarune cards (+20, -20) both work.
-func _apply_modifiers(attacker: CardData, defender: CardData, base_damage: int) -> int:
-	if base_damage <= 0:
-		return 0
-	var result := base_damage
-	if _shares_type(attacker.types, defender.weakness_types):
-		result = _modified_damage(result, defender.weakness_modifier, defender.id)
-	if _shares_type(attacker.types, defender.resistance_types):
-		result = _modified_damage(result, defender.resistance_modifier, defender.id)
-	return maxi(result, 0)
-
-
-## Applies a printed modifier: "×2" or "x2" multiplies, "+20" adds, "-20" subtracts.
-## An unreadable modifier changes nothing and is reported.
-func _modified_damage(damage: int, modifier: String, card_id: String) -> int:
-	if modifier.length() < 2 or not modifier.substr(1).is_valid_int():
-		push_error("MatchEngine: %s has an unreadable modifier '%s'" % [card_id, modifier])
-		return damage
-	var amount := modifier.substr(1).to_int()
-	match modifier[0]:
-		"\u00d7", "x":
-			return damage * amount
-		"+":
-			return damage + amount
-		"-":
-			return damage - amount
-	push_error("MatchEngine: %s has an unreadable modifier '%s'" % [card_id, modifier])
-	return damage
-
-
-func _shares_type(attacker_types: Array[String], target_types: Array[String]) -> bool:
-	for attacker_type in attacker_types:
-		if target_types.has(attacker_type):
-			return true
-	return false
-
 
 ## Moves count prizes from the taker's pile to their hand, stopping when the pile is empty.
 func _take_prize(taker_index: int, count: int) -> void:
@@ -776,6 +701,14 @@ func _take_prize(taker_index: int, count: int) -> void:
 ## change it will be read here once the continuous-effects layer exists.
 func _prizes_for_knockout(_knocked_out: CardInPlay) -> int:
 	return rules.prizes_per_knockout
+
+## The Darkner at a slot: -1 is the Battle Zone, 0 and up are Field positions.
+func _in_play_at(player: PlayerState, slot: int) -> CardInPlay:
+	return player.active if slot == -1 else player.bench[slot]
+
+
+func _slot_name(slot: int) -> String:
+	return "Battle Zone" if slot == -1 else "Field %d" % (slot + 1)
 
 func _opponent_index() -> int:
 	return 1 - current_index

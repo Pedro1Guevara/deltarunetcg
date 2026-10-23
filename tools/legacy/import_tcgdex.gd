@@ -27,7 +27,7 @@ extends SceneTree
 const DEFAULT_API := "https://api.tcgdex.net/v2/en"
 const DEFAULT_SETS := ["base1", "base2", "base3"]
 const DATA_DIR := "res://data/legacy/tcgdex"
-const IMAGE_DIR := "res://assets/tcgdex"
+const IMAGE_DIR := "res://assets/legacy/tcgdex"
 const PRICING_FIELD := "pricing"
 const MAX_ATTEMPTS := 3
 const RETRY_DELAY_SEC := 2.0
