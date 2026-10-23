@@ -1,7 +1,6 @@
 class_name MatchEngine
 extends RefCounted
 
-const MAX_SETUP_ATTEMPTS := 50
 const NO_WINNER := -1
 ## Both players won at the same time and in the same number of ways: play Sudden Death.
 const SUDDEN_DEATH := -2
@@ -20,10 +19,8 @@ var _rng: Rng
 ## The open question, or null: the coin call, an Active Pokemon or the bench at setup, a
 ## promotion after a knockout, which Energy pays a retreat, or an effect's choice (7.6).
 var _pending: PendingChoice = null
-## Remaining setup steps, in order: {"player": int, "step": "coin_call" | "active" | "bench" | "compensation", ...}
-var _setup_steps: Array[Dictionary] = []
-var _mulligans: Array[int] = [0, 0]
-var _first_player: int = 0
+## The setup in progress, or null once the first turn has begun.
+var _setup: MatchSetup = null
 var _promotion_queue: Array[int] = []
 var _turn_ends_after_promotions: bool = false
 
@@ -38,25 +35,9 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	_pending = null
 	_promotion_queue.clear()
 	_turn_ends_after_promotions = false
-	_mulligans = [0, 0]
-	_first_player = 0
-	players.append(_setup_player(0, deck_a, rules.prize_count))
-	players.append(_setup_player(1, deck_b, rules.prize_count))
-
-	# Setup follows the rulebook: each player places an Active Pokemon and may bench Basic
-	# Pokemon; then the player who took fewer mulligans may draw one card for each extra
-	# mulligan the opponent took, and may bench any Basic Pokemon drawn that way.
-	_setup_steps.clear()
-	if rules.random_first_player:
-		var caller := 0 if _rng.coin_flip() else 1
-		_setup_steps.append({"player": caller, "step": "coin_call"})
-	for index in 2:
-		_setup_steps.append({"player": index, "step": "active"})
-		_setup_steps.append({"player": index, "step": "bench"})
-	var extra := _mulligans[0] - _mulligans[1]
-	if extra != 0:
-		_setup_steps.append({"player": 1 if extra > 0 else 0, "step": "compensation", "count": absi(extra)})
-	_advance_setup()
+	_setup = MatchSetup.new(players, rules, _rng, events)
+	_setup.deal(deck_a, deck_b)
+	_continue_setup(_setup.advance())
 
 
 func is_over() -> bool:
@@ -189,141 +170,14 @@ func apply(action: Dictionary) -> void:
 			_do_choose(int(action["option"]))
 
 
-func _setup_player(index: int, deck: Array[CardData], prize_count: int) -> PlayerState:
-	var player := PlayerState.new()
-	player.deck = deck
-
-	for attempt in MAX_SETUP_ATTEMPTS:
-		_rng.shuffle(player.deck)
-		for _i in rules.hand_size:
-			player.draw_card()
-		if player.first_basic_pokemon_in_hand() != -1:
-			break
-		_mulligans[index] += 1
-		_log("Player %d mulligan (attempt %d)" % [index + 1, attempt + 1])
-		player.deck.append_array(player.hand)
-		player.hand.clear()
-
-	if player.first_basic_pokemon_in_hand() == -1:
-		push_error("MatchEngine: player %d has no Basic Pokemon after %d attempts" % [index + 1, MAX_SETUP_ATTEMPTS])
-
-	# Prizes come off the deck, so dealing them before the Active Pokemon is chosen from the
-	# hand changes nothing.
-	for _i in prize_count:
-		if player.deck.is_empty():
-			break
-		player.prizes.append(player.deck.pop_back() as CardData)
-
-	return player
-
-
-## Runs the setup steps until one needs a choice. Copies of the same card are one option.
-## Placing the Active Pokemon asks only when there is more than one option; benching and
-## mulligan draws are optional, so they always ask while there is something to decide.
-func _advance_setup() -> void:
-	while not _setup_steps.is_empty():
-		var step := _setup_steps[0]
-		var index := int(step["player"])
-		var player := players[index]
-		match str(step["step"]):
-			"coin_call":
-				_ask_setup(index, "Call the coin flip: whoever wins goes first", [
-					{"label": "Heads", "value": true},
-					{"label": "Tails", "value": false},
-				])
-				return
-			"active":
-				var options := _basic_options(player.hand, "Make %s the Battling Darkner")
-				if options.size() <= 1:
-					if options.size() == 1:
-						_place_active(index, (options[0] as Dictionary)["value"] as CardData)
-					_setup_steps.pop_front()
-					continue
-				_ask_setup(index, "Choose your Battling Darkner", options)
-				return
-			"bench":
-				var allowed: Array[CardData] = player.hand
-				if step.has("cards"):
-					allowed = []
-					for card: Variant in step["cards"] as Array:
-						if player.hand.has(card):
-							allowed.append(card as CardData)
-				var options := _basic_options(allowed, "Put %s on the Field")
-				if options.is_empty() or player.bench.size() >= rules.bench_limit:
-					_setup_steps.pop_front()
-					continue
-				options.append({"label": "Finish placing Darkners", "value": null})
-				_ask_setup(index, "Put Basic Darkners on the Field before the game starts", options)
-				return
-			"compensation":
-				var count := int(step["count"])
-				var options: Array = []
-				for amount in range(count, -1, -1):
-					options.append({"label": "Draw %d card%s for the opponent's mulligans" % [amount, "" if amount == 1 else "s"], "value": amount})
-				_ask_setup(index, "Your opponent took %d more mulligan%s" % [count, "" if count == 1 else "s"], options)
-				return
-
-	# _begin_turn switches the current player first, so start from the other one.
-	current_index = 1 - _first_player
-	_begin_turn()
-
-
-func _answer_setup(value: Variant) -> void:
-	var step := _setup_steps[0]
-	var index := int(step["player"])
-	var player := players[index]
-	match str(step["step"]):
-		"coin_call":
-			_setup_steps.pop_front()
-			var heads := _rng.coin_flip()
-			var called_heads := bool(value)
-			_first_player = index if called_heads == heads else 1 - index
-			_log("Player %d calls %s. Coin flip: %s. Player %d goes first" % [
-				index + 1, "heads" if called_heads else "tails", "heads" if heads else "tails", _first_player + 1,
-			])
-		"active":
-			_place_active(index, value as CardData)
-			_setup_steps.pop_front()
-		"bench":
-			if value == null:
-				_setup_steps.pop_front()
-			else:
-				var card := value as CardData
-				player.hand.erase(card)
-				player.bench.append(CardInPlay.new(card, 0))
-				_log("Player %d puts %s on the Field during setup" % [index + 1, card.name])
-		"compensation":
-			_setup_steps.pop_front()
-			var drawn: Array[CardData] = []
-			for _i in int(value):
-				if not player.draw_card():
-					break
-				drawn.append(player.hand.back())
-			_log("Player %d draws %d card%s for mulligans" % [index + 1, drawn.size(), "" if drawn.size() == 1 else "s"])
-			if not drawn.is_empty():
-				_setup_steps.push_front({"player": index, "step": "bench", "cards": drawn})
-	_advance_setup()
-
-
-func _basic_options(cards: Array[CardData], label_format: String) -> Array:
-	var options: Array = []
-	var offered: Array[String] = []
-	for card in cards:
-		if card.is_basic_pokemon() and not offered.has(card.id):
-			offered.append(card.id)
-			options.append({"label": label_format % card.name, "value": card})
-	return options
-
-
-func _ask_setup(index: int, prompt: String, options: Array) -> void:
-	_pending = PendingChoice.new(index, prompt, options, PendingChoice.RESUME_SETUP, {})
-
-
-func _place_active(index: int, card: CardData) -> void:
-	var player := players[index]
-	player.hand.erase(card)
-	player.active = CardInPlay.new(card, 0)
-	_log("Player %d starts with %s" % [index + 1, card.name])
+## Opens the setup's next question, or starts the first turn when there is none left.
+func _continue_setup(choice: PendingChoice) -> void:
+	if choice != null:
+		_pending = choice
+		return
+	var first := _setup.first_player
+	_setup = null
+	_begin_turn(first)
 
 ## The only way a turn ends: the player ends it without attacking (passing), or attacks and
 ## every knocked out Darkner has been replaced. What happens at the end of every turn goes
@@ -331,12 +185,13 @@ func _place_active(index: int, card: CardData) -> void:
 func _end_turn(attacked: bool) -> void:
 	if not attacked:
 		_log("Player %d ends the turn" % (current_index + 1))
-	_begin_turn()
+	_begin_turn(_opponent_index())
 
 
-## Starts the next player's turn. Called by _end_turn() and once when setup finishes.
-func _begin_turn() -> void:
-	current_index = _opponent_index()
+## Starts player_index's turn. Called by _end_turn() with the opponent, and once with the
+## first player when the setup is done.
+func _begin_turn(player_index: int) -> void:
+	current_index = player_index
 	turn += 1
 	var player := current_player()
 	player.reset_turn_flags()
@@ -469,7 +324,7 @@ func _do_choose(option: int) -> void:
 			else:
 				_pending = _effect_choice(choice.resolver, choice.context)
 		PendingChoice.RESUME_SETUP:
-			_answer_setup(picked["value"])
+			_continue_setup(_setup.answer(picked["value"]))
 		PendingChoice.RESUME_PROMOTE:
 			_promote(choice.chooser, int(picked["value"]))
 			_promotion_queue.pop_front()

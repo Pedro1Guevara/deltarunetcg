@@ -12,7 +12,8 @@ var energy_attached_this_turn := false
 var retreated_this_turn := false
 ## Turns this player has started. Evolution is not allowed during a player's first turn.
 var turns_started: int = 0
-
+## Mulligans taken during setup. Public information, as at the table.
+var mulligans: int = 0
 
 func reset_turn_flags() -> void:
 	energy_attached_this_turn = false

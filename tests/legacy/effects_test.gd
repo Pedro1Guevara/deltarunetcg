@@ -204,10 +204,9 @@ func _run() -> void:
 	for trial in 200:
 		var mg := MatchEngine.new()
 		mg.start(db.build_deck(one_basic), db.build_deck(decks_for_setup["lightning_starter"]), MatchRules.legacy(), Rng.new(trial))
-		var mulligans := mg.get("_mulligans") as Array
-		if int(mulligans[0]) <= int(mulligans[1]):
+		if mg.players[0].mulligans <= mg.players[1].mulligans:
 			continue
-		var extra := int(mulligans[0]) - int(mulligans[1])
+		var extra := mg.players[0].mulligans - mg.players[1].mulligans
 		while mg.is_waiting_for_choice() and not mg.choice_prompt().contains("more mulligan"):
 			var actions := mg.legal_actions()
 			var pick := actions[0]
