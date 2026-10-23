@@ -40,6 +40,15 @@ func finish_setup(engine: MatchEngine) -> void:
 				pick = action
 		engine.apply(pick)
 
+## True when no two actions show the same label: every option the player sees is distinct.
+func labels_distinct(actions: Array[Dictionary]) -> bool:
+	var seen := {}
+	for action in actions:
+		var label := str(action["label"])
+		if seen.has(label):
+			return false
+		seen[label] = true
+	return true
 
 ## A fresh copy of each card id, in order.
 func energies(ids: Array) -> Array[CardData]:

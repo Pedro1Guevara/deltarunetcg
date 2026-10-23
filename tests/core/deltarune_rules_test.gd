@@ -136,7 +136,7 @@ func _run() -> void:
 	expect(promotion.is_waiting_for_choice() and promotion.choice_chooser() == promoter and promotion.turn == 2, "with two Darkners on the Field the loser chooses, and the turn waits")
 	promotion.apply(promotion.legal_actions()[0])
 	expect(promotion.turn == 3 and promotion.current_index == promoter, "the turn ends once the new Battling Darkner is chosen")
-	
+
 	var double_rules := MatchRules.deltarune()
 	double_rules.prizes_per_knockout = 2
 	var double := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
@@ -173,6 +173,30 @@ func _run() -> void:
 	legacy_out.players[legacy_drawer].deck.clear()
 	legacy_out.apply({"type": "end_turn", "label": "End turn"})
 	expect(not legacy_out.is_over() and legacy_out.players[1 - legacy_drawer].prizes.size() == legacy_prizes - 1, "legacy rules: deck-out costs a prize instead")
+
+	print("== legal actions")
+	# Random play with two kinds of deck: the mixed test deck, and one Darkner in four copies,
+	# which fills the Field with identical Darkners.
+	var picker := RandomNumberGenerator.new()
+	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "chaos_energy": 18}
+	var same_darkner := {"jevil": 4, "chaos_energy": 26}
+	var repeated := ""
+	var rounds_finished := 0
+	for seed in SEEDS:
+		picker.seed = seed
+		var counts: Dictionary = same_darkner if seed % 2 == 1 else mixed
+		var game := MatchEngine.new()
+		game.start(deck(counts), deck(counts), rules, Rng.new(seed))
+		for _step in 400:
+			if game.is_over():
+				rounds_finished += 1
+				break
+			var actions := game.legal_actions()
+			if repeated.is_empty() and not labels_distinct(actions):
+				repeated = "seed %d, turn %d: %s" % [seed, game.turn, actions]
+			game.apply(actions[picker.randi_range(0, actions.size() - 1)])
+	expect(repeated.is_empty(), "no two legal actions share a label: %s" % repeated)
+	expect(rounds_finished > 0, "random play finishes rounds (%d of %d)" % [rounds_finished, SEEDS])
 
 	print("== deck validation")
 	var legal := deck({"jevil": 4, "tenna": 4, "guei": 4, "kris": 4, "chaos_energy": 34})

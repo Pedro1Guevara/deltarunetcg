@@ -17,13 +17,9 @@ var rules: MatchRules
 var effects: EffectLibrary = null
 
 var _rng: Rng
-## An attack waiting for a player's choice (Design Document 7.6).
-var _pending_resolver: EffectResolver = null
-var _pending_context: EffectContext = null
-
-## A rules choice the engine itself asks: the coin call or an Active Pokemon at setup, a
-## promotion after a knockout, or which Energy pays a retreat. Empty when none is open.
-var _choice: Dictionary = {}
+## The open question, or null: the coin call, an Active Pokemon or the bench at setup, a
+## promotion after a knockout, which Energy pays a retreat, or an effect's choice (7.6).
+var _pending: PendingChoice = null
 ## Remaining setup steps, in order: {"player": int, "step": "coin_call" | "active" | "bench" | "compensation", ...}
 var _setup_steps: Array[Dictionary] = []
 var _mulligans: Array[int] = [0, 0]
@@ -39,9 +35,7 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	events.clear()
 	winner = NO_WINNER
 	turn = 0
-	_pending_resolver = null
-	_pending_context = null
-	_choice = {}
+	_pending = null
 	_promotion_queue.clear()
 	_turn_ends_after_promotions = false
 	_mulligans = [0, 0]
@@ -78,27 +72,17 @@ func opponent_player() -> PlayerState:
 
 
 func is_waiting_for_choice() -> bool:
-	return not _open_choice().is_empty()
+	return _pending != null
 
 
 ## The question being asked, or an empty string.
 func choice_prompt() -> String:
-	return str(_open_choice().get("prompt", ""))
+	return "" if _pending == null else _pending.prompt
 
 
 ## The player who must answer the open choice, or -1.
 func choice_chooser() -> int:
-	return int(_open_choice().get("chooser", -1))
-
-
-func _open_choice() -> Dictionary:
-	if _pending_context != null:
-		return {
-			"chooser": current_index,
-			"prompt": _pending_context.choice.get("prompt", ""),
-			"options": _pending_context.choice.get("options", []),
-		}
-	return _choice
+	return -1 if _pending == null else _pending.chooser
 
 
 func legal_actions() -> Array[Dictionary]:
@@ -107,14 +91,12 @@ func legal_actions() -> Array[Dictionary]:
 		return actions
 
 	# While a choice is open, answering it is the only legal action.
-	var open := _open_choice()
-	if not open.is_empty():
-		var options := open["options"] as Array
-		for index in options.size():
+	if _pending != null:
+		for index in _pending.options.size():
 			actions.append({
 				"type": "choose",
 				"option": index,
-				"label": str((options[index] as Dictionary)["label"]),
+				"label": str(_pending.option(index)["label"]),
 			})
 		return actions
 
@@ -334,13 +316,7 @@ func _basic_options(cards: Array[CardData], label_format: String) -> Array:
 
 
 func _ask_setup(index: int, prompt: String, options: Array) -> void:
-	_choice = {
-		"chooser": index,
-		"prompt": prompt,
-		"options": options,
-		"resume": "setup",
-		"data": {},
-	}
+	_pending = PendingChoice.new(index, prompt, options, PendingChoice.RESUME_SETUP, {})
 
 
 func _place_active(index: int, card: CardData) -> void:
@@ -431,13 +407,8 @@ func _do_retreat(slot: int) -> void:
 		var payment: Array = [] if options.is_empty() else (options[0] as Dictionary)["value"] as Array
 		_complete_retreat(slot, payment)
 		return
-	_choice = {
-		"chooser": current_index,
-		"prompt": "Choose the Energy to discard to flee %s" % retreating.card.name,
-		"options": options,
-		"resume": "retreat",
-		"data": {"slot": slot},
-	}
+	_pending = PendingChoice.new(current_index, "Choose the Energy to discard to flee %s" % retreating.card.name,
+			options, PendingChoice.RESUME_RETREAT, {"slot": slot})
 
 
 func _complete_retreat(slot: int, payment: Array) -> void:
@@ -471,36 +442,42 @@ func _do_attack(attack_index: int) -> void:
 	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
 		_finish_attack()
 	else:
-		_pending_resolver = resolver
-		_pending_context = context
+		_pending = _effect_choice(resolver, context)
+
+
+## Wraps the question a suspended effect is asking. The effect names who answers.
+func _effect_choice(resolver: EffectResolver, context: EffectContext) -> PendingChoice:
+	var asked := context.choice
+	var choice := PendingChoice.new(players.find(asked["chooser"]), str(asked["prompt"]),
+			asked["options"] as Array, PendingChoice.RESUME_EFFECT, {})
+	choice.resolver = resolver
+	choice.context = context
+	return choice
 
 
 func _do_choose(option: int) -> void:
-	var open := _open_choice()
-	var picked := (open["options"] as Array)[option] as Dictionary
-	_log("  Player %d chooses: %s" % [int(open["chooser"]) + 1, picked["label"]])
+	var choice := _pending
+	_pending = null
+	var picked := choice.option(option)
+	_log("  Player %d chooses: %s" % [choice.chooser + 1, picked["label"]])
 
-	if _pending_context != null:
-		_pending_context.selection.append(picked["value"])
-		if _pending_resolver.resume():
-			_pending_resolver = null
-			_pending_context = null
-			_finish_attack()
-		return
-
-	var choice := _choice
-	_choice = {}
-	match str(choice["resume"]):
-		"setup":
+	match choice.resume:
+		PendingChoice.RESUME_EFFECT:
+			choice.context.selection.append(picked["value"])
+			if choice.resolver.resume():
+				_finish_attack()
+			else:
+				_pending = _effect_choice(choice.resolver, choice.context)
+		PendingChoice.RESUME_SETUP:
 			_answer_setup(picked["value"])
-		"promote":
-			_promote(int(choice["chooser"]), int(picked["value"]))
+		PendingChoice.RESUME_PROMOTE:
+			_promote(choice.chooser, int(picked["value"]))
 			_promotion_queue.pop_front()
 			if _advance_promotions() and _turn_ends_after_promotions:
 				_turn_ends_after_promotions = false
 				_end_turn(true)
-		"retreat":
-			_complete_retreat(int((choice["data"] as Dictionary)["slot"]), picked["value"] as Array)
+		PendingChoice.RESUME_RETREAT:
+			_complete_retreat(int(choice.data["slot"]), picked["value"] as Array)
 
 
 func _finish_attack() -> void:
@@ -528,16 +505,10 @@ func _advance_promotions() -> bool:
 		for slot in side.bench.size():
 			var pokemon := side.bench[slot]
 			options.append({
-				"label": "Promote %s (%d/%d HP)" % [pokemon.card.name, pokemon.remaining_hp(), pokemon.card.hp],
+				"label": "Promote %s (%s, %d/%d HP)" % [pokemon.card.name, _slot_name(slot), pokemon.remaining_hp(), pokemon.card.hp],
 				"value": slot,
 			})
-		_choice = {
-			"chooser": index,
-			"prompt": "Choose a new Battling Darkner",
-			"options": options,
-			"resume": "promote",
-			"data": {},
-		}
+		_pending = PendingChoice.new(index, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
 		return false
 	return true
 

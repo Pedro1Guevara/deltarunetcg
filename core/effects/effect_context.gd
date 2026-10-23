@@ -20,7 +20,8 @@ var opponent: PlayerState
 ## The attack being resolved. Null unless kind is attack.
 var attack: AttackData
 
-## The open question, or empty: {"prompt": String, "options": [{"label": String, "value": Variant}]}.
+## The open question, or empty:
+## {"chooser": PlayerState, "prompt": String, "options": [{"label": String, "value": Variant}]}.
 var choice: Dictionary = {}
 ## Answers given so far to the step currently resolving. Cleared when the step finishes.
 var selection: Array = []
@@ -43,6 +44,8 @@ func is_waiting() -> bool:
 	return not choice.is_empty()
 
 
-func ask(prompt: String, options: Array) -> String:
-	choice = {"prompt": prompt, "options": options}
+## Suspends the effect until chooser answers. The effect decides who that is: usually its
+## own player, but some effects make the opponent choose.
+func ask(chooser: PlayerState, prompt: String, options: Array) -> String:
+	choice = {"chooser": chooser, "prompt": prompt, "options": options}
 	return PENDING

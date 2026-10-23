@@ -160,7 +160,7 @@ static func _discard_energy_cards(context: EffectContext, target: CardInPlay, en
 				continue
 			offered_ids.append(energy.id)
 			options.append({"label": "Discard %s from %s" % [energy.name, target.card.name], "value": energy})
-		return context.ask("Choose an Energy card to discard from %s" % target.card.name, options)
+		return context.ask(context.player, "Choose an Energy card to discard from %s" % target.card.name, options)
 
 	var cards: Array[CardData] = []
 	for energy: Variant in selected:

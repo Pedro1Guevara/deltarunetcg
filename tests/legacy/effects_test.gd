@@ -305,7 +305,7 @@ func _run() -> void:
 	print("== choosing Energy to discard")
 	var fs := setup("base1-4", [F, F, F, F, DCE], "base1-3")
 	expect(attack(fs, "Fire Spin"), "Fire Spin is legal")
-	expect(fs.is_waiting_for_choice(), "Fire Spin waits for a choice")
+	expect(fs.is_waiting_for_choice() and fs.choice_chooser() == 0, "Fire Spin waits for the attacker's choice")
 	var choices := fs.legal_actions()
 	var labels: Array = []
 	for action in choices:
