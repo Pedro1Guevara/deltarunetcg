@@ -90,6 +90,33 @@ func _run() -> void:
 	first.current_player().active = in_play("jevil", ["chaos_energy"])
 	expect(first.turn == 2 and has_action(first, "attack"), "the second player can attack on turn 2")
 
+	print("== TP")
+	var tp_round := start_round(rules, 2)
+	expect(tp_round.players[0].tp == 0 and tp_round.players[1].tp == 0, "both players start the round at 0% TP")
+	finish_setup(tp_round)
+	var opener := tp_round.current_index
+	tp_round.apply({"type": "end_turn", "label": "End turn"})
+	expect(tp_round.players[opener].tp == 4, "the first player cannot attack on turn 1, so ending it is a pass: 100%")
+
+	var tp_attack := battle("jevil", ["chaos_energy"], "guei")
+	var tp_attacker := tp_attack.current_index
+	expect(attack(tp_attack, "Slash"), "Slash is legal with 1 Chaos")
+	expect(tp_attack.players[tp_attacker].tp == 1, "attacking recovers 25%")
+
+	var tp_full := battle("jevil", ["chaos_energy"], "guei")
+	var tp_full_player := tp_full.current_player()
+	tp_full_player.tp = 4
+	attack(tp_full, "Slash")
+	expect(tp_full_player.tp == 4, "TP never goes above 100%")
+
+	var tp_legacy := start_round(MatchRules.legacy(), 5)
+	finish_setup(tp_legacy)
+	tp_legacy.apply({"type": "end_turn", "label": "End turn"})
+	expect(tp_legacy.players[0].tp == 0, "legacy rules have no TP")
+
+	var flee_jevil := in_play("jevil", [])
+	expect(tp_attack.retreat_cost(flee_jevil).size() == flee_jevil.card.retreat_cost, "the effective Flee cost is the printed one until continuous effects exist")
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()

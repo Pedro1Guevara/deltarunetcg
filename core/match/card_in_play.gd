@@ -1,8 +1,6 @@
 class_name CardInPlay
 extends RefCounted
 
-const COLORLESS := CardTypes.COLORLESS
-
 var card: CardData
 var damage: int = 0
 var attached_energy: Array[CardData] = []
@@ -42,9 +40,3 @@ func energy_pool() -> Array[String]:
 func can_pay(cost: Array[String]) -> bool:
 	return EnergyPayment.can_pay(energy_pool(), cost)
 
-
-func retreat_cost() -> Array[String]:
-	var cost: Array[String] = []
-	for _i in card.retreat_cost:
-		cost.append(COLORLESS)
-	return cost

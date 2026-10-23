@@ -125,7 +125,7 @@ func legal_actions() -> Array[Dictionary]:
 					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, _slot_name(slot)],
 				})
 
-	if player.active != null and not player.retreated_this_turn and player.active.can_pay(player.active.retreat_cost()):
+	if player.active != null and not player.retreated_this_turn and player.active.can_pay(retreat_cost(player.active)):
 		for slot in player.bench.size():
 			actions.append({
 				"type": "retreat",
@@ -137,7 +137,7 @@ func legal_actions() -> Array[Dictionary]:
 		var attacks := player.active.card.attacks
 		for attack_index in attacks.size():
 			var attack := attacks[attack_index]
-			if player.active.can_pay(attack.cost) and _attack_requirements_met(attack):
+			if player.active.can_pay(attack_cost(player.active, attack)) and _attack_requirements_met(attack):
 				actions.append({
 					"type": "attack",
 					"attack_index": attack_index,
@@ -183,8 +183,14 @@ func _continue_setup(choice: PendingChoice) -> void:
 ## every knocked out Darkner has been replaced. What happens at the end of every turn goes
 ## here, such as TP recovery (Design Document 5). Then the opponent's turn begins.
 func _end_turn(attacked: bool) -> void:
+	var player := current_player()
 	if not attacked:
 		_log("Player %d ends the turn" % (current_index + 1))
+	if rules.tp_max > 0:
+		var before := player.tp
+		player.tp = mini(player.tp + rules.tp_recovery, rules.tp_max) if attacked else rules.tp_max
+		if player.tp != before:
+			_log("Player %d recovers TP: %d%%" % [current_index + 1, player.tp * 25])
 	_begin_turn(_opponent_index())
 
 
@@ -257,7 +263,7 @@ func _do_attach(hand_index: int, slot: int) -> void:
 
 func _do_retreat(slot: int) -> void:
 	var retreating := current_player().active
-	var options := EnergyPayment.discard_options(retreating.attached_energy, retreating.card.retreat_cost)
+	var options := EnergyPayment.discard_options(retreating.attached_energy, retreat_cost(retreating).size())
 	if options.size() <= 1:
 		var payment: Array = [] if options.is_empty() else (options[0] as Dictionary)["value"] as Array
 		_complete_retreat(slot, payment)
@@ -373,6 +379,27 @@ func _promote(index: int, slot: int) -> void:
 	side.active = side.bench.pop_at(slot) as CardInPlay
 	_log("Player %d promotes %s" % [index + 1, side.active.card.name])
 
+# --- Effective costs --------------------------------------------------------------------
+# Legality reads these, never a printed cost (Design Document 5). Today each returns the
+# printed cost; the continuous-effects layer will change them (Mewers Live, Cyber City,
+# Showtime!).
+
+## The Energy an attack costs this Darkner now.
+func attack_cost(_attacker: CardInPlay, attack: AttackData) -> Array[String]:
+	return attack.cost.duplicate()
+
+
+## The Energy fleeing costs this Darkner now, one Colorless per unit.
+func retreat_cost(pokemon: CardInPlay) -> Array[String]:
+	var cost: Array[String] = []
+	for _i in pokemon.card.retreat_cost:
+		cost.append(CardTypes.COLORLESS)
+	return cost
+
+
+## The TP, in quarters, casting this Spell costs now.
+func spell_cost(spell: CardData) -> int:
+	return spell.tp_cost
 
 # --- Mutations available to atomic effects ---------------------------------------------
 

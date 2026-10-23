@@ -21,6 +21,11 @@ var random_first_player: bool = false
 var deck_size: int = 0
 ## Copies of one card allowed per deck, Energy excepted. 0 means no limit.
 var max_copies: int = 0
+## Most TP a player can hold, in quarters (Design Document 5). 0 means the rules have no TP.
+var tp_max: int = 0
+## TP recovered at the end of a turn in which the player attacked, in quarters. A player who
+## passes recovers up to tp_max instead.
+var tp_recovery: int = 0
 
 
 ## The rules the WOTC build used. Only for the legacy test data.
@@ -35,6 +40,8 @@ static func legacy() -> MatchRules:
 	rules.random_first_player = false
 	rules.deck_size = 0
 	rules.max_copies = 0
+	rules.tp_max = 0
+	rules.tp_recovery = 0
 	return rules
 
 
@@ -50,6 +57,8 @@ static func deltarune() -> MatchRules:
 	rules.random_first_player = true
 	rules.deck_size = 50
 	rules.max_copies = 4
+	rules.tp_max = 4
+	rules.tp_recovery = 1
 	return rules
 
 
@@ -65,4 +74,6 @@ func with_prize_count(count: int) -> MatchRules:
 	copy.random_first_player = random_first_player
 	copy.deck_size = deck_size
 	copy.max_copies = max_copies
+	copy.tp_max = tp_max
+	copy.tp_recovery = tp_recovery
 	return copy

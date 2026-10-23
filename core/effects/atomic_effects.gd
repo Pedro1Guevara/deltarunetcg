@@ -193,7 +193,7 @@ static func _count_units(pool: Array[String], energy_type: String) -> int:
 ## Colorless with other types first so as much of the given type as possible is left.
 static func _count_unpaid_units(context: EffectContext, energy_type: String) -> int:
 	var pool := context.source.energy_pool()
-	var colorless_needed := EnergyPayment.pay_typed(pool, context.attack.cost)
+	var colorless_needed := EnergyPayment.pay_typed(pool, context.engine.attack_cost(context.source, context.attack))
 	if colorless_needed == -1:
 		return 0
 

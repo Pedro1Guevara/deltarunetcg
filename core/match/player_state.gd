@@ -14,6 +14,8 @@ var retreated_this_turn := false
 var turns_started: int = 0
 ## Mulligans taken during setup. Public information, as at the table.
 var mulligans: int = 0
+## TP in quarters: 0 is 0%, 4 is 100% (Design Document 5). Every round starts at 0.
+var tp: int = 0
 
 func reset_turn_flags() -> void:
 	energy_attached_this_turn = false

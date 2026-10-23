@@ -238,8 +238,8 @@ func _fill_player_panel(index: int) -> void:
 	if not _engine.is_over() and actor == index:
 		header += "   <- to act"
 	_add_text(panel, header)
-	_add_text(panel, "Mercy Cards left: %d   Deck: %d   Discard: %d   Hand: %d" % [
-		player.prizes.size(), player.deck.size(), player.discard.size(), player.hand.size(),
+	_add_text(panel, "TP: %d%%   Mercy Cards left: %d   Deck: %d   Discard: %d   Hand: %d" % [
+		player.tp * 25, player.prizes.size(), player.deck.size(), player.discard.size(), player.hand.size(),
 	])
 
 	var battle_zone := HBoxContainer.new()
