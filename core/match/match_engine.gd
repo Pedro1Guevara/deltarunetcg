@@ -145,13 +145,6 @@ func legal_actions() -> Array[Dictionary]:
 					"slot": slot,
 					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, _slot_name(slot)],
 				})
-			for slot in player.bench.size():
-				actions.append({
-					"type": "attach",
-					"hand_index": hand_index,
-					"slot": slot,
-					"label": "Attach %s to %s (Field %d)" % [card.name, player.bench[slot].card.name, slot + 1],
-				})
 
 	var offered_evolutions := {}
 	for hand_index in player.hand.size():
@@ -174,7 +167,7 @@ func legal_actions() -> Array[Dictionary]:
 			actions.append({
 				"type": "retreat",
 				"slot": slot,
-				"label": "Flee %s for %s" % [player.active.card.name, player.bench[slot].card.name],
+				"label": "Flee %s for %s (%s)" % [player.active.card.name, player.bench[slot].card.name, _slot_name(slot)],
 			})
 
 	if player.active != null and opponent.active != null and _attacks_allowed():
@@ -209,8 +202,7 @@ func apply(action: Dictionary) -> void:
 		"attack":
 			_do_attack(int(action["attack_index"]))
 		"end_turn":
-			_log("Player %d ends the turn" % (current_index + 1))
-			_begin_turn()
+			_end_turn(false)
 		"choose":
 			_do_choose(int(action["option"]))
 
@@ -357,7 +349,16 @@ func _place_active(index: int, card: CardData) -> void:
 	player.active = CardInPlay.new(card, 0)
 	_log("Player %d starts with %s" % [index + 1, card.name])
 
+## The only way a turn ends: the player ends it without attacking (passing), or attacks and
+## every knocked out Darkner has been replaced. What happens at the end of every turn goes
+## here, such as TP recovery (Design Document 5). Then the opponent's turn begins.
+func _end_turn(attacked: bool) -> void:
+	if not attacked:
+		_log("Player %d ends the turn" % (current_index + 1))
+	_begin_turn()
 
+
+## Starts the next player's turn. Called by _end_turn() and once when setup finishes.
 func _begin_turn() -> void:
 	current_index = _opponent_index()
 	turn += 1
@@ -497,7 +498,7 @@ func _do_choose(option: int) -> void:
 			_promotion_queue.pop_front()
 			if _advance_promotions() and _turn_ends_after_promotions:
 				_turn_ends_after_promotions = false
-				_begin_turn()
+				_end_turn(true)
 		"retreat":
 			_complete_retreat(int((choice["data"] as Dictionary)["slot"]), picked["value"] as Array)
 
@@ -508,7 +509,7 @@ func _finish_attack() -> void:
 		return
 	# Attacking passes priority, once every knocked out Pokemon has been replaced.
 	if _advance_promotions():
-		_begin_turn()
+		_end_turn(true)
 	else:
 		_turn_ends_after_promotions = true
 

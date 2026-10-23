@@ -126,7 +126,17 @@ func _run() -> void:
 	expect(attack(ko, "Showtime!"), "Showtime! is legal with 5 Fun")
 	expect(ko.players[taker].prizes.size() == 3, "a knockout takes 1 Mercy Card (4 -> 3)")
 	expect(not ko.is_over(), "the round goes on while the loser has a Darkner on the Field")
+	expect(ko.turn == 3 and ko.current_index != taker, "the attack ends the turn")
 
+	var promotion := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+	promotion.opponent_player().bench.append(in_play("guei", []))
+	promotion.opponent_player().bench.append(in_play("tenna", []))
+	var promoter := 1 - promotion.current_index
+	attack(promotion, "Showtime!")
+	expect(promotion.is_waiting_for_choice() and promotion.choice_chooser() == promoter and promotion.turn == 2, "with two Darkners on the Field the loser chooses, and the turn waits")
+	promotion.apply(promotion.legal_actions()[0])
+	expect(promotion.turn == 3 and promotion.current_index == promoter, "the turn ends once the new Battling Darkner is chosen")
+	
 	var double_rules := MatchRules.deltarune()
 	double_rules.prizes_per_knockout = 2
 	var double := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
