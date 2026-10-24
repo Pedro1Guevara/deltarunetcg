@@ -51,7 +51,7 @@ func labels_distinct(actions: Array[Dictionary]) -> bool:
 	return true
 
 ## A fresh copy of each card id, in order.
-func energies(ids: Array) -> Array[CardData]:
+func cards(ids: Array) -> Array[CardData]:
 	var out: Array[CardData] = []
 	for id: String in ids:
 		out.append(db.make(id))
@@ -61,5 +61,5 @@ func energies(ids: Array) -> Array[CardData]:
 ## A card in play, entered on turn 0, with the given Energy attached.
 func in_play(id: String, attached: Array) -> CardInPlay:
 	var card := CardInPlay.new(db.make(id), 0)
-	card.attached_energy.assign(energies(attached))
+	card.attached_energy.assign(cards(attached))
 	return card

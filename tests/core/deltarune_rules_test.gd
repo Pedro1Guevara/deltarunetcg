@@ -42,6 +42,20 @@ func has_action(engine: MatchEngine, type: String) -> bool:
 			return true
 	return false
 
+func has_label(engine: MatchEngine, label: String) -> bool:
+	for action in engine.legal_actions():
+		if action["label"] == label:
+			return true
+	return false
+
+
+## Applies the legal action with this label. False when there is none.
+func play(engine: MatchEngine, label: String) -> bool:
+	for action in engine.legal_actions():
+		if action["label"] == label:
+			engine.apply(action)
+			return true
+	return false
 
 func attack(engine: MatchEngine, name: String) -> bool:
 	for action in engine.legal_actions():
@@ -117,6 +131,45 @@ func _run() -> void:
 	var flee_jevil := in_play("jevil", [])
 	expect(tp_attack.retreat_cost(flee_jevil).size() == flee_jevil.card.retreat_cost, "the effective Flee cost is the printed one until continuous effects exist")
 
+	print("== ACT cards")
+	var items := battle("jevil", [], "guei")
+	var item_player := items.current_player()
+	item_player.hand.append_array(cards(["petal_feather", "petal_feather"]))
+	expect(play(items, "Play Petal Feather (Item)"), "an Item can be played")
+	expect(play(items, "Play Petal Feather (Item)"), "Items have no per-turn limit")
+	expect(item_player.discard.size() == 2, "a played Item goes to the discard pile")
+
+	var first_lightner := start_round(rules, 2)
+	finish_setup(first_lightner)
+	first_lightner.current_player().hand.append_array(cards(["kris", "kris"]))
+	expect(not has_label(first_lightner, "Play Kris (Lightner)"), "the first player cannot play a Lightner on turn 1")
+	first_lightner.apply({"type": "end_turn", "label": "End turn"})
+	first_lightner.current_player().hand.append_array(cards(["kris", "kris"]))
+	expect(play(first_lightner, "Play Kris (Lightner)"), "the second player can play a Lightner on turn 2")
+	expect(not has_label(first_lightner, "Play Kris (Lightner)"), "one Lightner per turn")
+
+	var areas := battle("jevil", [], "guei")
+	var area_owner := areas.current_index
+	areas.current_player().hand.append_array(cards(["cyber_city", "cyber_city", "mewers_live"]))
+	expect(play(areas, "Play Cyber City (Area)"), "an Area can be played")
+	expect(areas.stadium.name == "Cyber City" and areas.stadium_owner == area_owner, "the Area takes the shared slot")
+	expect(not has_label(areas, "Play Mewers Live (Area)"), "one Area per turn")
+	areas.apply({"type": "end_turn", "label": "End turn"})
+	areas.current_player().hand.append_array(cards(["cyber_city", "mewers_live"]))
+	expect(not has_label(areas, "Play Cyber City (Area)"), "an Area with the name of the one in play cannot be played")
+	expect(play(areas, "Play Mewers Live (Area)"), "the opponent can replace the Area")
+	expect(areas.stadium.name == "Mewers Live" and areas.players[area_owner].discard.back().name == "Cyber City", "the replaced Area goes to its owner's discard pile")
+
+	var spells := battle("jevil", [], "guei")
+	var caster := spells.current_player()
+	caster.hand.append_array(cards(["rude_buster"]))
+	caster.tp = 0
+	expect(not has_label(spells, "Cast Rude Buster (25% TP)"), "a Spell needs its TP")
+	caster.tp = 1
+	expect(play(spells, "Cast Rude Buster (25% TP)"), "a Spell is cast with enough TP")
+	expect(caster.tp == 0 and caster.discard.back().name == "Rude Buster", "casting pays the TP and discards the Spell")
+	
+	
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()
@@ -141,7 +194,7 @@ func _run() -> void:
 	expect(EnergyPayment.can_pay(pool, ["Chaos", "Colorless", "Colorless"]), "2 Chaos + 2 Colorless units pay Chaos + 2 Colorless")
 	expect(not EnergyPayment.can_pay(pool, ["Chaos", "Chaos", "Chaos"]), "Colorless units never pay a typed requirement")
 	expect(pool.size() == 4, "can_pay leaves the pool unchanged")
-	var three_chaos := energies(["chaos_energy", "chaos_energy", "chaos_energy"])
+	var three_chaos := cards(["chaos_energy", "chaos_energy", "chaos_energy"])
 	var flee_two := EnergyPayment.discard_options(three_chaos, 2)
 	expect(flee_two.size() == 1 and str(flee_two[0]["label"]) == "Discard Chaos Energy + Chaos Energy", "copies are one option, with no card to spare")
 	expect(EnergyPayment.discard_options(three_chaos, 0).is_empty(), "nothing owed: no options")
@@ -202,10 +255,10 @@ func _run() -> void:
 	expect(not legacy_out.is_over() and legacy_out.players[1 - legacy_drawer].prizes.size() == legacy_prizes - 1, "legacy rules: deck-out costs a prize instead")
 
 	print("== legal actions")
-	# Random play with two kinds of deck: the mixed test deck, and one Darkner in four copies,
-	# which fills the Field with identical Darkners.
+	# Random play with two kinds of deck: Darkners with ACT cards of every subtype, and one
+	# Darkner in four copies, which fills the Field with identical Darkners.
 	var picker := RandomNumberGenerator.new()
-	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "chaos_energy": 18}
+	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "chaos_energy": 10, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1}
 	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0

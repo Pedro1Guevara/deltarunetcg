@@ -12,8 +12,13 @@ var winner: int = NO_WINNER
 var events: Array[String] = []
 ## The rules of the round being played. Set by start().
 var rules: MatchRules
-## Card effects (Design Document 7). Null means every attack resolves as its printed damage.
+## Null means every attack resolves as its printed damage.
 var effects: EffectLibrary = null
+
+## The Area in play, or null. One slot shared by both players (Design Document 4.0).
+var stadium: CardData = null
+## The player who put the Area into play, or -1. It goes to their discard pile when replaced.
+var stadium_owner: int = -1
 
 var _rng: Rng
 ## The open question, or null: the coin call, an Active Pokemon or the bench at setup, a
@@ -32,6 +37,8 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	events.clear()
 	winner = NO_WINNER
 	turn = 0
+	stadium = null
+	stadium_owner = -1
 	_pending = null
 	_promotion_queue.clear()
 	_turn_ends_after_promotions = false
@@ -108,6 +115,12 @@ func legal_actions() -> Array[Dictionary]:
 					"slot": slot,
 					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, _slot_name(slot)],
 				})
+		elif card.is_trainer() and _can_play_trainer(player, card):
+			actions.append({
+				"type": "play_trainer",
+				"hand_index": hand_index,
+				"label": _trainer_label(card),
+			})
 
 	var offered_evolutions := {}
 	for hand_index in player.hand.size():
@@ -160,6 +173,8 @@ func apply(action: Dictionary) -> void:
 			_do_attach(int(action["hand_index"]), int(action["slot"]))
 		"evolve":
 			_do_evolve(int(action["hand_index"]), int(action["slot"]))
+		"play_trainer":
+			_do_play_trainer(int(action["hand_index"]))
 		"retreat":
 			_do_retreat(int(action["slot"]))
 		"attack":
@@ -260,6 +275,68 @@ func _do_attach(hand_index: int, slot: int) -> void:
 	player.energy_attached_this_turn = true
 	_log("Player %d attaches %s to %s" % [current_index + 1, energy.name, target.card.name])
 
+
+## Trainer cards are played freely; one Supporter per turn, never on the
+## first player's first turn; one Stadium per turn, never one with the name of the Stadium in play;
+## Spells while the player has the TP. A Trainer with no ACT subtype (legacy data) is not
+## playable.
+func _can_play_trainer(player: PlayerState, card: CardData) -> bool:
+	match card.trainer_type:
+		CardData.TRAINER_ITEM:
+			return true
+		CardData.TRAINER_SUPPORTER:
+			return not player.supporter_played_this_turn and _supporters_allowed()
+		CardData.TRAINER_STADIUM:
+			return not player.stadium_played_this_turn and (stadium == null or stadium.name != card.name)
+		CardData.TRAINER_SPELL:
+			return player.tp >= spell_cost(card)
+	return false
+
+
+## The player going first cannot play a Supporter
+## on their first turn, which is always turn 1.
+func _supporters_allowed() -> bool:
+	return rules.first_player_can_play_supporter or turn > 1
+
+
+func _trainer_label(card: CardData) -> String:
+	match card.trainer_type:
+		CardData.TRAINER_SUPPORTER:
+			return "Play %s (Lightner)" % card.name
+		CardData.TRAINER_STADIUM:
+			return "Play %s (Area)" % card.name
+		CardData.TRAINER_SPELL:
+			return "Cast %s (%d%% TP)" % [card.name, spell_cost(card) * 25]
+	return "Play %s (Item)" % card.name
+
+
+## Plays a Trainer card from hand. An Stadium stays in the shared slot and sends the one it replaces
+## to its owner's discard pile; every other Trainer card is discarded after it resolves. Effects
+## are not resolved yet.
+func _do_play_trainer(hand_index: int) -> void:
+	var player := current_player()
+	var card := player.hand.pop_at(hand_index) as CardData
+	match card.trainer_type:
+		CardData.TRAINER_SPELL:
+			var cost := spell_cost(card)
+			player.tp -= cost
+			_log("Player %d casts %s for %d%% TP (%d%% left)" % [current_index + 1, card.name, cost * 25, player.tp * 25])
+		CardData.TRAINER_SUPPORTER:
+			player.supporter_played_this_turn = true
+			_log("Player %d plays %s" % [current_index + 1, card.name])
+		CardData.TRAINER_STADIUM:
+			player.stadium_played_this_turn = true
+			if stadium != null:
+				players[stadium_owner].discard.append(stadium)
+				_log("%s is discarded" % stadium.name)
+			stadium = card
+			stadium_owner = current_index
+			_log("Player %d puts %s into play" % [current_index + 1, card.name])
+		_:
+			_log("Player %d plays %s" % [current_index + 1, card.name])
+	_log("  [effect not implemented]")
+	if card.trainer_type != CardData.TRAINER_STADIUM:
+		player.discard.append(card)
 
 func _do_retreat(slot: int) -> void:
 	var retreating := current_player().active

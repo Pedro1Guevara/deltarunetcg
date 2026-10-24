@@ -15,6 +15,8 @@ var prizes_per_knockout: int = 0
 var deck_out_loses: bool = false
 ## Whether the player going first may attack on their first turn.
 var first_player_can_attack: bool = false
+## Whether the player going first may play a Lightner (Supporter) on their first turn.
+var first_player_can_play_supporter: bool = false
 ## True: a coin flip decides who goes first. False: player 1 always goes first.
 var random_first_player: bool = false
 ## Required deck size. 0 means any size.
@@ -28,6 +30,7 @@ var tp_max: int = 0
 var tp_recovery: int = 0
 
 
+
 ## The rules the WOTC build used. Only for the legacy test data.
 static func legacy() -> MatchRules:
 	var rules := MatchRules.new()
@@ -37,6 +40,7 @@ static func legacy() -> MatchRules:
 	rules.prizes_per_knockout = 1
 	rules.deck_out_loses = false
 	rules.first_player_can_attack = true
+	rules.first_player_can_play_supporter = true
 	rules.random_first_player = false
 	rules.deck_size = 0
 	rules.max_copies = 0
@@ -54,6 +58,7 @@ static func deltarune() -> MatchRules:
 	rules.prizes_per_knockout = 1
 	rules.deck_out_loses = true
 	rules.first_player_can_attack = false
+	rules.first_player_can_play_supporter = false
 	rules.random_first_player = true
 	rules.deck_size = 50
 	rules.max_copies = 4
@@ -71,6 +76,7 @@ func with_prize_count(count: int) -> MatchRules:
 	copy.prizes_per_knockout = prizes_per_knockout
 	copy.deck_out_loses = deck_out_loses
 	copy.first_player_can_attack = first_player_can_attack
+	copy.first_player_can_play_supporter = first_player_can_play_supporter
 	copy.random_first_player = random_first_player
 	copy.deck_size = deck_size
 	copy.max_copies = max_copies

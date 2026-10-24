@@ -149,6 +149,9 @@ func _refresh() -> void:
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
 
+	if _engine.stadium != null:
+		_status_label.text += "  |  Area: %s (Player %d)" % [_engine.stadium.name, _engine.stadium_owner + 1]
+	
 	for index in 2:
 		_fill_player_panel(index)
 

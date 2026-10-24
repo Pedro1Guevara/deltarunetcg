@@ -60,7 +60,7 @@ func _run() -> void:
 	ctx.player = r.players[0]; ctx.opponent = r.players[1]; ctx.attack = ctx.source.card.attacks[1]
 	var resolver := EffectResolver.new(lib, ctx)
 	expect(not resolver.requirements_met("discard_energy_cards_then_damage", {"energy_type": "Fire", "count": 1}), "requirement fails without Fire Energy")
-	r.players[0].active.attached_energy.assign(energies([F]))
+	r.players[0].active.attached_energy.assign(cards([F]))
 	expect(resolver.requirements_met("discard_energy_cards_then_damage", {"energy_type": "Fire", "count": 1}), "requirement passes with one Fire Energy")
 	expect(not resolver.requirements_met("discard_energy_cards_then_damage", {"energy_type": "Fire", "count": 2}), "requirement fails asking for two")
 

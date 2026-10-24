@@ -10,6 +10,8 @@ var active: CardInPlay = null
 var bench: Array[CardInPlay] = []
 var energy_attached_this_turn := false
 var retreated_this_turn := false
+var supporter_played_this_turn := false
+var stadium_played_this_turn := false
 ## Turns this player has started. Evolution is not allowed during a player's first turn.
 var turns_started: int = 0
 ## Mulligans taken during setup. Public information, as at the table.
@@ -20,6 +22,8 @@ var tp: int = 0
 func reset_turn_flags() -> void:
 	energy_attached_this_turn = false
 	retreated_this_turn = false
+	supporter_played_this_turn = false
+	stadium_played_this_turn = false
 
 
 func draw_card() -> bool:
