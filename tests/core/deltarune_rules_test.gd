@@ -1,10 +1,12 @@
 ## Headless checks for the round rules of Deltarune TCG (Design Document 4). Run from the
 ## project root:
-##   godot --headless --path . --script res://tests/deltarune_rules_test.gd
+##   godot --headless --path . --script res://tests/core/deltarune_rules_test.gd
 ## Exits with code 0 when every check passes.
 extends TestCase
 
 const SEEDS := 40
+
+var library: EffectLibrary
 
 
 func deck(counts: Dictionary) -> Array[CardData]:
@@ -17,6 +19,7 @@ func test_deck() -> Array[CardData]:
 
 func start_round(rules: MatchRules, seed: int) -> MatchEngine:
 	var engine := MatchEngine.new()
+	engine.effects = library
 	engine.start(test_deck(), test_deck(), rules, Rng.new(seed))
 	return engine
 
@@ -42,6 +45,7 @@ func has_action(engine: MatchEngine, type: String) -> bool:
 			return true
 	return false
 
+
 func has_label(engine: MatchEngine, label: String) -> bool:
 	for action in engine.legal_actions():
 		if action["label"] == label:
@@ -57,6 +61,7 @@ func play(engine: MatchEngine, label: String) -> bool:
 			return true
 	return false
 
+
 func attack(engine: MatchEngine, name: String) -> bool:
 	for action in engine.legal_actions():
 		if action["type"] == "attack" and str(action["label"]).begins_with("Attack: %s " % name):
@@ -67,6 +72,7 @@ func attack(engine: MatchEngine, name: String) -> bool:
 
 func _run() -> void:
 	db = DataLoader.load_card_database()
+	library = DataLoader.load_effect_library(db, DataLoader.CARD_EFFECTS_PATH)
 	var rules := MatchRules.deltarune()
 
 	print("== setup")
@@ -134,9 +140,9 @@ func _run() -> void:
 	print("== ACT cards")
 	var items := battle("jevil", [], "guei")
 	var item_player := items.current_player()
-	item_player.hand.append_array(cards(["petal_feather", "petal_feather"]))
-	expect(play(items, "Play Petal Feather (Item)"), "an Item can be played")
-	expect(play(items, "Play Petal Feather (Item)"), "Items have no per-turn limit")
+	item_player.hand.append_array(cards(["glowshard", "glowshard"]))
+	expect(play(items, "Play Glowshard (Item)"), "an Item can be played")
+	expect(play(items, "Play Glowshard (Item)"), "Items have no per-turn limit")
 	expect(item_player.discard.size() == 2, "a played Item goes to the discard pile")
 
 	var first_lightner := start_round(rules, 2)
@@ -168,8 +174,40 @@ func _run() -> void:
 	caster.tp = 1
 	expect(play(spells, "Cast Rude Buster (25% TP)"), "a Spell is cast with enough TP")
 	expect(caster.tp == 0 and caster.discard.back().name == "Rude Buster", "casting pays the TP and discards the Spell")
-	
-	
+
+	print("== ACT card effects")
+	var feather := battle("jevil", [], "guei")
+	var feather_player := feather.current_player()
+	feather_player.hand.append_array(cards(["petal_feather"]))
+	expect(not has_label(feather, "Play Petal Feather (Item)"), "Petal Feather cannot be played with nothing on your Field")
+	feather_player.bench.append(in_play("guei", []))
+	feather_player.bench.append(in_play("tenna", []))
+	expect(play(feather, "Play Petal Feather (Item)"), "Petal Feather can be played with Darkners on your Field")
+	expect(feather.is_waiting_for_choice() and feather.choice_chooser() == feather.current_index, "the player chooses which Darkner to switch in")
+	expect(feather.resolving_trainer.name == "Petal Feather" and not feather_player.hand.any(func(card: CardData) -> bool: return card.name == "Petal Feather") and feather_player.discard.is_empty(), "while it resolves, the card is beside the Battle Zone: in neither the hand nor the discard pile")
+	expect(play(feather, "Switch in Tenna (Field 2)"), "every Darkner on the Field is an option")
+	expect(feather_player.active.card.name == "Tenna" and feather_player.bench[1].card.name == "Jevil", "the two Darkners trade places")
+	expect(not feather_player.retreated_this_turn and feather_player.discard.back().name == "Petal Feather" and feather.resolving_trainer == null, "it is not a Flee, and the card is discarded once resolved")
+
+	var gust := battle("jevil", [], "guei")
+	var gust_player := gust.current_index
+	gust.current_player().hand.append_array(cards(["susie"]))
+	expect(not has_label(gust, "Play Susie (Lightner)"), "Susie cannot be played with nothing on the opponent's Field")
+	gust.opponent_player().bench.append(in_play("jevil", []))
+	gust.opponent_player().bench.append(in_play("tenna", []))
+	expect(play(gust, "Play Susie (Lightner)"), "Susie can be played with Darkners on the opponent's Field")
+	expect(gust.choice_chooser() == gust_player, "the player of Susie chooses, not the opponent")
+	play(gust, "Switch in Tenna (Field 2)")
+	expect(gust.opponent_player().active.card.name == "Tenna", "the chosen Darkner is the opponent's new Battling Darkner")
+
+	var shuffle := battle("jevil", [], "guei")
+	var shuffler := shuffle.current_player()
+	shuffler.hand.append_array(cards(["kris", "chaos_energy", "chaos_energy"]))
+	var cards_before := shuffler.hand.size() + shuffler.deck.size()
+	expect(play(shuffle, "Play Kris (Lightner)"), "Kris can be played")
+	expect(shuffler.hand.size() == 6, "Kris: the hand is shuffled into the deck and 6 cards are drawn")
+	expect(shuffler.hand.size() + shuffler.deck.size() == cards_before - 1 and shuffler.discard.back().name == "Kris", "no card is lost; Kris itself is discarded")
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()
@@ -198,7 +236,7 @@ func _run() -> void:
 	var flee_two := EnergyPayment.discard_options(three_chaos, 2)
 	expect(flee_two.size() == 1 and str(flee_two[0]["label"]) == "Discard Chaos Energy + Chaos Energy", "copies are one option, with no card to spare")
 	expect(EnergyPayment.discard_options(three_chaos, 0).is_empty(), "nothing owed: no options")
-	
+
 	print("== knockouts and Mercy Cards")
 	var ko := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
 	ko.opponent_player().bench.append(in_play("guei", []))
@@ -266,6 +304,7 @@ func _run() -> void:
 		picker.seed = seed
 		var counts: Dictionary = same_darkner if seed % 2 == 1 else mixed
 		var game := MatchEngine.new()
+		game.effects = library
 		game.start(deck(counts), deck(counts), rules, Rng.new(seed))
 		for _step in 400:
 			if game.is_over():

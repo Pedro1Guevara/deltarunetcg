@@ -12,6 +12,10 @@ func _run() -> void:
 	expect(db.warnings.is_empty(), "no translation warnings: %s" % [db.warnings])
 	expect(db.card_count() == 30, "30 cards loaded (%d)" % db.card_count())
 
+	var library := DataLoader.load_effect_library(db, DataLoader.CARD_EFFECTS_PATH)
+	expect(library.errors.is_empty(), "no card effect errors: %s" % [library.errors])
+	expect(library.valid_binding_count() == 3, "3 card effect entries in use (%d)" % library.valid_binding_count())
+	
 	print("== darkner")
 	var jevil := db.make("jevil")
 	expect(jevil.category == CardData.CATEGORY_POKEMON, "darkner -> Pokemon")

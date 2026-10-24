@@ -146,5 +146,30 @@
       {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
       {"call": "draw", "args": {"count": "$count"}, "when": {"value": "$heads", "eq": 1}}
     ]
+  },
+  "switch_own_active": {
+    "params": {},
+    "requires": [
+      {"check": "has_benched", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "switch_in", "args": {"player": "$player", "chooser": "$player"}}
+    ]
+  },
+  "switch_opponent_active": {
+    "params": {},
+    "requires": [
+      {"check": "has_benched", "args": {"player": "$opponent", "count": 1}}
+    ],
+    "steps": [
+      {"call": "switch_in", "args": {"player": "$opponent", "chooser": "$player"}}
+    ]
+  },
+  "shuffle_hand_then_draw": {
+    "params": { "count": "int" },
+    "steps": [
+      {"call": "shuffle_hand_into_deck", "args": {"player": "$player"}},
+      {"call": "draw", "args": {"count": "$count"}}
+    ]
   }
 }

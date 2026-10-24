@@ -20,6 +20,9 @@ var opponent: PlayerState
 ## The attack being resolved. Null unless kind is attack.
 var attack: AttackData
 
+## The Trainercard being played. Null unless kind is trainer.
+var card: CardData
+
 ## The open question, or empty:
 ## {"chooser": PlayerState, "prompt": String, "options": [{"label": String, "value": Variant}]}.
 var choice: Dictionary = {}

@@ -1,1 +1,11 @@
-{}
+{
+  "petal_feather": {
+    "trainer": {"function": "switch_own_active", "args": {}}
+  },
+  "susie": {
+    "trainer": {"function": "switch_opponent_active", "args": {}}
+  },
+  "kris": {
+    "trainer": {"function": "shuffle_hand_then_draw", "args": {"count": 6}}
+  }
+}

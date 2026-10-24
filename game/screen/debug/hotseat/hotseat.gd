@@ -148,9 +148,10 @@ func _refresh() -> void:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, _engine.choice_prompt()]
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
-
 	if _engine.stadium != null:
 		_status_label.text += "  |  Area: %s (Player %d)" % [_engine.stadium.name, _engine.stadium_owner + 1]
+	if _engine.resolving_trainer != null:
+		_status_label.text += "  |  Playing: %s" % _engine.resolving_trainer.name
 	
 	for index in 2:
 		_fill_player_panel(index)

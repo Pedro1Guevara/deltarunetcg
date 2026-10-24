@@ -19,6 +19,9 @@ var effects: EffectLibrary = null
 var stadium: CardData = null
 ## The player who put the Area into play, or -1. It goes to their discard pile when replaced.
 var stadium_owner: int = -1
+## The Trainer card the current player is playing, or null. It sits beside the Battle Zone until
+## its effect has resolved: it is in neither the hand nor the discard pile meanwhile.
+var resolving_trainer: CardData = null
 
 var _rng: Rng
 ## The open question, or null: the coin call, an Active Pokemon or the bench at setup, a
@@ -39,6 +42,7 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	turn = 0
 	stadium = null
 	stadium_owner = -1
+	resolving_trainer = null
 	_pending = null
 	_promotion_queue.clear()
 	_turn_ends_after_promotions = false
@@ -113,7 +117,7 @@ func legal_actions() -> Array[Dictionary]:
 					"type": "attach",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, _slot_name(slot)],
+					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, slot_name(slot)],
 				})
 		elif card.is_trainer() and _can_play_trainer(player, card):
 			actions.append({
@@ -135,7 +139,7 @@ func legal_actions() -> Array[Dictionary]:
 					"type": "evolve",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, _slot_name(slot)],
+					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, slot_name(slot)],
 				})
 
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(retreat_cost(player.active)):
@@ -143,7 +147,7 @@ func legal_actions() -> Array[Dictionary]:
 			actions.append({
 				"type": "retreat",
 				"slot": slot,
-				"label": "Flee %s for %s (%s)" % [player.active.card.name, player.bench[slot].card.name, _slot_name(slot)],
+				"label": "Flee %s for %s (%s)" % [player.active.card.name, player.bench[slot].card.name, slot_name(slot)],
 			})
 
 	if player.active != null and opponent.active != null and _attacks_allowed():
@@ -281,16 +285,18 @@ func _do_attach(hand_index: int, slot: int) -> void:
 ## Spells while the player has the TP. A Trainer with no ACT subtype (legacy data) is not
 ## playable.
 func _can_play_trainer(player: PlayerState, card: CardData) -> bool:
+	var allowed := false
 	match card.trainer_type:
 		CardData.TRAINER_ITEM:
-			return true
+			allowed = true
 		CardData.TRAINER_SUPPORTER:
-			return not player.supporter_played_this_turn and _supporters_allowed()
+			allowed = not player.supporter_played_this_turn and _supporters_allowed()
 		CardData.TRAINER_STADIUM:
-			return not player.stadium_played_this_turn and (stadium == null or stadium.name != card.name)
+			allowed = not player.stadium_played_this_turn and (stadium == null or stadium.name != card.name)
 		CardData.TRAINER_SPELL:
-			return player.tp >= spell_cost(card)
-	return false
+			allowed = player.tp >= spell_cost(card)
+	# A card that is known to have no effect cannot be played.
+	return allowed and _trainer_requirements_met(card)
 
 
 ## The player going first cannot play a Supporter
@@ -334,9 +340,32 @@ func _do_play_trainer(hand_index: int) -> void:
 			_log("Player %d puts %s into play" % [current_index + 1, card.name])
 		_:
 			_log("Player %d plays %s" % [current_index + 1, card.name])
-	_log("  [effect not implemented]")
+	_resolve_trainer(card)
+
+## Resolves the effect bound to a Trainer card, then finishes the card. Resolution may stop for a
+## choice; _finish_effect() finishes the card once it is answered.
+func _resolve_trainer(card: CardData) -> void:
+	resolving_trainer = card
+	var binding := _trainer_binding(card)
+	if binding.is_empty():
+		_log("  [effect not implemented]")
+		_finish_trainer(card)
+		return
+	var context := _trainer_context(card)
+	var resolver := EffectResolver.new(effects, context)
+	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+		_finish_trainer(card)
+	else:
+		_pending = _effect_choice(resolver, context)
+
+
+## Once its effect has resolved, a Stadiumstays in the shared slot and every other Trainer card
+## goes to the discard pile.
+func _finish_trainer(card: CardData) -> void:
+	resolving_trainer = null
 	if card.trainer_type != CardData.TRAINER_STADIUM:
-		player.discard.append(card)
+		current_player().discard.append(card)
+
 
 func _do_retreat(slot: int) -> void:
 	var retreating := current_player().active
@@ -382,6 +411,12 @@ func _do_attack(attack_index: int) -> void:
 	else:
 		_pending = _effect_choice(resolver, context)
 
+## Continues the turn once a suspended effect has finished resolving.
+func _finish_effect(context: EffectContext) -> void:
+	if context.kind == EffectContext.KIND_TRAINER:
+		_finish_trainer(context.card)
+	else:
+		_finish_attack()
 
 ## Wraps the question a suspended effect is asking. The effect names who answers.
 func _effect_choice(resolver: EffectResolver, context: EffectContext) -> PendingChoice:
@@ -403,7 +438,7 @@ func _do_choose(option: int) -> void:
 		PendingChoice.RESUME_EFFECT:
 			choice.context.selection.append(picked["value"])
 			if choice.resolver.resume():
-				_finish_attack()
+				_finish_effect(choice.context)
 			else:
 				_pending = _effect_choice(choice.resolver, choice.context)
 		PendingChoice.RESUME_SETUP:
@@ -443,7 +478,7 @@ func _advance_promotions() -> bool:
 		for slot in side.bench.size():
 			var pokemon := side.bench[slot]
 			options.append({
-				"label": "Promote %s (%s, %d/%d HP)" % [pokemon.card.name, _slot_name(slot), pokemon.remaining_hp(), pokemon.card.hp],
+				"label": "Promote %s (%s, %d/%d HP)" % [pokemon.card.name, slot_name(slot), pokemon.remaining_hp(), pokemon.card.hp],
 				"value": slot,
 			})
 		_pending = PendingChoice.new(index, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
@@ -515,6 +550,25 @@ func discard_energy_cards(target: CardInPlay, cards: Array[CardData]) -> int:
 		_log("  %s discards %s" % [target.card.name, energy.name])
 	return discarded
 
+## Swaps a player's Active Pokémon with the Pokémon at a Bench slot. It is not a Retreat: no
+## cost is paid and the once-per-turn Retreat is still available.
+func switch_in(player: PlayerState, slot: int) -> void:
+	var leaving := player.active
+	player.active = player.bench[slot]
+	player.bench[slot] = leaving
+	_log("  Player %d switches %s into the Battle Zone; %s goes to the Field" % [
+		players.find(player) + 1, player.active.card.name, leaving.card.name,
+	])
+
+
+## Shuffles a player's hand into their deck. Returns how many cards the hand held.
+func shuffle_hand_into_deck(player: PlayerState) -> int:
+	var count := player.hand.size()
+	player.deck.append_array(player.hand)
+	player.hand.clear()
+	_rng.shuffle(player.deck)
+	_log("  Player %d shuffles %d card%s from their hand into their deck" % [players.find(player) + 1, count, "" if count == 1 else "s"])
+	return count
 
 func draw_cards(player: PlayerState, count: int) -> int:
 	var drawn := 0
@@ -561,6 +615,30 @@ func _attack_binding(attack: AttackData) -> Dictionary:
 	if effects == null:
 		return {}
 	return effects.binding_for(current_player().active.card.id, EffectLibrary.SECTION_ATTACKS, attack.name)
+
+func _trainer_context(card: CardData) -> EffectContext:
+	var context := EffectContext.new()
+	context.engine = self
+	context.kind = EffectContext.KIND_TRAINER
+	context.card = card
+	context.defender = opponent_player().active
+	context.player = current_player()
+	context.opponent = opponent_player()
+	return context
+
+
+func _trainer_binding(card: CardData) -> Dictionary:
+	if effects == null:
+		return {}
+	return effects.binding_for(card.id, EffectLibrary.SECTION_TRAINER, card.name)
+
+
+func _trainer_requirements_met(card: CardData) -> bool:
+	var binding := _trainer_binding(card)
+	if binding.is_empty():
+		return true
+	var resolver := EffectResolver.new(effects, _trainer_context(card))
+	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
 
 ## Current standard rule (Design Document 4.2): the player going first cannot attack on
 ## their first turn. Turn 1 is always that turn, since start() resets the counter.
@@ -638,7 +716,7 @@ func _in_play_at(player: PlayerState, slot: int) -> CardInPlay:
 	return player.active if slot == -1 else player.bench[slot]
 
 
-func _slot_name(slot: int) -> String:
+static func slot_name(slot: int) -> String:
 	return "Battle Zone" if slot == -1 else "Field %d" % (slot + 1)
 
 func _opponent_index() -> int:

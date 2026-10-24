@@ -56,6 +56,15 @@ const DECLARATIONS := {
 	"min": {
 		"role": ROLE_EFFECT, "params": {"a": "int", "b": "int"}, "returns": "int", "attack_only": false,
 	},
+		"switch_in": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "chooser": "player"}, "returns": "int", "attack_only": false,
+	},
+	"shuffle_hand_into_deck": {
+		"role": ROLE_EFFECT, "params": {"player": "player"}, "returns": "int", "attack_only": false,
+	},
+	"has_benched": {
+		"role": ROLE_CHECK, "params": {"player": "player", "count": "int"}, "returns": "", "attack_only": false,
+	},
 	"has_attached_energy_cards": {
 		"role": ROLE_CHECK, "params": {"target": "pokemon", "energy_type": "energy_type_or_any", "count": "int"},
 		"returns": "", "attack_only": false,
@@ -124,12 +133,18 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 			return int(args["a"]) + int(args["b"])
 		"min":
 			return mini(int(args["a"]), int(args["b"]))
+		"switch_in":
+			return _switch_in(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
+		"shuffle_hand_into_deck":
+			return engine.shuffle_hand_into_deck(args["player"] as PlayerState)
 	push_error("AtomicEffects: '%s' is not an effect" % name)
 	return null
 
 
 static func check(name: String, _context: EffectContext, args: Dictionary) -> bool:
 	match name:
+		"has_benched":
+			return (args["player"] as PlayerState).bench.size() >= int(args["count"])
 		"has_attached_energy_cards":
 			var target := args["target"] as CardInPlay
 			return _matching_cards(target, str(args["energy_type"])).size() >= int(args["count"])
@@ -167,6 +182,24 @@ static func _discard_energy_cards(context: EffectContext, target: CardInPlay, en
 		cards.append(energy as CardData)
 	return context.engine.discard_energy_cards(target, cards)
 
+## chooser picks which Darkner on player's Field goes to the Battle Zone. A Field of one is
+## switched in without asking. Returns 1 when a Darkner was switched in, 0 otherwise.
+static func _switch_in(context: EffectContext, player: PlayerState, chooser: PlayerState) -> Variant:
+	if player.bench.is_empty() or player.active == null:
+		return 0
+	var slot := 0
+	if not context.selection.is_empty():
+		slot = int(context.selection[0])
+	elif player.bench.size() > 1:
+		var options: Array = []
+		for index in player.bench.size():
+			options.append({
+				"label": "Switch in %s (%s)" % [player.bench[index].card.name, MatchEngine.slot_name(index)],
+				"value": index,
+			})
+		return context.ask(chooser, "Choose the Darkner to switch into the Battle Zone", options)
+	context.engine.switch_in(player, slot)
+	return 1
 
 static func _matching_cards(target: CardInPlay, energy_type: String) -> Array[CardData]:
 	var result: Array[CardData] = []
