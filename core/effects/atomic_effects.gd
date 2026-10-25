@@ -236,22 +236,26 @@ static func _switch_in(context: EffectContext, player: PlayerState, chooser: Pla
 			options.append({
 				"label": "Switch in %s (%s)" % [player.bench[index].card.name, MatchEngine.slot_name(index)],
 				"value": index,
+				"shows": player.bench[index],
 			})
 		return context.ask(chooser, "Choose the Darkner to switch into the Battle Zone", options)
 	context.engine.switch_in(player, slot)
 	return 1
 
 ## player looks through their deck for up to count cards that match filters, puts them into
-## their hand and shuffles the deck. The deck is hidden, so a search may find nothing: when
-## nothing matches, or because the player chooses to stop (a null answer). Returns how many
+## their hand and shuffles the deck. The whole deck is shown while they choose, in its real
+## order with the top card first, since the search ends in a shuffle anyway. They are asked
+## even when nothing matches, so a search is also a look at the deck (Design Document 3.3).
+## The deck is hidden, so a search may find nothing: a null answer stops it. Returns how many
 ## cards were found.
 static func _search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
 	var found := context.selection
 	if found.size() < count and not found.has(null):
 		var options := _take_options(CardFilter.select(player.deck, filters, found))
-		if not options.is_empty():
-			options.append({"label": "Take nothing" if found.is_empty() else "Stop searching", "value": null})
-			return context.ask(player, "Search your deck for %s" % CardFilter.describe(filters), options)
+		options.append({"label": "Take nothing" if found.is_empty() else "Stop searching", "value": null})
+		var top_first := player.deck.duplicate()
+		top_first.reverse()
+		return context.ask_showing(player, "Search your deck for %s" % CardFilter.describe(filters), options, top_first)
 	var cards: Array[CardData] = []
 	for card: Variant in found:
 		if card != null:
@@ -301,6 +305,7 @@ static func _discard_energy_in_play(context: EffectContext, player: PlayerState,
 				options.append({
 					"label": "Discard %s from %s (%s)" % [energy.name, target.card.name, MatchEngine.slot_name(slot)],
 					"value": {"target": target, "card": energy},
+					"shows": energy,
 				})
 		if options.is_empty():
 			break

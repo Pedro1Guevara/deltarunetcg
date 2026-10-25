@@ -8,6 +8,8 @@ var _engine := MatchEngine.new()
 var _seed: int = 0
 
 var _status_label: Label
+## The Area in play and the ACT card being played, as cards to hover.
+var _shared_row: HBoxContainer
 var _player_panels: Array[VBoxContainer] = []
 var _actions_box: VBoxContainer
 var _log_label: Label
@@ -41,6 +43,10 @@ func _build_ui() -> void:
 
 	_status_label = Label.new()
 	board.add_child(_status_label)
+
+	_shared_row = HBoxContainer.new()
+	_shared_row.add_theme_constant_override("separation", 16)
+	board.add_child(_shared_row)
 
 	# Player 2 on top, player 1 at the bottom.
 	_player_panels.resize(2)
@@ -148,10 +154,7 @@ func _refresh() -> void:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, _engine.choice_prompt()]
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
-	if _engine.stadium != null:
-		_status_label.text += "  |  Area: %s (Player %d)" % [_engine.stadium.name, _engine.stadium_owner + 1]
-	if _engine.resolving_trainer != null:
-		_status_label.text += "  |  Playing: %s" % _engine.resolving_trainer.name
+	_fill_shared_row()
 	
 	for index in 2:
 		_fill_player_panel(index)
@@ -159,6 +162,16 @@ func _refresh() -> void:
 	for child in _actions_box.get_children():
 		_actions_box.remove_child(child)
 		child.queue_free()
+
+
+	var revealed := _engine.choice_revealed()
+	if not revealed.is_empty():
+		var shown := HFlowContainer.new()
+		shown.add_theme_constant_override("h_separation", 16)
+		_add_text(shown, "Deck (%d):" % revealed.size())
+		for card in revealed:
+			shown.add_child(CardChip.for_card(card))
+		_actions_box.add_child(shown)
 
 	var order: Array[String] = []
 	var groups := {}
@@ -176,11 +189,9 @@ func _refresh() -> void:
 		if members.size() == 1:
 			_add_action_button(members[0] as Dictionary, "")
 			continue
-		var header := Button.new()
+		var first := members[0] as Dictionary
+		var header := _make_button(_engine.current_player().active if first["type"] == "retreat" else _shown_for(first))
 		header.text = "%s  %s" % [key, "▾" if key == _open_group else "▸"]
-		header.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		header.pressed.connect(_on_group_pressed.bind(key))
-		_actions_box.add_child(header)
 		if key == _open_group:
 			for action: Dictionary in members:
 				_add_action_button(action, "      ↳ ")
@@ -212,11 +223,56 @@ func _group_key(action: Dictionary) -> String:
 
 
 func _add_action_button(action: Dictionary, prefix: String) -> void:
-	var button := Button.new()
+	var button := _make_button(_shown_for(action))
 	button.text = prefix + str(action["label"])
+	var card := _shown_for(action)
+	if card != null:
+		button.show_card(card)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.pressed.connect(_on_action_pressed.bind(action))
 	_actions_box.add_child(button)
+
+## What an action is about: the card it plays, attaches or evolves into, the Darkner that
+## attacks or is fled to, or what a choice option shows. Null when it is about no card.
+func _shown_for(action: Dictionary) -> Object:
+	var player := _engine.current_player()
+	match str(action["type"]):
+		"bench", "attach", "evolve", "play_trainer":
+			return player.hand[int(action["hand_index"])]
+		"attack":
+			return player.active
+		"retreat":
+			return player.bench[int(action["slot"])]
+		"choose":
+			return _engine.choice_option_shows(int(action["option"]))
+	return null
+
+
+## A button that shows a card's text on hover when the action is about a card, and a plain
+## button otherwise, so Heads, Take nothing or End turn show no popup.
+func _make_button(shown: Object) -> Button:
+	if shown is CardData:
+		var card_button := CardButton.new()
+		card_button.show_card(shown as CardData)
+		return card_button
+	if shown is CardInPlay:
+		var in_play_button := CardButton.new()
+		in_play_button.show_in_play(shown as CardInPlay)
+		return in_play_button
+	return Button.new()
+
+
+func _fill_shared_row() -> void:
+	for child in _shared_row.get_children():
+		_shared_row.remove_child(child)
+		child.queue_free()
+	if _engine.stadium != null:
+		_add_text(_shared_row, "Area:")
+		_shared_row.add_child(CardChip.for_card(_engine.stadium))
+		_add_text(_shared_row, "(Player %d)" % (_engine.stadium_owner + 1))
+	if _engine.resolving_trainer != null:
+		_add_text(_shared_row, "Playing:")
+		_shared_row.add_child(CardChip.for_card(_engine.resolving_trainer))
 
 
 func _on_group_pressed(key: String) -> void:

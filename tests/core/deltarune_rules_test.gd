@@ -79,6 +79,13 @@ func _run() -> void:
 	var setup := start_round(rules, 3)
 	expect(setup.players[0].hand.size() == 10 and setup.players[1].hand.size() == 10, "both players draw 10")
 	expect(setup.players[0].prizes.size() == 4 and setup.players[1].prizes.size() == 4, "4 Mercy Cards each")
+	expect(setup.choice_option_shows(0) == null, "the coin call is about no card, so it shows none")
+	
+	var single := MatchEngine.new()
+	single.effects = library
+	single.start(deck({"jevil": 1, "chaos_energy": 29}), deck({"jevil": 1, "chaos_energy": 29}), rules, Rng.new(3))
+	single.apply(single.legal_actions()[0])
+	expect(single.choice_prompt() == "Choose your Battling Darkner" and single.legal_actions().size() == 1, "with one Basic Darkner the player is still asked, not skipped")
 
 	print("== coin flip")
 	var callers := {}
@@ -186,6 +193,7 @@ func _run() -> void:
 	expect(play(feather, "Play Petal Feather (Item)"), "Petal Feather can be played with Darkners on your Field")
 	expect(feather.is_waiting_for_choice() and feather.choice_chooser() == feather.current_index, "the player chooses which Darkner to switch in")
 	expect(feather.resolving_trainer.name == "Petal Feather" and not feather_player.hand.any(func(card: CardData) -> bool: return card.name == "Petal Feather") and feather_player.discard.is_empty(), "while it resolves, the card is beside the Battle Zone: in neither the hand nor the discard pile")
+	expect(feather.choice_option_shows(1) == feather_player.bench[1], "each option shows the Darkner it would switch in")
 	expect(play(feather, "Switch in Tenna (Field 2)"), "every Darkner on the Field is an option")
 	expect(feather_player.active.card.name == "Tenna" and feather_player.bench[1].card.name == "Jevil", "the two Darkners trade places")
 	expect(not feather_player.retreated_this_turn and feather_player.discard.back().name == "Petal Feather" and feather.resolving_trainer == null, "it is not a Flee, and the card is discarded once resolved")
@@ -219,6 +227,8 @@ func _run() -> void:
 	for action in search.legal_actions():
 		search_labels.append(action["label"])
 	expect(search.choice_prompt() == "Search your deck for basic Energy" and search_labels == ["Take Chaos Energy", "Take nothing"], "Glowshard offers each basic Energy once, and finding nothing: %s" % [search_labels])
+	var shown := search.choice_revealed()
+	expect(shown.size() == searcher.deck.size() and shown[0] == searcher.deck.back() and shown.back() == searcher.deck[0], "the whole deck is shown during the search, in its real order, top card first")
 	play(search, "Take Chaos Energy")
 	expect(searcher.deck.size() == deck_before - 1 and searcher.hand.back().name == "Chaos Energy", "the Energy found goes into the hand")
 	var darkners_only: Array[CardData] = []
@@ -226,7 +236,9 @@ func _run() -> void:
 		if card.is_pokemon():
 			darkners_only.append(card)
 	searcher.deck.assign(darkners_only)
-	expect(play(search, "Play Glowshard (Item)") and not search.is_waiting_for_choice(), "with no basic Energy in the deck, Glowshard can still be played and finds nothing")
+	expect(play(search, "Play Glowshard (Item)") and has_label(search, "Take nothing") and search.legal_actions().size() == 1, "with no basic Energy in the deck, Glowshard still asks, so the deck can be looked at")
+	expect(search.choice_revealed().size() == searcher.deck.size(), "the deck is shown even when nothing matches")
+	expect(play(search, "Take nothing") and not search.is_waiting_for_choice(), "taking nothing finishes the search")
 	searcher.deck.clear()
 	searcher.hand.append_array(cards(["glowshard"]))
 	expect(not has_label(search, "Play Glowshard (Item)"), "Glowshard cannot be played with an empty deck")

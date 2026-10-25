@@ -13,12 +13,16 @@ const RESUME_EFFECT := "effect"
 ## Index of the player who answers.
 var chooser: int
 var prompt: String
-## [{"label": String, "value": Variant}], one per legal answer.
+## [{"label": String, "value": Variant}], one per legal answer. An option may also carry
+## "shows": the card or Darkner in play it is about, for display only.
 var options: Array
 ## One of the RESUME_ constants.
 var resume: String
 ## Values the resume step needs, such as {"slot": int} for a flee.
 var data: Dictionary
+## Cards shown to the chooser while they answer, such as their deck during a search, in the
+## order the effect gives them. Empty for most choices.
+var revealed: Array[CardData] = []
 ## The suspended effect. Set only when resume is RESUME_EFFECT.
 var resolver: EffectResolver = null
 var context: EffectContext = null

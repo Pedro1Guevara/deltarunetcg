@@ -34,6 +34,11 @@ func _enable_tooltip() -> void:
 
 
 func _make_custom_tooltip(_for_text: String) -> Object:
+	return make_tooltip(_bbcode)
+
+
+## The tooltip every card control shows: the card's text, formatted.
+static func make_tooltip(bbcode: String) -> Control:
 	var label := RichTextLabel.new()
 	label.bbcode_enabled = true
 	label.fit_content = true
@@ -41,5 +46,5 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 	label.custom_minimum_size = Vector2(TOOLTIP_WIDTH, 0)
 	for font_size: String in ["normal_font_size", "bold_font_size"]:
 		label.add_theme_font_size_override(font_size, TOOLTIP_FONT_SIZE)
-	label.text = _bbcode
+	label.text = bbcode
 	return label

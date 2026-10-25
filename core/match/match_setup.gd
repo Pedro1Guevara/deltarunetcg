@@ -46,9 +46,9 @@ func deal(deck_a: Array[CardData], deck_b: Array[CardData]) -> void:
 
 
 ## Runs the steps until one needs a choice, and returns it; null when the setup is done.
-## Copies of the same card are one option. Placing the Active Pokemon asks only when there is
-## more than one option; benching and mulligan draws are optional, so they always ask while
-## there is something to decide.
+## Copies of the same card are one option. Placing the Active Pokemon always asks, even with a
+## single option, so the player sees it happen (Design Document 4.1); benching and mulligan
+## draws ask while there is something to decide.
 func advance() -> PendingChoice:
 	while not _steps.is_empty():
 		var step := _steps[0]
@@ -62,9 +62,7 @@ func advance() -> PendingChoice:
 				])
 			"active":
 				var options := _basic_options(player.hand, "Make %s the Battling Darkner")
-				if options.size() <= 1:
-					if options.size() == 1:
-						_place_active(index, (options[0] as Dictionary)["value"] as CardData)
+				if options.is_empty():
 					_steps.pop_front()
 					continue
 				return _ask(index, "Choose your Battling Darkner", options)

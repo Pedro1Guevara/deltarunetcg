@@ -77,6 +77,25 @@ func choice_chooser() -> int:
 	return -1 if _pending == null else _pending.chooser
 
 
+## Cards shown to the chooser while they answer, such as their deck during a search.
+func choice_revealed() -> Array[CardData]:
+	var shown: Array[CardData] = []
+	if _pending != null:
+		shown.assign(_pending.revealed)
+	return shown
+
+
+## What an option of the open choice is about: a CardData, a CardInPlay, or null when it is
+## about no card (Heads, Take nothing). For showing it, never for rules.
+func choice_option_shows(index: int) -> Object:
+	if _pending == null or index < 0 or index >= _pending.options.size():
+		return null
+	var option := _pending.option(index)
+	if option.has("shows"):
+		return option["shows"] as Object
+	var value: Variant = option["value"]
+	return value as CardData if value is CardData else null
+
 func legal_actions() -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
 	if is_over():
@@ -423,6 +442,7 @@ func _effect_choice(resolver: EffectResolver, context: EffectContext) -> Pending
 	var asked := context.choice
 	var choice := PendingChoice.new(players.find(asked["chooser"]), str(asked["prompt"]),
 			asked["options"] as Array, PendingChoice.RESUME_EFFECT, {})
+	choice.revealed.assign(asked["revealed"] as Array)
 	choice.resolver = resolver
 	choice.context = context
 	return choice
@@ -480,6 +500,7 @@ func _advance_promotions() -> bool:
 			options.append({
 				"label": "Promote %s (%s, %d/%d HP)" % [pokemon.card.name, slot_name(slot), pokemon.remaining_hp(), pokemon.card.hp],
 				"value": slot,
+				"shows": pokemon,
 			})
 		_pending = PendingChoice.new(index, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
 		return false
