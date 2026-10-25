@@ -171,5 +171,33 @@
       {"call": "shuffle_hand_into_deck", "args": {"player": "$player"}},
       {"call": "draw", "args": {"count": "$count"}}
     ]
+  },
+  "search_deck_to_hand": {
+    "params": { "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
+    ]
+  },
+  "recover_from_discard": {
+    "params": { "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_cards_in_discard", "args": {"player": "$player", "filter": "$filter", "count": 1}}
+    ],
+    "steps": [
+      {"call": "take_from_discard", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
+    ]
+  },
+  "discard_opponent_energy_on_heads": {
+    "params": { "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_energy_in_play", "args": {"player": "$opponent", "filter": "$filter", "count": 1}}
+    ],
+    "steps": [
+      {"call": "flip_coins", "args": {"count": 1}, "as": "heads"},
+      {"call": "discard_energy_in_play", "args": {"player": "$opponent", "chooser": "$player", "filter": "$filter", "count": "$count"}, "when": {"value": "$heads", "eq": 1}}
+    ]
   }
 }

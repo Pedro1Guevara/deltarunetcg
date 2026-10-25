@@ -570,6 +570,31 @@ func shuffle_hand_into_deck(player: PlayerState) -> int:
 	_log("  Player %d shuffles %d card%s from their hand into their deck" % [players.find(player) + 1, count, "" if count == 1 else "s"])
 	return count
 
+## Moves the given cards from a player's deck into their hand. Returns how many moved.
+func take_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
+	var index := players.find(player) + 1
+	if cards.is_empty():
+		_log("  Player %d finds nothing" % index)
+	for card in cards:
+		player.deck.erase(card)
+		player.hand.append(card)
+		_log("  Player %d puts %s from their deck into their hand" % [index, card.name])
+	return cards.size()
+
+
+## Moves the given cards from a player's discard pile into their hand. Returns how many moved.
+func take_from_discard(player: PlayerState, cards: Array[CardData]) -> int:
+	for card in cards:
+		player.discard.erase(card)
+		player.hand.append(card)
+		_log("  Player %d puts %s from their discard pile into their hand" % [players.find(player) + 1, card.name])
+	return cards.size()
+
+
+func shuffle_deck(player: PlayerState) -> void:
+	_rng.shuffle(player.deck)
+	_log("  Player %d shuffles their deck" % (players.find(player) + 1))
+
 func draw_cards(player: PlayerState, count: int) -> int:
 	var drawn := 0
 	for _i in maxi(count, 0):

@@ -10,7 +10,13 @@ const KIND_TRAINER := "trainer"
 ## Returned by an atomic effect that needs a player's choice before it can finish.
 const PENDING := "__pending_choice__"
 
-var engine: MatchEngine
+## The engine resolving the effect. Held weakly: the engine keeps this context alive through
+## its pending choice, and a strong reference back would keep both alive after the round.
+var engine: MatchEngine:
+	get:
+		return _engine.get_ref() as MatchEngine
+	set(value):
+		_engine = weakref(value)
 var kind: String = KIND_ATTACK
 ## The Pokemon whose attack or Power is resolving. Null for Trainers.
 var source: CardInPlay
@@ -22,6 +28,8 @@ var attack: AttackData
 
 ## The Trainercard being played. Null unless kind is trainer.
 var card: CardData
+
+var _engine: WeakRef = null
 
 ## The open question, or empty:
 ## {"chooser": PlayerState, "prompt": String, "options": [{"label": String, "value": Variant}]}.

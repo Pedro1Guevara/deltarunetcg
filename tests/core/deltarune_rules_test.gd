@@ -25,9 +25,9 @@ func start_round(rules: MatchRules, seed: int) -> MatchEngine:
 
 
 ## A round on turn 2 with the given Darkners in the Battle Zone of the player to act and of
-## their opponent, and nothing on either Field.
-func battle(attacker_id: String, attached: Array, defender_id: String) -> MatchEngine:
-	var engine := start_round(MatchRules.deltarune(), 1)
+## their opponent, and nothing on either Field. seed changes the shuffles and coin flips.
+func battle(attacker_id: String, attached: Array, defender_id: String, seed: int = 1) -> MatchEngine:
+	var engine := start_round(MatchRules.deltarune(), seed)
 	finish_setup(engine)
 	engine.apply({"type": "end_turn", "label": "End turn"})
 	var player := engine.current_player()
@@ -141,8 +141,8 @@ func _run() -> void:
 	var items := battle("jevil", [], "guei")
 	var item_player := items.current_player()
 	item_player.hand.append_array(cards(["glowshard", "glowshard"]))
-	expect(play(items, "Play Glowshard (Item)"), "an Item can be played")
-	expect(play(items, "Play Glowshard (Item)"), "Items have no per-turn limit")
+	expect(play(items, "Play Glowshard (Item)") and play(items, "Take Chaos Energy"), "an Item can be played")
+	expect(play(items, "Play Glowshard (Item)") and play(items, "Take Chaos Energy"), "Items have no per-turn limit")
 	expect(item_player.discard.size() == 2, "a played Item goes to the discard pile")
 
 	var first_lightner := start_round(rules, 2)
@@ -169,6 +169,7 @@ func _run() -> void:
 	var spells := battle("jevil", [], "guei")
 	var caster := spells.current_player()
 	caster.hand.append_array(cards(["rude_buster"]))
+	spells.opponent_player().active.attached_energy.append_array(cards(["holy_energy"]))
 	caster.tp = 0
 	expect(not has_label(spells, "Cast Rude Buster (25% TP)"), "a Spell needs its TP")
 	caster.tp = 1
@@ -207,6 +208,78 @@ func _run() -> void:
 	expect(play(shuffle, "Play Kris (Lightner)"), "Kris can be played")
 	expect(shuffler.hand.size() == 6, "Kris: the hand is shuffled into the deck and 6 cards are drawn")
 	expect(shuffler.hand.size() + shuffler.deck.size() == cards_before - 1 and shuffler.discard.back().name == "Kris", "no card is lost; Kris itself is discarded")
+
+
+	var search := battle("jevil", [], "guei")
+	var searcher := search.current_player()
+	searcher.hand.append_array(cards(["glowshard", "glowshard"]))
+	var deck_before := searcher.deck.size()
+	expect(play(search, "Play Glowshard (Item)"), "Glowshard can be played")
+	var search_labels: Array = []
+	for action in search.legal_actions():
+		search_labels.append(action["label"])
+	expect(search.choice_prompt() == "Search your deck for basic Energy" and search_labels == ["Take Chaos Energy", "Take nothing"], "Glowshard offers each basic Energy once, and finding nothing: %s" % [search_labels])
+	play(search, "Take Chaos Energy")
+	expect(searcher.deck.size() == deck_before - 1 and searcher.hand.back().name == "Chaos Energy", "the Energy found goes into the hand")
+	var darkners_only: Array[CardData] = []
+	for card in searcher.deck:
+		if card.is_pokemon():
+			darkners_only.append(card)
+	searcher.deck.assign(darkners_only)
+	expect(play(search, "Play Glowshard (Item)") and not search.is_waiting_for_choice(), "with no basic Energy in the deck, Glowshard can still be played and finds nothing")
+	searcher.deck.clear()
+	searcher.hand.append_array(cards(["glowshard"]))
+	expect(not has_label(search, "Play Glowshard (Item)"), "Glowshard cannot be played with an empty deck")
+
+	var knife := battle("jevil", [], "guei")
+	knife.current_player().deck.append_array(cards(["cyber_city"]))
+	knife.current_player().hand.append_array(cards(["sharp_knife"]))
+	play(knife, "Play Sharp Knife (Item)")
+	expect(play(knife, "Take Cyber City") and knife.current_player().hand.back().name == "Cyber City", "Sharp Knife finds an Area")
+
+	var revive := battle("jevil", [], "guei")
+	var reviver := revive.current_player()
+	reviver.tp = 4
+	reviver.hand.append_array(cards(["revive_song"]))
+	expect(not has_label(revive, "Cast Revive Song (25% TP)"), "Revive Song cannot be cast with nothing to recover")
+	reviver.discard.append_array(cards(["kris", "chaos_energy", "guei"]))
+	expect(play(revive, "Cast Revive Song (25% TP)"), "Revive Song can be cast with a basic Energy or a Darkner in the discard pile")
+	var revive_labels: Array = []
+	for action in revive.legal_actions():
+		revive_labels.append(action["label"])
+	expect(revive_labels == ["Take Chaos Energy", "Take Guei"], "the options are the basic Energy and the Darkner, not Kris: %s" % [revive_labels])
+	play(revive, "Take Guei")
+	expect(reviver.hand.back().name == "Guei" and not reviver.discard.any(func(card: CardData) -> bool: return card.name == "Guei"), "the chosen card leaves the discard pile for the hand")
+
+	var buster_blocked := battle("jevil", [], "guei")
+	buster_blocked.current_player().tp = 4
+	buster_blocked.current_player().hand.append_array(cards(["rude_buster"]))
+	expect(not has_label(buster_blocked, "Cast Rude Buster (25% TP)"), "Rude Buster cannot be cast when the opponent has no basic Energy in play")
+
+	var heads_seen := false
+	var tails_seen := false
+	for seed in SEEDS:
+		var buster := battle("jevil", [], "guei", seed)
+		var buster_player := buster.current_index
+		var target_side := buster.opponent_player()
+		target_side.active.attached_energy.append_array(cards(["holy_energy", "holy_energy"]))
+		target_side.bench.append(in_play("tenna", ["fun_energy"]))
+		buster.current_player().tp = 4
+		buster.current_player().hand.append_array(cards(["rude_buster"]))
+		play(buster, "Cast Rude Buster (25% TP)")
+		if buster.events.has("  Coin flip: heads"):
+			var buster_labels: Array = []
+			for action in buster.legal_actions():
+				buster_labels.append(action["label"])
+			if not heads_seen:
+				expect(buster.choice_chooser() == buster_player and buster_labels == ["Discard Holy Energy from Guei (Battle Zone)", "Discard Fun Energy from Tenna (Field 1)"], "heads: the caster chooses among the opponent's Darkners, copies once: %s" % [buster_labels])
+				play(buster, "Discard Fun Energy from Tenna (Field 1)")
+				expect(target_side.bench[0].attached_energy.is_empty() and target_side.active.attached_energy.size() == 2, "the chosen Energy is discarded")
+			heads_seen = true
+		elif not tails_seen:
+			tails_seen = true
+			expect(not buster.is_waiting_for_choice() and target_side.active.attached_energy.size() == 2 and target_side.bench[0].attached_energy.size() == 1, "tails: nothing is discarded")
+	expect(heads_seen and tails_seen, "both coin results were seen")
 
 	print("== field limit")
 	var field := battle("jevil", [], "guei")

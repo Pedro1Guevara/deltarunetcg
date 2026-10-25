@@ -14,7 +14,7 @@ func _run() -> void:
 
 	var library := DataLoader.load_effect_library(db, DataLoader.CARD_EFFECTS_PATH)
 	expect(library.errors.is_empty(), "no card effect errors: %s" % [library.errors])
-	expect(library.valid_binding_count() == 3, "3 card effect entries in use (%d)" % library.valid_binding_count())
+	expect(library.valid_binding_count() == 7, "7 card effect entries in use (%d)" % library.valid_binding_count())
 	
 	print("== darkner")
 	var jevil := db.make("jevil")

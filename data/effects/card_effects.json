@@ -7,5 +7,17 @@
   },
   "kris": {
     "trainer": {"function": "shuffle_hand_then_draw", "args": {"count": 6}}
+  },
+  "glowshard": {
+    "trainer": {"function": "search_deck_to_hand", "args": {"filter": ["basic_energy"], "count": 1}}
+  },
+  "sharp_knife": {
+    "trainer": {"function": "search_deck_to_hand", "args": {"filter": ["stadium"], "count": 1}}
+  },
+  "rude_buster": {
+    "trainer": {"function": "discard_opponent_energy_on_heads", "args": {"filter": ["basic_energy"], "count": 1}}
+  },
+  "revive_song": {
+    "trainer": {"function": "recover_from_discard", "args": {"filter": ["basic_energy", "pokemon"], "count": 1}}
   }
 }
