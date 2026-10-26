@@ -14,6 +14,8 @@ var _player_panels: Array[VBoxContainer] = []
 var _actions_box: VBoxContainer
 var _log_label: Label
 var _open_group: String = ""
+## Whether each player's discard pile is shown. Public information, so either can be opened.
+var _discard_open: Array[bool] = [false, false]
 
 func _ready() -> void:
 	var ui_theme := Theme.new()
@@ -225,9 +227,6 @@ func _group_key(action: Dictionary) -> String:
 func _add_action_button(action: Dictionary, prefix: String) -> void:
 	var button := _make_button(_shown_for(action))
 	button.text = prefix + str(action["label"])
-	var card := _shown_for(action)
-	if card != null:
-		button.show_card(card)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.pressed.connect(_on_action_pressed.bind(action))
 	_actions_box.add_child(button)
@@ -274,6 +273,9 @@ func _fill_shared_row() -> void:
 		_add_text(_shared_row, "Playing:")
 		_shared_row.add_child(CardChip.for_card(_engine.resolving_trainer))
 
+func _on_discard_pressed(index: int) -> void:
+	_discard_open[index] = not _discard_open[index]
+	_refresh()
 
 func _on_group_pressed(key: String) -> void:
 	_open_group = "" if key == _open_group else key
@@ -298,9 +300,24 @@ func _fill_player_panel(index: int) -> void:
 	if not _engine.is_over() and actor == index:
 		header += "   <- to act"
 	_add_text(panel, header)
-	_add_text(panel, "TP: %d%%   Mercy Cards left: %d   Deck: %d   Discard: %d   Hand: %d" % [
-		player.tp * 25, player.prizes.size(), player.deck.size(), player.discard.size(), player.hand.size(),
+	var counters := HBoxContainer.new()
+	counters.add_theme_constant_override("separation", 16)
+	_add_text(counters, "TP: %d%%   Mercy Cards left: %d   Deck: %d   Hand: %d" % [
+		player.tp * 25, player.prizes.size(), player.deck.size(), player.hand.size(),
 	])
+	var discard_button := Button.new()
+	discard_button.text = "Discard pile: %d  %s" % [player.discard.size(), "▾" if _discard_open[index] else "▸"]
+	discard_button.disabled = player.discard.is_empty()
+	discard_button.pressed.connect(_on_discard_pressed.bind(index))
+	counters.add_child(discard_button)
+	panel.add_child(counters)
+	if _discard_open[index] and not player.discard.is_empty():
+		var pile := HFlowContainer.new()
+		pile.add_theme_constant_override("h_separation", 16)
+		_add_text(pile, "Top first:")
+		for depth in range(player.discard.size() - 1, -1, -1):
+			pile.add_child(CardChip.for_card(player.discard[depth]))
+		panel.add_child(pile)
 
 	var battle_zone := HBoxContainer.new()
 	_add_text(battle_zone, "Battle Zone:")

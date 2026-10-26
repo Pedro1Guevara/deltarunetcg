@@ -111,11 +111,6 @@ static func _describe_pokemon(card: CardData, terms: Dictionary, lines: PackedSt
 	if not card.evolve_from.is_empty():
 		lines.append("%s %s" % [_term(terms, "evolves_from"), _escape(card.evolve_from)])
 	lines.append("%s %d · %s: %s" % [_term(terms, "hp"), card.hp, _term(terms, "type"), ", ".join(PackedStringArray(card.types))])
-	lines.append("%s: %s · %s: %s · %s: %d" % [
-		_term(terms, "weakness"), _modifier(card.weakness_types, card.weakness_modifier, terms),
-		_term(terms, "resistance"), _modifier(card.resistance_types, card.resistance_modifier, terms),
-		_term(terms, "retreat"), card.retreat_cost,
-	])
 
 	for power in card.powers:
 		lines.append("")
@@ -133,6 +128,13 @@ static func _describe_pokemon(card: CardData, terms: Dictionary, lines: PackedSt
 		lines.append("%s: %s" % [_term(terms, "cost"), cost])
 		if not attack.effect_text.is_empty():
 			lines.append(_escape(attack.effect_text))
+
+	lines.append("")
+	lines.append("%s: %s · %s: %s · %s: %d" % [
+		_term(terms, "weakness"), _modifier(card.weakness_types, card.weakness_modifier, terms),
+		_term(terms, "resistance"), _modifier(card.resistance_types, card.resistance_modifier, terms),
+		_term(terms, "retreat"), card.retreat_cost,
+	])
 
 
 static func _describe_trainer(card: CardData, terms: Dictionary, lines: PackedStringArray) -> void:
