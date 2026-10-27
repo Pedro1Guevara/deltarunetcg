@@ -194,6 +194,9 @@ func _refresh() -> void:
 		var first := members[0] as Dictionary
 		var header := _make_button(_engine.current_player().active if first["type"] == "retreat" else _shown_for(first))
 		header.text = "%s  %s" % [key, "▾" if key == _open_group else "▸"]
+		header.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		header.pressed.connect(_on_group_pressed.bind(key))
+		_actions_box.add_child(header)
 		if key == _open_group:
 			for action: Dictionary in members:
 				_add_action_button(action, "      ↳ ")
