@@ -161,6 +161,19 @@ func legal_actions() -> Array[Dictionary]:
 					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, slot_name(slot)],
 				})
 
+	for slot in range(-1, player.bench.size()):
+		var user := _in_play_at(player, slot)
+		if user == null:
+			continue
+		for power in user.card.powers:
+			if _power_usable(user, power):
+				actions.append({
+					"type": "use_power",
+					"slot": slot,
+					"power": power.name,
+					"label": "Use %s (%s, %s)" % [power.name, user.card.name, slot_name(slot)],
+				})
+
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(retreat_cost(player.active)):
 		for slot in player.bench.size():
 			actions.append({
@@ -202,6 +215,8 @@ func apply(action: Dictionary) -> void:
 			_do_retreat(int(action["slot"]))
 		"attack":
 			_do_attack(int(action["attack_index"]))
+		"use_power":
+			_do_use_power(int(action["slot"]), str(action["power"]))
 		"end_turn":
 			_end_turn(false)
 		"choose":
@@ -408,6 +423,30 @@ func _complete_retreat(slot: int, payment: Array) -> void:
 	player.retreated_this_turn = true
 	_log("Player %d retreats %s for %s" % [current_index + 1, retreating.card.name, player.active.card.name])
 
+## Uses an activated Ability of the Darkner at a slot (Battle Zone or Field).
+func _do_use_power(slot: int, power_name: String) -> void:
+	var user := _in_play_at(current_player(), slot)
+	var binding := {}
+	for power in user.card.powers:
+		if power.name == power_name:
+			binding = _power_binding(user, power)
+	_log("%s uses %s" % [user.card.name, power_name])
+	var context := _power_context(user)
+	var resolver := EffectResolver.new(effects, context)
+	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+		_finish_power()
+	else:
+		_pending = _effect_choice(resolver, context)
+
+
+## An Ability can knock out a Darkner during its owner's turn, even the one using it: the
+## opponent takes the Mercy Card, a knocked out Battling Darkner is replaced, and the turn goes
+## on.
+func _finish_power() -> void:
+	_resolve_knockouts()
+	if is_over():
+		return
+	_advance_promotions()
 
 func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
@@ -432,10 +471,13 @@ func _do_attack(attack_index: int) -> void:
 
 ## Continues the turn once a suspended effect has finished resolving.
 func _finish_effect(context: EffectContext) -> void:
-	if context.kind == EffectContext.KIND_TRAINER:
-		_finish_trainer(context.card)
-	else:
-		_finish_attack()
+	match context.kind:
+		EffectContext.KIND_TRAINER:
+			_finish_trainer(context.card)
+		EffectContext.KIND_POWER:
+			_finish_power()
+		_:
+			_finish_attack()
 
 ## Wraps the question a suspended effect is asking. The effect names who answers.
 func _effect_choice(resolver: EffectResolver, context: EffectContext) -> PendingChoice:
@@ -535,6 +577,57 @@ func spell_cost(spell: CardData) -> int:
 	return spell.tp_cost
 
 # --- Mutations available to atomic effects ---------------------------------------------
+
+## Attack damage to a Darkner on the Field. Weakness and Resistance never apply on the Field.
+func deal_benched_attack_damage(_context: EffectContext, target: CardInPlay, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	target.damage += amount
+	_log("  %d damage to %s (%d/%d HP)" % [amount, target.card.name, target.remaining_hp(), target.card.hp])
+	return amount
+
+## Places damage counters on a Darkner: 10 damage each, never changed by Weakness or Resistance.
+func place_damage_counters(target: CardInPlay, count: int) -> int:
+	if count <= 0:
+		return 0
+	target.damage += count * 10
+	_log("  %d damage counter%s on %s (%d/%d HP)" % [count, "" if count == 1 else "s", target.card.name, target.remaining_hp(), target.card.hp])
+	return count
+
+
+## Attaches an Energy card from a player's discard pile to one of their Darkners. An effect,
+## so it does not use the once-per-turn attachment.
+func attach_from_discard(player: PlayerState, energy: CardData, target: CardInPlay) -> void:
+	player.discard.erase(energy)
+	target.attached_energy.append(energy)
+	_log("  Player %d attaches %s from their discard pile to %s" % [players.find(player) + 1, energy.name, target.card.name])
+
+## Removes up to amount damage from a Darkner. Returns the damage removed.
+func heal(target: CardInPlay, amount: int) -> int:
+	var healed := mini(target.damage, maxi(amount, 0))
+	if healed > 0:
+		target.damage -= healed
+		_log("  %s heals %d damage (%d/%d HP)" % [target.card.name, healed, target.remaining_hp(), target.card.hp])
+	return healed
+
+
+## Spends TP, in quarters. The caller has checked the player has it.
+func spend_tp(player: PlayerState, quarters: int) -> void:
+	player.tp -= quarters
+	_log("  Player %d uses %d%% TP (%d%% left)" % [players.find(player) + 1, quarters * 25, player.tp * 25])
+
+
+## Shuffles every Energy card attached to a Darkner into its owner's deck. Returns how many.
+func shuffle_energy_into_deck(target: CardInPlay) -> int:
+	var owner := owner_of(target)
+	var count := target.attached_energy.size()
+	if owner == null or count == 0:
+		return 0
+	owner.deck.append_array(target.attached_energy)
+	target.attached_energy.clear()
+	_rng.shuffle(owner.deck)
+	_log("  %s shuffles %d Energy card%s into the deck" % [target.card.name, count, "" if count == 1 else "s"])
+	return count
 
 ## Deals attack damage to the defending Pokemon through the damage pipeline (4.5).
 func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
@@ -645,6 +738,32 @@ func log_event(text: String) -> void:
 
 # --- Attack resolution helpers ----------------------------------------------------------
 
+func _power_context(user: CardInPlay) -> EffectContext:
+	var context := EffectContext.new()
+	context.engine = self
+	context.kind = EffectContext.KIND_POWER
+	context.source = user
+	context.defender = opponent_player().active
+	context.player = current_player()
+	context.opponent = opponent_player()
+	return context
+
+
+func _power_binding(user: CardInPlay, power: PowerData) -> Dictionary:
+	if effects == null:
+		return {}
+	return effects.binding_for(user.card.id, EffectLibrary.SECTION_POWERS, power.name)
+
+
+## An activated Ability can be used when it has a binding and its requirements hold, which
+## includes "it would do something" (Design Document 3.3 applies to Abilities too).
+func _power_usable(user: CardInPlay, power: PowerData) -> bool:
+	var binding := _power_binding(user, power)
+	if binding.is_empty() or binding.get(EffectLibrary.TIMING_KEY) != EffectLibrary.TIMING_ACTIVATED:
+		return false
+	var resolver := EffectResolver.new(effects, _power_context(user))
+	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
+
 func _attack_context(attack: AttackData) -> EffectContext:
 	var context := EffectContext.new()
 	context.engine = self
@@ -699,34 +818,43 @@ func _attack_requirements_met(attack: AttackData) -> bool:
 	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
 
 
-## Resolves every Active Pokemon knocked out by the attack at once, as the rulebook does:
-## all of them are discarded, every prize is taken, and only then are wins checked. A player
-## wins by taking their last prize, or when an opponent has no Benched Pokemon to promote.
-## If both win, the one who won in more ways is the winner; otherwise it is Sudden Death.
+## Resolves every knocked out Darkner at once, as the rulebook does, in the Active Spot or on
+## the Bench: all are discarded, every Prize Card is taken, and only then are wins checked. A
+## player wins by taking their last Prize Card, or when the opponent's Active Pokémon was
+## knocked out and nothing on their Bench can replace it. If both win, the one who won in more
+## ways is the winner; otherwise it is Sudden Death.
 func _resolve_knockouts() -> void:
-	var knocked_out: Array[int] = []
+	var knocked_out: Array[CardInPlay] = []
+	var owners: Array[int] = []
+	var lost_battling: Array[int] = []
 	for index: int in [_opponent_index(), current_index]:
 		var side := players[index]
-		if side.active != null and side.active.is_knocked_out():
-			knocked_out.append(index)
+		for darkner: CardInPlay in [side.active] + side.bench:
+			if darkner != null and darkner.is_knocked_out():
+				knocked_out.append(darkner)
+				owners.append(index)
+				if darkner == side.active:
+					lost_battling.append(index)
 	if knocked_out.is_empty():
 		return
 
-	var knocked_out_cards := {}
-	for index in knocked_out:
-		var side := players[index]
-		knocked_out_cards[index] = side.active
-		_log("%s is knocked out" % side.active.card.name)
-		side.discard_from_play(side.active)
-		side.active = null
+	for position in knocked_out.size():
+		var side := players[owners[position]]
+		var darkner := knocked_out[position]
+		_log("%s is knocked out" % darkner.card.name)
+		side.discard_from_play(darkner)
+		if side.active == darkner:
+			side.active = null
+		else:
+			side.bench.erase(darkner)
 
 	var ways := [0, 0]
-	for index in knocked_out:
-		var taker := 1 - index
-		_take_prize(taker, _prizes_for_knockout(knocked_out_cards[index] as CardInPlay))
-		if players[taker].prizes.is_empty():
-			ways[taker] = maxi(int(ways[taker]), 1)
-	for index in knocked_out:
+	for position in knocked_out.size():
+		_take_prize(1 - owners[position], _prizes_for_knockout(knocked_out[position]))
+	for taker in 2:
+		if owners.has(1 - taker) and players[taker].prizes.is_empty():
+			ways[taker] = 1
+	for index in lost_battling:
 		if players[index].bench.is_empty():
 			ways[1 - index] = int(ways[1 - index]) + 1
 
@@ -739,7 +867,7 @@ func _resolve_knockouts() -> void:
 			_log("Player %d wins" % (winner + 1))
 		return
 
-	_promotion_queue.assign(knocked_out)
+	_promotion_queue.assign(lost_battling)
 
 
 ## Moves count prizes from the taker's pile to their hand, stopping when the pile is empty.

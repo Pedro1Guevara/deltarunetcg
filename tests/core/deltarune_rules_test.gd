@@ -293,6 +293,98 @@ func _run() -> void:
 			expect(not buster.is_waiting_for_choice() and target_side.active.attached_energy.size() == 2 and target_side.bench[0].attached_energy.size() == 1, "tails: nothing is discarded")
 	expect(heads_seen and tails_seen, "both coin results were seen")
 
+	print("== Darkner attack effects")
+	var bomb := battle("jevil", ["chaos_energy", "chaos_energy"], "guei")
+	var bomber := bomb.current_index
+	var bombed := bomb.opponent_player()
+	bombed.bench.append(in_play("tenna", []))
+	bombed.bench.append(in_play("water_cooler", []))
+	bombed.bench[1].damage = 50
+	expect(attack(bomb, "Chaos Bomb"), "Chaos Bomb is legal with Chaos + 1 more")
+	expect(bombed.active.damage == 0, "Chaos Bomb does no damage to the Battling Darkner")
+	expect(bombed.bench.size() == 1 and bombed.bench[0].damage == 20, "20 damage to each Darkner on the Field, without Weakness or Resistance")
+	expect(bomb.players[bomber].prizes.size() == 3 and not bomb.is_over(), "a Darkner knocked out on the Field gives a Mercy Card; the round goes on")
+	expect(bombed.discard.any(func(card: CardData) -> bool: return card.name == "Water Cooler"), "the knocked out Darkner goes to the discard pile")
+
+	var transit := battle("electro_dasher", ["chaos_energy"], "tenna")
+	var transit_player := transit.current_player()
+	var transit_target := transit.opponent_player().active
+	transit_player.bench.append(in_play("jevil", []))
+	attack(transit, "Violent Transit")
+	expect(transit_target.damage == 10, "Violent Transit deals its 10 damage")
+	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
+
+	var splash := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
+	var splasher := splash.current_player()
+	splasher.bench.append(in_play("guei", []))
+	splasher.bench[0].damage = 30
+	splasher.tp = 1
+	attack(splash, "Refreshing Splash")
+	var splash_labels: Array = []
+	for action in splash.legal_actions():
+		splash_labels.append(action["label"])
+	expect(splash.choice_chooser() == splash.current_index and splash_labels == ["Use 25% TP", "Don't use TP"], "Refreshing Splash: the player chooses whether to use 25%% TP: %s" % [splash_labels])
+	play(splash, "Use 25% TP")
+	expect(splasher.bench[0].damage == 10 and splasher.tp == 1, "using it heals 20 from each Darkner on the Field (TP: 25% - 25% + 25% at the end of the turn)")
+
+	var dry := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
+	var dry_player := dry.current_player()
+	var dry_target := dry.opponent_player().active
+	dry_player.bench.append(in_play("guei", []))
+	dry_player.bench[0].damage = 30
+	dry_player.tp = 0
+	attack(dry, "Refreshing Splash")
+	expect(not dry.is_waiting_for_choice() and dry_player.bench[0].damage == 30 and dry_target.damage == 30, "without TP nothing is asked and it only deals its 30 damage")
+
+	var melt := battle("guei", ["holy_energy", "holy_energy", "holy_energy", "holy_energy", "holy_energy"], "tenna")
+	var melter := melt.current_player()
+	var melt_target := melt.opponent_player().active
+	var deck_size := melter.deck.size()
+	attack(melt, "Flash Melt")
+	expect(melt_target.damage == 120, "Flash Melt with 5 Energy units: 40 + 80 (%d)" % melt_target.damage)
+	expect(melter.active.attached_energy.is_empty() and melter.deck.size() == deck_size + 5, "the attached Energy is shuffled into the deck")
+
+	var small_melt := battle("guei", ["holy_energy", "holy_energy"], "tenna")
+	var small_melter := small_melt.current_player()
+	var small_target := small_melt.opponent_player().active
+	attack(small_melt, "Flash Melt")
+	expect(small_target.damage == 40 and small_melter.active.attached_energy.is_empty(), "with fewer than 5 units: 40 damage, and the Energy is still shuffled away")
+
+	var overrun := battle("cuptain", ["chaos_energy"], "tenna")
+	overrun.current_player().bench.append(in_play("cuptain", []))
+	overrun.current_player().bench.append(in_play("cuptain", []))
+	overrun.current_player().bench.append(in_play("jevil", []))
+	var overrun_target := overrun.opponent_player().active
+	attack(overrun, "Overrun")
+	expect(overrun_target.damage == Damage.apply_modifiers(db.make("cuptain"), overrun_target.card, 30), "Overrun: 10 for each of the 3 Cuptain in play (%d)" % overrun_target.damage)
+
+	print("== Abilities")
+	var devotion := battle("cuptain", [], "tenna")
+	var devotee := devotion.current_player()
+	var devotion_turn := devotion.turn
+	expect(not has_action(devotion, "use_power"), "Selfless Devotion cannot be used with nothing on the Field and no Energy in the discard pile")
+	devotee.bench.append(in_play("jevil", []))
+	expect(not has_action(devotion, "use_power"), "nor with a Darkner on the Field but no basic Energy in the discard pile")
+	devotee.discard.append_array(cards(["chaos_energy"]))
+	expect(play(devotion, "Use Selfless Devotion (Cuptain, Battle Zone)"), "it can be used with a basic Energy in the discard pile and a Darkner on the Field")
+	expect(devotee.active.damage == 20 and devotee.bench[0].attached_energy.size() == 1 and devotee.discard.is_empty(), "2 damage counters on Cuptain, then the Energy goes to the Darkner on the Field")
+	expect(not devotee.energy_attached_this_turn, "it does not use the once-per-turn attachment")
+
+	devotee.bench.append(in_play("guei", []))
+	devotee.discard.append_array(cards(["chaos_energy", "holy_energy"]))
+	expect(play(devotion, "Use Selfless Devotion (Cuptain, Battle Zone)"), "it can be used again in the same turn")
+	var energy_labels: Array = []
+	for action in devotion.legal_actions():
+		energy_labels.append(action["label"])
+	expect(energy_labels == ["Attach Chaos Energy", "Attach Holy Energy"], "the player chooses the Energy: %s" % [energy_labels])
+	play(devotion, "Attach Holy Energy")
+	expect(play(devotion, "Attach Holy Energy to Guei (Field 2)"), "then the Darkner on the Field")
+	var mercy_before := devotion.opponent_player().prizes.size()
+	expect(devotee.active == null and devotion.choice_prompt() == "Choose a new Battling Darkner" and devotion.choice_chooser() == devotion.current_index, "40 damage knocks Cuptain out; its owner chooses the new Battling Darkner")
+	expect(mercy_before == 3, "the opponent takes a Mercy Card for it")
+	play(devotion, "Promote Guei (Field 2, 80/80 HP)")
+	expect(devotion.turn == devotion_turn and devotion.current_player() == devotee and devotee.active.card.name == "Guei", "the turn goes on after the promotion")
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()
@@ -381,8 +473,7 @@ func _run() -> void:
 	# Random play with two kinds of deck: Darkners with ACT cards of every subtype, and one
 	# Darkner in four copies, which fills the Field with identical Darkners.
 	var picker := RandomNumberGenerator.new()
-	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "chaos_energy": 10, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1}
-	var same_darkner := {"jevil": 4, "chaos_energy": 26}
+	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1}	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0
 	for seed in SEEDS:

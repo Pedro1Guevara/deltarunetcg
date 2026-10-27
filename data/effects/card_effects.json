@@ -19,5 +19,37 @@
   },
   "revive_song": {
     "trainer": {"function": "recover_from_discard", "args": {"filter": ["basic_energy", "pokemon"], "count": 1}}
+  },
+  "jevil": {
+    "attacks": {
+      "Chaos Bomb": {"function": "damage_to_opponent_benched", "args": {"amount": 20}}
+    }
+  },
+  "electro_dasher": {
+    "attacks": {
+      "Violent Transit": {"function": "damage_then_switch_self", "args": {}}
+    }
+  },
+  "water_cooler": {
+    "attacks": {
+      "Refreshing Splash": {"function": "damage_then_pay_tp_to_heal_benched", "args": {"tp": 1, "heal": 20}}
+    }
+  },
+  "guei": {
+    "attacks": {
+      "Flash Melt": {"function": "damage_plus_with_energy_units_then_shuffle_energy", "args": {"min_units": 5, "bonus": 80}}
+    }
+  },
+  "cuptain": {
+    "attacks": {
+      "Overrun": {"function": "damage_times_same_name_in_play", "args": {}}
+    },
+    "powers": {
+      "Selfless Devotion": {
+        "function": "counters_on_self_then_attach_from_discard_to_benched",
+        "args": {"counters": 2, "filter": ["basic_energy"]},
+        "timing": "activated"
+      }
+    }
   }
 }

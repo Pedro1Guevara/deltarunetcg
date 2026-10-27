@@ -86,6 +86,30 @@ const DECLARATIONS := {
 	"has_benched": {
 		"role": ROLE_CHECK, "params": {"player": "player", "count": "int"}, "returns": "", "attack_only": false,
 	},
+	"attack_damage_to_benched": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "amount": "int"}, "returns": "int", "attack_only": true,
+	},
+	"heal_benched": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "amount": "int"}, "returns": "int", "attack_only": false,
+	},
+	"pay_tp": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "amount": "int"}, "returns": "int", "attack_only": false,
+	},
+	"shuffle_attached_energy_into_deck": {
+		"role": ROLE_EFFECT, "params": {"target": "pokemon"}, "returns": "int", "attack_only": false,
+	},
+	"count_same_name_in_play": {
+		"role": ROLE_EFFECT, "params": {"target": "pokemon"}, "returns": "int", "attack_only": false,
+	},
+	"at_least": {
+		"role": ROLE_EFFECT, "params": {"a": "int", "b": "int"}, "returns": "int", "attack_only": false,
+	},
+	"place_damage_counters": {
+		"role": ROLE_EFFECT, "params": {"target": "pokemon", "count": "int"}, "returns": "int", "attack_only": false,
+	},
+	"attach_from_discard_to_benched": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter"}, "returns": "int", "attack_only": false,
+	},
 	"has_attached_energy_cards": {
 		"role": ROLE_CHECK, "params": {"target": "pokemon", "energy_type": "energy_type_or_any", "count": "int"},
 		"returns": "", "attack_only": false,
@@ -154,6 +178,35 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 			return int(args["a"]) + int(args["b"])
 		"min":
 			return mini(int(args["a"]), int(args["b"]))
+		"at_least":
+			return 1 if int(args["a"]) >= int(args["b"]) else 0
+		"place_damage_counters":
+			return engine.place_damage_counters(args["target"] as CardInPlay, int(args["count"]))
+		"attach_from_discard_to_benched":
+			return _attach_from_discard_to_benched(context, args["player"] as PlayerState, args["filter"] as Array)
+		"attack_damage_to_benched":
+			var dealt := 0
+			for target in (args["player"] as PlayerState).bench.duplicate():
+				dealt += engine.deal_benched_attack_damage(context, target, int(args["amount"]))
+			return dealt
+		"heal_benched":
+			var healed := 0
+			for target in (args["player"] as PlayerState).bench:
+				healed += engine.heal(target, int(args["amount"]))
+			return healed
+		"pay_tp":
+			return _pay_tp(context, args["player"] as PlayerState, int(args["amount"]))
+		"shuffle_attached_energy_into_deck":
+			return engine.shuffle_energy_into_deck(args["target"] as CardInPlay)
+		"count_same_name_in_play":
+			var target := args["target"] as CardInPlay
+			var owner := engine.owner_of(target)
+			var copies := 0
+			if owner != null:
+				for darkner: CardInPlay in [owner.active] + owner.bench:
+					if darkner != null and darkner.card.name == target.card.name:
+						copies += 1
+			return copies
 		"switch_in":
 			return _switch_in(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
 		"shuffle_hand_into_deck":
@@ -331,6 +384,52 @@ static func _take_options(cards: Array[CardData]) -> Array:
 		offered.append(card.id)
 		options.append({"label": "Take %s" % card.name, "value": card})
 	return options
+
+## player attaches 1 card that matches filters from their discard pile to 1 Darkner on their
+## Field. They choose the card, then the Darkner, each only when the choice matters. Returns 1
+## when a card was attached, 0 when there was nothing to attach or nowhere to attach it.
+static func _attach_from_discard_to_benched(context: EffectContext, player: PlayerState, filters: Array) -> Variant:
+	var picked := context.selection
+	var candidates := CardFilter.select(player.discard, filters, [])
+	if candidates.is_empty() or player.bench.is_empty():
+		return 0
+	if picked.is_empty():
+		if not _all_same_card(candidates):
+			var options: Array = []
+			for option in _take_options(candidates):
+				options.append({"label": "Attach %s" % (option["value"] as CardData).name, "value": option["value"]})
+			return context.ask(player, "Choose a card from your discard pile to attach", options)
+		picked.append(candidates.back())
+	var energy := picked[0] as CardData
+	var slot := 0
+	if picked.size() > 1:
+		slot = int(picked[1])
+	elif player.bench.size() > 1:
+		var targets: Array = []
+		for index in player.bench.size():
+			targets.append({
+				"label": "Attach %s to %s (%s)" % [energy.name, player.bench[index].card.name, MatchEngine.slot_name(index)],
+				"value": index,
+				"shows": player.bench[index],
+			})
+		return context.ask(player, "Choose a Darkner on your Field to attach %s to" % energy.name, targets)
+	context.engine.attach_from_discard(player, energy, player.bench[slot])
+	return 1
+
+## player chooses whether to spend amount TP, in quarters. Without enough TP nothing is asked
+## and nothing is spent. Returns 1 when the TP was spent, 0 otherwise.
+static func _pay_tp(context: EffectContext, player: PlayerState, amount: int) -> Variant:
+	if player.tp < amount:
+		return 0
+	if context.selection.is_empty():
+		return context.ask(player, "Use %d%% TP?" % (amount * 25), [
+			{"label": "Use %d%% TP" % (amount * 25), "value": 1},
+			{"label": "Don't use TP", "value": 0},
+		])
+	if int(context.selection[0]) == 0:
+		return 0
+	context.engine.spend_tp(player, amount)
+	return 1
 
 static func _matching_cards(target: CardInPlay, energy_type: String) -> Array[CardData]:
 	var result: Array[CardData] = []

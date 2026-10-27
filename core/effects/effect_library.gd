@@ -17,6 +17,13 @@ const SECTION_KINDS := {
 const FUNCTION_KEYS := ["params", "requires", "steps", "returns"]
 const STEP_KEYS := ["call", "args", "as", "when"]
 const BINDING_KEYS := ["function", "args"]
+
+## When an Ability applies. Every Ability binding declares it, and only Ability bindings do.
+## activated: the player uses it during their turn, as often as its text allows. Other timings
+## are added when a card first needs one.
+const TIMING_KEY := "timing"
+const TIMING_ACTIVATED := "activated"
+const TIMINGS := [TIMING_ACTIVATED]
 const COMPARISONS := ["eq", "ne", "gt", "gte", "lt", "lte"]
 
 var errors: Array[String] = []
@@ -376,8 +383,10 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 	var binding := value as Dictionary
 	var error_count := errors.size()
 	for key: Variant in binding:
-		if not BINDING_KEYS.has(key):
+		if not BINDING_KEYS.has(key) and not (key == TIMING_KEY and section == SECTION_POWERS):
 			errors.append("%s: unknown key '%s'" % [where, key])
+	if section == SECTION_POWERS and not TIMINGS.has(binding.get(TIMING_KEY)):
+		errors.append("%s: timing must be one of %s" % [where, TIMINGS])
 	var function_name := str(binding.get("function", ""))
 	if not functions.has(function_name):
 		errors.append("%s: no function '%s'" % [where, function_name])

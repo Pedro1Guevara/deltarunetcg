@@ -199,5 +199,54 @@
       {"call": "flip_coins", "args": {"count": 1}, "as": "heads"},
       {"call": "discard_energy_in_play", "args": {"player": "$opponent", "chooser": "$player", "filter": "$filter", "count": "$count"}, "when": {"value": "$heads", "eq": 1}}
     ]
+  },
+  "damage_to_opponent_benched": {
+    "params": { "amount": "int" },
+    "steps": [
+      {"call": "attack_damage_to_benched", "args": {"player": "$opponent", "amount": "$amount"}}
+    ]
+  },
+  "damage_then_switch_self": {
+    "params": {},
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "switch_in", "args": {"player": "$player", "chooser": "$player"}}
+    ]
+  },
+  "damage_then_pay_tp_to_heal_benched": {
+    "params": { "tp": "int", "heal": "int" },
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "pay_tp", "args": {"player": "$player", "amount": "$tp"}, "as": "paid"},
+      {"call": "heal_benched", "args": {"player": "$player", "amount": "$heal"}, "when": {"value": "$paid", "eq": 1}}
+    ]
+  },
+  "damage_plus_with_energy_units_then_shuffle_energy": {
+    "params": { "min_units": "int", "bonus": "int" },
+    "steps": [
+      {"call": "count_attached_energy_units", "args": {"target": "$self", "energy_type": "Any"}, "as": "units"},
+      {"call": "at_least", "args": {"a": "$units", "b": "$min_units"}, "as": "met"},
+      {"call": "multiply", "args": {"a": "$met", "b": "$bonus"}, "as": "extra"},
+      {"call": "attack_damage", "args": {"times": 1, "plus": "$extra"}},
+      {"call": "shuffle_attached_energy_into_deck", "args": {"target": "$self"}}
+    ]
+  },
+  "damage_times_same_name_in_play": {
+    "params": {},
+    "steps": [
+      {"call": "count_same_name_in_play", "args": {"target": "$self"}, "as": "copies"},
+      {"call": "attack_damage", "args": {"times": "$copies", "plus": 0}}
+    ]
+  },
+  "counters_on_self_then_attach_from_discard_to_benched": {
+    "params": { "counters": "int", "filter": "card_filter" },
+    "requires": [
+      {"check": "has_cards_in_discard", "args": {"player": "$player", "filter": "$filter", "count": 1}},
+      {"check": "has_benched", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "place_damage_counters", "args": {"target": "$self", "count": "$counters"}},
+      {"call": "attach_from_discard_to_benched", "args": {"player": "$player", "filter": "$filter"}}
+    ]
   }
 }

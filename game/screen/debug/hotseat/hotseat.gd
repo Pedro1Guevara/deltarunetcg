@@ -242,6 +242,8 @@ func _shown_for(action: Dictionary) -> Object:
 			return player.active
 		"retreat":
 			return player.bench[int(action["slot"])]
+		"use_power":
+			return player.active if int(action["slot"]) == -1 else player.bench[int(action["slot"])]
 		"choose":
 			return _engine.choice_option_shows(int(action["option"]))
 	return null
