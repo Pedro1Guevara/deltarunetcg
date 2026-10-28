@@ -248,5 +248,12 @@
       {"call": "place_damage_counters", "args": {"target": "$self", "count": "$counters"}},
       {"call": "attach_from_discard_to_benched", "args": {"player": "$player", "filter": "$filter"}}
     ]
+  },
+    "counters_on_attack_damaged_on_heads": {
+    "params": { "counters": "int" },
+    "steps": [
+      {"call": "flip_coins", "args": {"count": 1}, "as": "heads"},
+      {"call": "place_damage_counters_on_attack_damaged", "args": {"count": "$counters"}, "when": {"value": "$heads", "eq": 1}}
+    ]
   }
 }

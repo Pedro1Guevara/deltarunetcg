@@ -19,11 +19,15 @@ const STEP_KEYS := ["call", "args", "as", "when"]
 const BINDING_KEYS := ["function", "args"]
 
 ## When an Ability applies. Every Ability binding declares it, and only Ability bindings do.
-## activated: the player uses it during their turn, as often as its text allows. Other timings
-## are added when a card first needs one.
+## activated: the player uses it during their turn, as often as its text allows.
+## on_attack_damage: it resolves by itself after an attack from its owner's Battling Darkner
+## damages at least one of the opponent's Darkners, before knockouts are resolved.
+## Other timings are added when a card first needs one.
 const TIMING_KEY := "timing"
 const TIMING_ACTIVATED := "activated"
-const TIMINGS := [TIMING_ACTIVATED]
+const TIMING_ON_ATTACK_DAMAGE := "on_attack_damage"
+const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE]
+
 const COMPARISONS := ["eq", "ne", "gt", "gte", "lt", "lte"]
 
 var errors: Array[String] = []

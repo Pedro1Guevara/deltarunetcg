@@ -6,6 +6,8 @@ extends RefCounted
 const KIND_ATTACK := "attack"
 const KIND_POWER := "power"
 const KIND_TRAINER := "trainer"
+## An Ability that resolved by itself, set off by something that happened (its timing).
+const KIND_TRIGGER := "trigger"
 
 ## Returned by an atomic effect that needs a player's choice before it can finish.
 const PENDING := "__pending_choice__"

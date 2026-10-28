@@ -107,6 +107,9 @@ const DECLARATIONS := {
 	"place_damage_counters": {
 		"role": ROLE_EFFECT, "params": {"target": "pokemon", "count": "int"}, "returns": "int", "attack_only": false,
 	},
+		"place_damage_counters_on_attack_damaged": {
+		"role": ROLE_EFFECT, "params": {"count": "int"}, "returns": "int", "attack_only": false,
+	},
 	"attach_from_discard_to_benched": {
 		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter"}, "returns": "int", "attack_only": false,
 	},
@@ -182,6 +185,11 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 			return 1 if int(args["a"]) >= int(args["b"]) else 0
 		"place_damage_counters":
 			return engine.place_damage_counters(args["target"] as CardInPlay, int(args["count"]))
+		"place_damage_counters_on_attack_damaged":
+			var placed := 0
+			for target in engine.damaged_by_attack():
+				placed += engine.place_damage_counters(target, int(args["count"]))
+			return placed
 		"attach_from_discard_to_benched":
 			return _attach_from_discard_to_benched(context, args["player"] as PlayerState, args["filter"] as Array)
 		"attack_damage_to_benched":

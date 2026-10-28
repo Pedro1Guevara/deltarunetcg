@@ -36,6 +36,10 @@ var _pending: PendingChoice = null
 ## The setup in progress, or null once the first turn has begun.
 var _setup: MatchSetup = null
 var _promotion_queue: Array[int] = []
+## The Darkners the resolving attack has damaged, in order. Cleared when an attack starts.
+var _attack_damaged: Array[CardInPlay] = []
+## Triggered Abilities waiting to resolve after the attack: {"user": CardInPlay, "power": PowerData}.
+var _triggers: Array[Dictionary] = []
 var _turn_ends_after_promotions: bool = false
 
 ## Every round rule comes from match_rules (MatchRules), never from constants.
@@ -51,6 +55,8 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	resolving_trainer = null
 	_pending = null
 	_promotion_queue.clear()
+	_attack_damaged.clear()
+	_triggers.clear()
 	_turn_ends_after_promotions = false
 	_setup = MatchSetup.new(players, rules, _rng, events)
 	_setup.deal(deck_a, deck_b)
@@ -457,6 +463,7 @@ func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
 	var attack := attacker.active.card.attacks[attack_index]
 	_log("%s uses %s" % [attacker.active.card.name, attack.name])
+	_attack_damaged.clear()
 
 	var context := _attack_context(attack)
 	var binding := _attack_binding(attack)
@@ -481,6 +488,8 @@ func _finish_effect(context: EffectContext) -> void:
 			_finish_trainer(context.card)
 		EffectContext.KIND_POWER:
 			_finish_power()
+		EffectContext.KIND_TRIGGER:
+			_continue_attack()
 		_:
 			_finish_attack()
 
@@ -520,7 +529,49 @@ func _do_choose(option: int) -> void:
 			_complete_retreat(int(choice.data["slot"]), picked["value"] as Array)
 
 
+## After the attack's own effect: Abilities set off by its damage, then knockouts, then the end
+## of the turn.
 func _finish_attack() -> void:
+	_triggers = _attack_damage_triggers()
+	_continue_attack()
+
+
+## Every on_attack_damage Ability of the attacking player's Darkners, Battle Zone first, when the
+## attack damaged at least one of the opponent's Darkners. Each copy in play triggers on its own.
+func _attack_damage_triggers() -> Array[Dictionary]:
+	var queue: Array[Dictionary] = []
+	var opponent := opponent_player()
+	var damaged_opponent := false
+	for darkner in _attack_damaged:
+		if darkner == opponent.active or opponent.bench.has(darkner):
+			damaged_opponent = true
+	if not damaged_opponent:
+		return queue
+	var player := current_player()
+	for darkner: CardInPlay in [player.active] + player.bench:
+		if darkner == null:
+			continue
+		for power in darkner.card.powers:
+			if _power_binding(darkner, power).get(EffectLibrary.TIMING_KEY) == EffectLibrary.TIMING_ON_ATTACK_DAMAGE:
+				queue.append({"user": darkner, "power": power})
+	return queue
+
+
+## Resolves the queued triggered Abilities, then knockouts and the end of the turn. A trigger
+## that asks a question stops here; _finish_effect() continues once it is answered.
+func _continue_attack() -> void:
+	while not _triggers.is_empty():
+		var trigger: Dictionary = _triggers.pop_front()
+		var user := trigger["user"] as CardInPlay
+		var power := trigger["power"] as PowerData
+		var binding := _power_binding(user, power)
+		_log("%s: %s" % [user.card.name, power.name])
+		var context := _power_context(user)
+		context.kind = EffectContext.KIND_TRIGGER
+		var resolver := EffectResolver.new(effects, context)
+		if not resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+			_pending = _effect_choice(resolver, context)
+			return
 	_resolve_knockouts()
 	if is_over():
 		return
@@ -651,11 +702,16 @@ func deal_direct_damage(target: CardInPlay, amount: int) -> int:
 		return 0
 	return _apply_damage(target, amount, DAMAGE_DIRECT)
 
+## The Darkners the resolving attack has damaged, in order.
+func damaged_by_attack() -> Array[CardInPlay]:
+	return _attack_damaged.duplicate()
 
 ## The one place damage lands on a Darkner. Every way of dealing damage ends here, so what must
 ## happen to all damage (preventing it, effects that watch for it) is written once.
 func _apply_damage(target: CardInPlay, amount: int, kind: String) -> int:
 	target.damage += amount
+	if kind == DAMAGE_ATTACK and amount > 0 and not _attack_damaged.has(target):
+		_attack_damaged.append(target)
 	var hp := "(%d/%d HP)" % [target.remaining_hp(), target.card.hp]
 	match kind:
 		DAMAGE_ATTACK:

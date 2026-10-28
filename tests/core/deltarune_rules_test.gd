@@ -311,8 +311,7 @@ func _run() -> void:
 	var transit_target := transit.opponent_player().active
 	transit_player.bench.append(in_play("jevil", []))
 	attack(transit, "Violent Transit")
-	expect(transit_target.damage == 10, "Violent Transit deals its 10 damage")
-	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
+	expect(transit.events.any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
 
 	var splash := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
 	var splasher := splash.current_player()
@@ -384,6 +383,60 @@ func _run() -> void:
 	expect(mercy_before == 3, "the opponent takes a Mercy Card for it")
 	play(devotion, "Promote Guei (Field 2, 80/80 HP)")
 	expect(devotion.turn == devotion_turn and devotion.current_player() == devotee and devotee.active.card.name == "Guei", "the turn goes on after the promotion")
+
+	print("== triggered Abilities")
+	var stampede_heads := false
+	var stampede_tails := false
+	for seed in SEEDS:
+		var stampede := battle("jevil", ["chaos_energy", "chaos_energy"], "tenna", seed)
+		stampede.current_player().bench.append(in_play("electro_dasher", []))
+		var trampled := stampede.opponent_player()
+		trampled.bench.append(in_play("guei", []))
+		trampled.bench.append(in_play("water_cooler", []))
+		var log_start := stampede.events.size()
+		attack(stampede, "Chaos Bomb")
+		var flips := stampede.events.slice(log_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
+		if flips.size() == 1 and flips[0].contains("heads") and not stampede_heads:
+			stampede_heads = true
+			expect(trampled.bench[0].damage == 30 and trampled.bench[1].damage == 30 and trampled.active.damage == 0, "heads: 1 damage counter on each Darkner the attack damaged, from the Field, and none on the undamaged one")
+		elif flips.size() == 1 and flips[0].contains("tails") and not stampede_tails:
+			stampede_tails = true
+			expect(trampled.bench[0].damage == 20 and trampled.bench[1].damage == 20, "tails: no damage counters")
+	expect(stampede_heads and stampede_tails, "Relentless Stampede flips once per attack; both results were seen")
+
+	var herd := battle("jevil", ["chaos_energy"], "tenna")
+	herd.current_player().bench.append(in_play("electro_dasher", []))
+	herd.current_player().bench.append(in_play("electro_dasher", []))
+	var herd_start := herd.events.size()
+	attack(herd, "Slash")
+	var herd_flips := herd.events.slice(herd_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
+	expect(herd_flips.size() == 2, "two Electro-Dasher in play flip a coin each (%d)" % herd_flips.size())
+
+	var blocked := battle("jevil", ["chaos_energy"], "guei")
+	blocked.current_player().bench.append(in_play("electro_dasher", []))
+	var blocked_start := blocked.events.size()
+	attack(blocked, "Slash")
+	var blocked_flips := blocked.events.slice(blocked_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
+	expect(blocked_flips.is_empty(), "an attack that deals no damage (Guei resists Chaos) sets off nothing")
+
+	var trigger_heads := false
+	var trigger_tails := false
+	for seed in SEEDS:
+		var trigger_ko := battle("electro_dasher", ["chaos_energy"], "tenna", seed)
+		trigger_ko.opponent_player().bench.append(in_play("guei", []))
+		trigger_ko.opponent_player().active.damage = 80
+		var trigger_taker := trigger_ko.current_index
+		var trigger_start := trigger_ko.events.size()
+		attack(trigger_ko, "Violent Transit")
+		var heads := trigger_ko.events.slice(trigger_start).has("  Coin flip: heads")
+		var mercy := trigger_ko.players[trigger_taker].prizes.size()
+		if heads and not trigger_heads:
+			trigger_heads = true
+			expect(mercy == 3 and trigger_ko.players[1 - trigger_taker].active.card.name == "Guei", "heads: the damage counter knocks out Tenna (90 + 10) before knockouts are checked; Guei is promoted")
+		elif not heads and not trigger_tails:
+			trigger_tails = true
+			expect(mercy == 4 and trigger_ko.players[1 - trigger_taker].active.card.name == "Tenna", "tails: Tenna survives at 90 damage and the turn passes")
+	expect(trigger_heads and trigger_tails, "both results were seen")
 
 	print("== field limit")
 	var field := battle("jevil", [], "guei")

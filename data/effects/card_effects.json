@@ -28,6 +28,13 @@
   "electro_dasher": {
     "attacks": {
       "Violent Transit": {"function": "damage_then_switch_self", "args": {}}
+    },
+    "powers": {
+      "Relentless Stampede": {
+        "function": "counters_on_attack_damaged_on_heads",
+        "args": {"counters": 1},
+        "timing": "on_attack_damage"
+      }
     }
   },
   "water_cooler": {
