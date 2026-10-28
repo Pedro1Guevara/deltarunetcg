@@ -2,6 +2,12 @@ class_name MatchEngine
 extends RefCounted
 
 const NO_WINNER := -1
+## How damage reached a Darkner (_apply_damage). Attack: from an attack, after Weakness and
+## Resistance. Direct: damage that is not an attack's, such as an attacker hurting itself.
+## Counters: damage counters placed by an effect.
+const DAMAGE_ATTACK := "attack"
+const DAMAGE_DIRECT := "direct"
+const DAMAGE_COUNTERS := "counters"
 ## Both players won at the same time and in the same number of ways: play Sudden Death.
 const SUDDEN_DEATH := -2
 
@@ -328,7 +334,7 @@ func _can_play_trainer(player: PlayerState, card: CardData) -> bool:
 		CardData.TRAINER_STADIUM:
 			allowed = not player.stadium_played_this_turn and (stadium == null or stadium.name != card.name)
 		CardData.TRAINER_SPELL:
-			allowed = player.tp >= spell_cost(card)
+			allowed = can_spend_tp(player, spell_cost(card))
 	# A card that is known to have no effect cannot be played.
 	return allowed and _trainer_requirements_met(card)
 
@@ -358,9 +364,8 @@ func _do_play_trainer(hand_index: int) -> void:
 	var card := player.hand.pop_at(hand_index) as CardData
 	match card.trainer_type:
 		CardData.TRAINER_SPELL:
-			var cost := spell_cost(card)
-			player.tp -= cost
-			_log("Player %d casts %s for %d%% TP (%d%% left)" % [current_index + 1, card.name, cost * 25, player.tp * 25])
+			_log("Player %d casts %s" % [current_index + 1, card.name])
+			spend_tp(player, spell_cost(card))
 		CardData.TRAINER_SUPPORTER:
 			player.supporter_played_this_turn = true
 			_log("Player %d plays %s" % [current_index + 1, card.name])
@@ -582,16 +587,13 @@ func spell_cost(spell: CardData) -> int:
 func deal_benched_attack_damage(_context: EffectContext, target: CardInPlay, amount: int) -> int:
 	if amount <= 0:
 		return 0
-	target.damage += amount
-	_log("  %d damage to %s (%d/%d HP)" % [amount, target.card.name, target.remaining_hp(), target.card.hp])
-	return amount
+	return _apply_damage(target, amount, DAMAGE_ATTACK)
 
 ## Places damage counters on a Darkner: 10 damage each, never changed by Weakness or Resistance.
 func place_damage_counters(target: CardInPlay, count: int) -> int:
 	if count <= 0:
 		return 0
-	target.damage += count * 10
-	_log("  %d damage counter%s on %s (%d/%d HP)" % [count, "" if count == 1 else "s", target.card.name, target.remaining_hp(), target.card.hp])
+	_apply_damage(target, count * 10, DAMAGE_COUNTERS)
 	return count
 
 
@@ -611,7 +613,13 @@ func heal(target: CardInPlay, amount: int) -> int:
 	return healed
 
 
-## Spends TP, in quarters. The caller has checked the player has it.
+## Whether a player has this much TP, in quarters. Every TP payment asks this first.
+func can_spend_tp(player: PlayerState, quarters: int) -> bool:
+	return player.tp >= quarters
+
+
+## Spends TP, in quarters. Every TP payment ends here, Spells and effects alike; the caller
+## has asked can_spend_tp() first.
 func spend_tp(player: PlayerState, quarters: int) -> void:
 	player.tp -= quarters
 	_log("  Player %d uses %d%% TP (%d%% left)" % [players.find(player) + 1, quarters * 25, player.tp * 25])
@@ -634,18 +642,29 @@ func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
 	if defender == null:
 		return 0
-	var dealt := Damage.apply_modifiers(context.source.card, defender.card, base_damage)
-	defender.damage += dealt
-	_log("  %d damage to %s (%d/%d HP)" % [dealt, defender.card.name, defender.remaining_hp(), defender.card.hp])
-	return dealt
+	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.card, base_damage), DAMAGE_ATTACK)
 
 
 ## Damage without Weakness or Resistance, such as an attacker damaging itself.
 func deal_direct_damage(target: CardInPlay, amount: int) -> int:
 	if amount <= 0:
 		return 0
+	return _apply_damage(target, amount, DAMAGE_DIRECT)
+
+
+## The one place damage lands on a Darkner. Every way of dealing damage ends here, so what must
+## happen to all damage (preventing it, effects that watch for it) is written once.
+func _apply_damage(target: CardInPlay, amount: int, kind: String) -> int:
 	target.damage += amount
-	_log("  %s takes %d damage (%d/%d HP)" % [target.card.name, amount, target.remaining_hp(), target.card.hp])
+	var hp := "(%d/%d HP)" % [target.remaining_hp(), target.card.hp]
+	match kind:
+		DAMAGE_ATTACK:
+			_log("  %d damage to %s %s" % [amount, target.card.name, hp])
+		DAMAGE_COUNTERS:
+			var counters := amount / 10
+			_log("  %d damage counter%s on %s %s" % [counters, "" if counters == 1 else "s", target.card.name, hp])
+		_:
+			_log("  %s takes %d damage %s" % [target.card.name, amount, hp])
 	return amount
 
 

@@ -419,7 +419,7 @@ static func _attach_from_discard_to_benched(context: EffectContext, player: Play
 ## player chooses whether to spend amount TP, in quarters. Without enough TP nothing is asked
 ## and nothing is spent. Returns 1 when the TP was spent, 0 otherwise.
 static func _pay_tp(context: EffectContext, player: PlayerState, amount: int) -> Variant:
-	if player.tp < amount:
+	if not context.engine.can_spend_tp(player, amount):
 		return 0
 	if context.selection.is_empty():
 		return context.ask(player, "Use %d%% TP?" % (amount * 25), [
