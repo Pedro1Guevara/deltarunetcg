@@ -403,7 +403,7 @@
 				],
 				"damage": 70.0,
 				"damage_suffix": "",
-				"text": "This attacks costs 1 Energy less for each Darkner on your Field."
+				"text": "This attack costs 1 Energy less for each Darkner on your Field."
 			}
 		],
 		"abilities": [
@@ -486,6 +486,226 @@
 		"orientation": "portrait"
 	},
 	{
+		"id": "old_man",
+		"name": "Old Man",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 70.0,
+		"types": [
+			"Creative"
+		],
+		"weakness_types": [
+			"Electric"
+		],
+		"resistance_types": [
+			"Virus"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Recruit",
+				"cost": [
+					"Colorless"
+				],
+				"damage": 0.0,
+				"damage_suffix": "",
+				"text": "Search your deck for a Darkner and put it into your hand. Then, shuffle your deck."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Creative Liberties",
+				"text": "When you play this Darkner from your hand onto your Field, you may use this ability. Both players shuffle their hands into their decks and draw 3 cards. You can't use more than 1 Creative Liberties ability during your turn. You can't use this ability on your first turn."
+			}
+		],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "hammer_of_justice",
+		"name": "Hammer of Justice",
+		"category": "darkner",
+		"stage": "evolution",
+		"evolves_from": "Old Man",
+		"hp": 120.0,
+		"types": [
+			"Creative"
+		],
+		"weakness_types": [],
+		"resistance_types": [],
+		"flee_cost": 0.0,
+		"attacks": [
+			{
+				"name": "Colourful Legacy",
+				"cost": [
+					"Creative",
+					"Creative",
+					"Creative"
+				],
+				"damage": 10.0,
+				"damage_suffix": "+",
+				"text": "This attack does 20 more damage for each different type of Darkner on your Field."
+			}
+		],
+		"abilities": [],
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "landscape"
+	},
+	{
+		"id": "dummy",
+		"name": "Dummy",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 90.0,
+		"types": [
+			"Fighting"
+		],
+		"weakness_types": [
+			"Holy"
+		],
+		"resistance_types": [
+			"Fun"
+		],
+		"flee_cost": 2.0,
+		"attacks": [
+			{
+				"name": "Helpful Training",
+				"cost": [
+					"Colorless"
+				],
+				"damage": 0.0,
+				"damage_suffix": "",
+				"text": "Attach a Basic Energy card from your hand to 1 Darkner on your Field."
+			}
+		],
+		"abilities": [],
+		"artist": "tellioryn",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "balthizard",
+		"name": "Balthizard",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 70.0,
+		"types": [
+			"Holy"
+		],
+		"weakness_types": [
+			"Creative"
+		],
+		"resistance_types": [
+			"Chaos"
+		],
+		"flee_cost": 3.0,
+		"attacks": [
+			{
+				"name": "Pungent Fumes",
+				"cost": [
+					"Holy",
+					"Holy",
+					"Holy"
+				],
+				"damage": 60.0,
+				"damage_suffix": "",
+				"text": ""
+			}
+		],
+		"abilities": [
+			{
+				"name": "Luring Incense",
+				"text": "Once during your turn, when you play this Darkner from your hand onto your Field, you may use this ability. Search your deck for a non-Evolution Darkner (except any Balthizard) and put it onto your Field. Then, shuffle your deck. You can't use more than 1 Luring Incense ability during your turn."
+			}
+		],
+		"artist": "manusansz",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "koody",
+		"name": "Koody",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 40.0,
+		"types": [
+			"Fun"
+		],
+		"weakness_types": [
+			"Order"
+		],
+		"resistance_types": [
+			"Flower"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Lunge",
+				"cost": [
+					"Colorless"
+				],
+				"damage": 30.0,
+				"damage_suffix": "",
+				"text": "Flip a coin. If tails, this attack does nothing."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Way of the Worm",
+				"text": "Once during your turn, you may discard a Basic Energy card from your hand in order to draw 1 card. You can't use more than 1 Way of the Worm ability during your turn."
+			}
+		],
+		"artist": "Frog_King",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "addison",
+		"name": "Addison",
+		"category": "darkner",
+		"stage": "basic",
+		"evolves_from": "",
+		"hp": 50.0,
+		"types": [
+			"Electric"
+		],
+		"weakness_types": [
+			"Virus"
+		],
+		"resistance_types": [
+			"Order"
+		],
+		"flee_cost": 1.0,
+		"attacks": [
+			{
+				"name": "Close Tab",
+				"cost": [
+					"Colorless",
+					"Colorless",
+					"Colorless"
+				],
+				"damage": 50.0,
+				"damage_suffix": "",
+				"text": "Shuffle this Darkner and all cards attached to it into your deck."
+			}
+		],
+		"abilities": [
+			{
+				"name": "Click Here!",
+				"text": "Once during your turn, when you play this Darkner from your hand onto your Field, you may use 25% TP. If you do, search your deck for a Lightner card and put it into your hand. Then, shuffle your deck. You can't use more than 1 Click Here! ability during your turn."
+			}
+		],
+		"artist": "mdnexus",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
 		"id": "petal_feather",
 		"name": "Petal Feather",
 		"category": "act",
@@ -516,6 +736,36 @@
 		"orientation": "portrait"
 	},
 	{
+		"id": "cd_bagel",
+		"name": "CD Bagel",
+		"category": "act",
+		"subtype": "item",
+		"text": "You may only use this card if you discard 1 other card from your hand.\nSearch your deck for up to 2 basic energy cards and put them into your hand. Then, shuffle your deck.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "recruit_manual",
+		"name": "Recruit Manual",
+		"category": "act",
+		"subtype": "item",
+		"text": "You may only use this card if you discard 2 other cards from your hand.\nSearch your deck for a Darkner and put it into your hand. Then, shuffle your deck.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "revive_mint",
+		"name": "Revive Mint",
+		"category": "act",
+		"subtype": "item",
+		"text": "Put a Darkner from your discard pile into your hand.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
 		"id": "kris",
 		"name": "Kris",
 		"category": "act",
@@ -532,6 +782,46 @@
 		"subtype": "lightner",
 		"text": "Switch in 1 Darkner from your opponent's Field to their Battle Zone.",
 		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "napstablook",
+		"name": "Napstablook",
+		"category": "act",
+		"subtype": "lightner",
+		"text": "Search your deck for up to 2 cards and discard them. Then, shuffle your deck.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "berdly",
+		"name": "Berdly",
+		"category": "act",
+		"subtype": "lightner",
+		"text": "Each player shuffles their hand and puts it on the bottom of their deck, then they each draw 4 cards.",
+		"artist": "berdlyglazer",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "temmie",
+		"name": "Temmie",
+		"category": "act",
+		"subtype": "lightner",
+		"text": "Draw 3 cards.",
+		"artist": "ThePinionMan",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "sans",
+		"name": "Sans",
+		"category": "act",
+		"subtype": "lightner",
+		"text": "Discard your hand and search your deck for up to 2 ACT cards, and put them into your hand. Then, shuffle your deck.",
+		"artist": "TheGaming",
 		"image": "",
 		"orientation": "portrait"
 	},
@@ -566,6 +856,26 @@
 		"orientation": "portrait"
 	},
 	{
+		"id": "dark_zone",
+		"name": "Dark Zone",
+		"category": "act",
+		"subtype": "area",
+		"text": "Once during each player's turn, that player may discard 2 cards from their hand. If they do, they draw a card.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "cold_place",
+		"name": "Cold Place",
+		"category": "act",
+		"subtype": "area",
+		"text": "Whenever any player puts a non-Evolution Darkner onto their Field during their turn, place 1 damage counter on that Darkner.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
 		"id": "rude_buster",
 		"name": "Rude Buster",
 		"category": "act",
@@ -583,6 +893,17 @@
 		"subtype": "spell",
 		"tp_cost": 1.0,
 		"text": "Put either a basic energy card or a Darkner from your discard pile into your hand.",
+		"artist": "Sylkwyrm",
+		"image": "",
+		"orientation": "portrait"
+	},
+	{
+		"id": "workshop",
+		"name": "Workshop",
+		"category": "act",
+		"subtype": "spell",
+		"tp_cost": 2.0,
+		"text": "Attach a Basic Energy card from your discard pile to 1 non-Evolution Darkner on your Field that doesn't have an ability or any energy cards attached.",
 		"artist": "Sylkwyrm",
 		"image": "",
 		"orientation": "portrait"

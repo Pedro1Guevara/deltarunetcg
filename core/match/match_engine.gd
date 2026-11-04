@@ -246,16 +246,13 @@ func _continue_setup(choice: PendingChoice) -> void:
 
 ## The only way a turn ends: the player ends it without attacking (passing), or attacks and
 ## every knocked out Darkner has been replaced. What happens at the end of every turn goes
-## here, such as TP recovery (Design Document 5). Then the opponent's turn begins.
+## here, such as refilling TP after a pass (Design Document 5). Then the opponent's turn begins.
 func _end_turn(attacked: bool) -> void:
 	var player := current_player()
 	if not attacked:
 		_log("Player %d ends the turn" % (current_index + 1))
-	if rules.tp_max > 0:
-		var before := player.tp
-		player.tp = mini(player.tp + rules.tp_recovery, rules.tp_max) if attacked else rules.tp_max
-		if player.tp != before:
-			_log("Player %d recovers TP: %d%%" % [current_index + 1, player.tp * 25])
+	if rules.tp_max > 0 and not attacked:
+		_set_tp(player, rules.tp_max)
 	_begin_turn(_opponent_index())
 
 
@@ -282,9 +279,16 @@ func _begin_turn(player_index: int) -> void:
 			winner = _opponent_index()
 			_log("Player %d took the last Mercy Card and wins" % (winner + 1))
 		return
-
+	if rules.tp_max > 0:
+		_set_tp(player, mini(player.tp + rules.tp_recovery, rules.tp_max))
 	player.draw_card()
 
+## TP recovery (Design Document 5): 25% at the start of each turn, 100% when a player passes.
+func _set_tp(player: PlayerState, quarters: int) -> void:
+	if player.tp == quarters:
+		return
+	player.tp = quarters
+	_log("Player %d recovers TP: %d%%" % [players.find(player) + 1, quarters * 25])
 
 func _do_bench(hand_index: int) -> void:
 	var player := current_player()

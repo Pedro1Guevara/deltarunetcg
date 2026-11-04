@@ -25,8 +25,8 @@ var deck_size: int = 0
 var max_copies: int = 0
 ## Most TP a player can hold, in quarters (Design Document 5). 0 means the rules have no TP.
 var tp_max: int = 0
-## TP recovered at the end of a turn in which the player attacked, in quarters. A player who
-## passes recovers up to tp_max instead.
+## TP recovered at the start of each of the player's turns, in quarters. A player who passes
+## recovers up to tp_max at the end of that turn instead.
 var tp_recovery: int = 0
 
 

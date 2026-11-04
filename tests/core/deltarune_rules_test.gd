@@ -122,19 +122,17 @@ func _run() -> void:
 	expect(tp_round.players[0].tp == 0 and tp_round.players[1].tp == 0, "both players start the round at 0% TP")
 	finish_setup(tp_round)
 	var opener := tp_round.current_index
+	expect(tp_round.players[opener].tp == 1, "the first player gains 25% at the start of turn 1")
 	tp_round.apply({"type": "end_turn", "label": "End turn"})
 	expect(tp_round.players[opener].tp == 4, "the first player cannot attack on turn 1, so ending it is a pass: 100%")
+	expect(tp_round.current_player().tp == 1, "the second player gains 25% at the start of turn 2")
 
 	var tp_attack := battle("jevil", ["chaos_energy"], "guei")
 	var tp_attacker := tp_attack.current_index
+	var tp_waiting := tp_attack.opponent_player()
 	expect(attack(tp_attack, "Slash"), "Slash is legal with 1 Chaos")
-	expect(tp_attack.players[tp_attacker].tp == 1, "attacking recovers 25%")
-
-	var tp_full := battle("jevil", ["chaos_energy"], "guei")
-	var tp_full_player := tp_full.current_player()
-	tp_full_player.tp = 4
-	attack(tp_full, "Slash")
-	expect(tp_full_player.tp == 4, "TP never goes above 100%")
+	expect(tp_attack.players[tp_attacker].tp == 1, "attacking recovers nothing at the end of the turn")
+	expect(tp_waiting.tp == 4, "TP never goes above 100%: a player at 100% stays there at the start of their turn")
 
 	var tp_legacy := start_round(MatchRules.legacy(), 5)
 	finish_setup(tp_legacy)
@@ -311,7 +309,8 @@ func _run() -> void:
 	var transit_target := transit.opponent_player().active
 	transit_player.bench.append(in_play("jevil", []))
 	attack(transit, "Violent Transit")
-	expect(transit.events.any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
+	expect(transit.events.any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")	
+	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
 
 	var splash := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
 	var splasher := splash.current_player()
