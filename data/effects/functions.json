@@ -294,5 +294,40 @@
       {"call": "draw_cards", "args": {"player": "$player", "count": "$count"}},
       {"call": "draw_cards", "args": {"player": "$opponent", "count": "$count"}}
     ]
+  },
+  "damage_then_search_deck": {
+    "params": { "filter": "card_filter", "count": "int" },
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
+    ]
+  },
+  "damage_then_attach_from_hand_to_benched": {
+    "params": { "filter": "card_filter" },
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "attach_from_hand_to_benched", "args": {"player": "$player", "filter": "$filter"}}
+    ]
+  },
+  "damage_plus_per_type_on_own_bench": {
+    "params": { "per_type": "int" },
+    "steps": [
+      {"call": "count_types_on_bench", "args": {"player": "$player"}, "as": "types"},
+      {"call": "multiply", "args": {"a": "$types", "b": "$per_type"}, "as": "bonus"},
+      {"call": "attack_damage", "args": {"times": 1, "plus": "$bonus"}}
+    ]
+  },
+  "discard_own_energy_then_counters_with_extra_turn_on_knockout": {
+    "params": { "counters": "int" },
+    "requires": [
+      {"check": "attack_not_used_last_turn", "args": {"player": "$player"}}
+    ],
+    "steps": [
+      {"call": "discard_all_attached_energy_cards", "args": {"target": "$self"}},
+      {"call": "choose_darkner", "args": {"player": "$opponent", "chooser": "$player"}, "as": "target"},
+      {"call": "place_damage_counters", "args": {"target": "$target", "count": "$counters"}},
+      {"call": "is_knocked_out", "args": {"target": "$target"}, "as": "knocked_out"},
+      {"call": "take_extra_turn", "args": {}, "when": {"value": "$knocked_out", "eq": 1}}
+    ]
   }
 }

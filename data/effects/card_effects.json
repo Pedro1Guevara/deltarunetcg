@@ -76,5 +76,30 @@
   },
   "recruit_manual": {
     "trainer": {"function": "discard_from_hand_then_search_deck", "args": {"discard": 2, "filter": ["pokemon"], "count": 1}}
+  },
+  "old_man": {
+    "attacks": {
+      "Recruit": {"function": "damage_then_search_deck", "args": {"filter": ["pokemon"], "count": 1}}
+    }
+  },
+  "dummy": {
+    "attacks": {
+      "Helpful Training": {"function": "damage_then_attach_from_hand_to_benched", "args": {"filter": ["basic_energy"]}}
+    }
+  },
+  "koody": {
+    "attacks": {
+      "Lunge": {"function": "damage_times_heads", "args": {"coins": 1}}
+    }
+  },
+  "hammer_of_justice": {
+    "attacks": {
+      "Colourful Legacy": {"function": "damage_plus_per_type_on_own_bench", "args": {"per_type": 20}}
+    }
+  },
+  "shuttah": {
+    "attacks": {
+      "Quick Selfie": {"function": "discard_own_energy_then_counters_with_extra_turn_on_knockout", "args": {"counters": 2}}
+    }
   }
 }

@@ -16,10 +16,15 @@ var stadium_played_this_turn := false
 var turns_started: int = 0
 ## Mulligans taken during setup. Public information, as at the table.
 var mulligans: int = 0
-## TP in quarters: 0 is 0%, 4 is 100% (Design Document 5). Every round starts at 0.
+## TP in quarters: 0 is 0%, 4 is 100% (Design Document 5). The round rules set the start.
 var tp: int = 0
+## The attack this player used during this turn and during their previous turn, by name, or "".
+var attack_used_this_turn: String = ""
+var attack_used_last_turn: String = ""
 
 func reset_turn_flags() -> void:
+	attack_used_last_turn = attack_used_this_turn
+	attack_used_this_turn = ""
 	energy_attached_this_turn = false
 	retreated_this_turn = false
 	supporter_played_this_turn = false

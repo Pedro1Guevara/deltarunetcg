@@ -128,6 +128,24 @@ const DECLARATIONS := {
 		"place_damage_counters_on_attack_damaged": {
 		"role": ROLE_EFFECT, "params": {"count": "int"}, "returns": "int", "attack_only": false,
 	},
+	"attach_from_hand_to_benched": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter"}, "returns": "int", "attack_only": false,
+	},
+	"count_types_on_bench": {
+		"role": ROLE_EFFECT, "params": {"player": "player"}, "returns": "int", "attack_only": false,
+	},
+	"choose_darkner": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "chooser": "player"}, "returns": "pokemon", "attack_only": false,
+	},
+	"is_knocked_out": {
+		"role": ROLE_EFFECT, "params": {"target": "pokemon"}, "returns": "int", "attack_only": false,
+	},
+	"take_extra_turn": {
+		"role": ROLE_EFFECT, "params": {}, "returns": "int", "attack_only": false,
+	},
+	"attack_not_used_last_turn": {
+		"role": ROLE_CHECK, "params": {"player": "player"}, "returns": "", "attack_only": true,
+	},
 	"attach_from_discard_to_benched": {
 		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter"}, "returns": "int", "attack_only": false,
 	},
@@ -209,7 +227,25 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 				placed += engine.place_damage_counters(target, int(args["count"]))
 			return placed
 		"attach_from_discard_to_benched":
-			return _attach_from_discard_to_benched(context, args["player"] as PlayerState, args["filter"] as Array)
+			var owner := args["player"] as PlayerState
+			return _attach_to_benched(context, owner, owner.discard, args["filter"] as Array, false)
+		"attach_from_hand_to_benched":
+			var holder := args["player"] as PlayerState
+			return _attach_to_benched(context, holder, holder.hand, args["filter"] as Array, true)
+		"count_types_on_bench":
+			var types: Array[String] = []
+			for darkner in (args["player"] as PlayerState).bench:
+				for type in darkner.card.types:
+					if not types.has(type):
+						types.append(type)
+			return types.size()
+		"choose_darkner":
+			return _choose_darkner(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
+		"is_knocked_out":
+			return 1 if (args["target"] as CardInPlay).remaining_hp() <= 0 else 0
+		"take_extra_turn":
+			engine.grant_extra_turn()
+			return 1
 		"attack_damage_to_benched":
 			var dealt := 0
 			for target in (args["player"] as PlayerState).bench.duplicate():
@@ -258,6 +294,8 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 
 static func check(name: String, context: EffectContext, args: Dictionary) -> bool:
 	match name:
+		"attack_not_used_last_turn":
+			return context.attack == null or (args["player"] as PlayerState).attack_used_last_turn != context.attack.name
 		"has_cards_in_hand":
 			return _hand_without_card_played(context, args["player"] as PlayerState).size() >= int(args["count"])
 		"has_benched":
@@ -499,15 +537,16 @@ static func _hand_without_card_played(context: EffectContext, player: PlayerStat
 			cards.append(card)
 	return cards
 
-## player attaches 1 card that matches filters from their discard pile to 1 Darkner on their
-## Field. They choose the card with _pick_cards(), then the Darkner, each only when the choice
-## matters. Returns 1 when a card was attached, 0 when there was nothing to attach or nowhere to
-## attach it.
-static func _attach_from_discard_to_benched(context: EffectContext, player: PlayerState, filters: Array) -> Variant:
-	var candidates := CardFilter.select(player.discard, filters, [])
+## player attaches 1 card that matches filters from pile (their discard pile, or their hand
+## when from_hand) to 1 Darkner on their Field. They choose the card with _pick_cards(), then
+## the Darkner, each only when the choice matters. Returns 1 when a card was attached, 0 when
+## there was nothing to attach or nowhere to attach it.
+static func _attach_to_benched(context: EffectContext, player: PlayerState, pile: Array[CardData], filters: Array, from_hand: bool) -> Variant:
+	var candidates := CardFilter.select(pile, filters, [])
 	if candidates.is_empty() or player.bench.is_empty():
 		return 0
-	var picked: Variant = _pick_cards(context, player, candidates, 1, "Choose a card from your discard pile to attach", "Attach", "")
+	var prompt := "Choose a card from your %s to attach" % ["hand" if from_hand else "discard pile"]
+	var picked: Variant = _pick_cards(context, player, candidates, 1, prompt, "Attach", "")
 	if picked is String:
 		return picked
 	var energy := (picked as Array[CardData])[0]
@@ -524,8 +563,38 @@ static func _attach_from_discard_to_benched(context: EffectContext, player: Play
 				"shows": player.bench[index],
 			})
 		return context.ask(player, "Choose a Darkner on your Field to attach %s to" % energy.name, targets)
-	context.engine.attach_from_discard(player, energy, player.bench[slot])
+	if from_hand:
+		context.engine.attach_from_hand(player, energy, player.bench[slot])
+	else:
+		context.engine.attach_from_discard(player, energy, player.bench[slot])
 	return 1
+
+
+## chooser picks one of player's Darkners in play, in the Battle Zone or on the Field. Only one
+## Darkner is picked without asking. Returns it, or null when player has none.
+static func _choose_darkner(context: EffectContext, player: PlayerState, chooser: PlayerState) -> Variant:
+	var slots: Array[int] = []
+	for slot in range(-1, player.bench.size()):
+		if (player.active if slot == -1 else player.bench[slot]) != null:
+			slots.append(slot)
+	if slots.is_empty():
+		return null
+	var slot := slots[0]
+	if not context.selection.is_empty():
+		slot = int(context.selection[0])
+	elif slots.size() > 1:
+		var options: Array = []
+		for index in slots:
+			var darkner: CardInPlay = player.active if index == -1 else player.bench[index]
+			options.append({
+				"label": "Choose %s (%s, %d/%d HP)" % [darkner.card.name, MatchEngine.slot_name(index), darkner.remaining_hp(), darkner.card.hp],
+				"value": index,
+				"shows": darkner,
+			})
+		var whose := "your" if player == chooser else "your opponent's"
+		return context.ask(chooser, "Choose one of %s Darkners" % whose, options)
+	return player.active if slot == -1 else player.bench[slot]
+
 
 ## player chooses whether to spend amount TP, in quarters. Without enough TP nothing is asked
 ## and nothing is spent. Returns 1 when the TP was spent, 0 otherwise.

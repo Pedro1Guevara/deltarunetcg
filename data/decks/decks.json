@@ -1,26 +1,20 @@
 {
 	"deltarune_chaos": {
-		"name": "Chaos Test",
+		"name": "Creative Test",
 		"cards": {
-			"jevil": 4,
-			"electro_dasher": 4,
-			"chaos_energy": 12,
-			"cd_bagel": 3,
-			"sans": 3,
-			"napstablook": 2,
-			"recruit_manual": 2
+			"shuttah": 4,
+			"old_man": 4,
+			"koody": 2,
+			"creative_energy": 20
 		}
 	},
 	"deltarune_holy": {
-		"name": "Holy Test",
+		"name": "Fighting Test",
 		"cards": {
-			"water_cooler": 4,
-			"guei": 4,
-			"cuptain": 4,
-			"holy_energy": 11,
-			"revive_mint": 3,
-			"berdly": 2,
-			"recruit_manual": 2
+			"dummy": 4,
+			"koody": 4,
+			"fighting_energy": 11,
+			"fun_energy": 11
 		}
 	},
 	"creative": {

@@ -487,6 +487,108 @@ func _run() -> void:
 	attack(overrun, "Overrun")
 	expect(overrun_target.damage == Damage.apply_modifiers(db.make("cuptain"), overrun_target.card, 30), "Overrun: 10 for each of the 3 Cuptain in play (%d)" % overrun_target.damage)
 
+	var recruit := battle("old_man", ["creative_energy"], "tenna")
+	var recruiter_side := recruit.current_player()
+	recruiter_side.deck.assign(cards(["guei", "kris", "jevil"]))
+	expect(attack(recruit, "Recruit"), "Recruit is legal with 1 Energy")
+	var recruit_labels: Array = []
+	for action in recruit.legal_actions():
+		recruit_labels.append(action["label"])
+	expect(recruit.choice_prompt() == "Search your deck for Darkner" and recruit_labels == ["Take Guei", "Take Jevil", "Take nothing"], "Recruit searches the deck for a Darkner: %s" % [recruit_labels])
+	pick(recruit, "Take Jevil")
+	expect(recruiter_side.hand.back().name == "Jevil" and recruit.opponent_player().active.damage == 0, "the Darkner goes into the hand; an attack with no printed damage deals none")
+	expect(not recruit.events.any(func(line: String) -> bool: return line.begins_with("  0 damage")), "and logs no damage")
+	expect(recruit.current_player() != recruiter_side, "then the turn ends")
+
+	var training := battle("dummy", ["fighting_energy"], "tenna")
+	var trainer_side := training.current_player()
+	trainer_side.bench.append(in_play("guei", []))
+	trainer_side.bench.append(in_play("cuptain", []))
+	trainer_side.hand.assign(cards(["holy_energy", "fighting_energy", "kris"]))
+	trainer_side.energy_attached_this_turn = true
+	expect(attack(training, "Helpful Training"), "Helpful Training is legal even after attaching Energy this turn")
+	var training_labels: Array = []
+	for action in training.legal_actions():
+		training_labels.append(action["label"])
+	expect(training.choice_prompt() == "Choose a card from your hand to attach" and training_labels == ["Attach Holy Energy", "Attach Fighting Energy"], "the player chooses a basic Energy from their hand: %s" % [training_labels])
+	pick(training, "Attach Holy Energy")
+	expect(play(training, "Attach Holy Energy to Cuptain (Field 2)"), "then a Darkner on the Field")
+	expect(trainer_side.bench[1].attached_energy.size() == 1 and trainer_side.active.attached_energy.size() == 1 and trainer_side.hand.size() == 2, "the Energy goes from the hand to that Darkner")
+	var lonely := battle("dummy", ["fighting_energy"], "tenna")
+	var lonely_player := lonely.current_player()
+	lonely_player.hand.assign(cards(["holy_energy"]))
+	expect(attack(lonely, "Helpful Training") and not lonely.is_waiting_for_choice() and lonely_player.hand.size() == 1, "with nothing on the Field the attack can still be used, and does nothing")
+
+	var lunge_heads := false
+	var lunge_tails := false
+	for seed in SEEDS:
+		var lunge := battle("koody", ["fun_energy"], "tenna", seed)
+		var lunge_target := lunge.opponent_player().active
+		var start := lunge.events.size()
+		attack(lunge, "Lunge")
+		var heads := lunge.events.slice(start).has("  Coin flip: heads")
+		var dealt := lunge_target.damage
+		if heads and not lunge_heads:
+			lunge_heads = true
+			expect(dealt == 30, "Lunge: heads deals 30 (%d)" % dealt)
+		elif not heads and not lunge_tails:
+			lunge_tails = true
+			expect(dealt == 0, "Lunge: tails does nothing (%d)" % dealt)
+	expect(lunge_heads and lunge_tails, "both Lunge results were seen")
+
+	var legacy := battle("hammer_of_justice", ["creative_energy", "creative_energy", "creative_energy"], "tenna")
+	var legacy_target := legacy.opponent_player().active
+	attack(legacy, "Colourful Legacy")
+	expect(legacy_target.damage == 10, "Colourful Legacy with nothing on the Field deals 10 (%d)" % legacy_target.damage)
+	var colourful := battle("hammer_of_justice", ["creative_energy", "creative_energy", "creative_energy"], "tenna")
+	var colourful_target := colourful.opponent_player().active
+	colourful.current_player().bench.append(in_play("jevil", []))
+	colourful.current_player().bench.append(in_play("guei", []))
+	colourful.current_player().bench.append(in_play("water_cooler", []))
+	attack(colourful, "Colourful Legacy")
+	expect(colourful_target.damage == 50, "Chaos, Holy and Holy on the Field are 2 different types: 10 + 40 (%d)" % colourful_target.damage)
+
+	var selfie := battle("shuttah", ["chaos_energy", "chaos_energy"], "tenna")
+	var selfie_player := selfie.current_player()
+	var selfie_index := selfie.current_index
+	var selfie_turn := selfie.turn
+	selfie.opponent_player().bench.append(in_play("guei", []))
+	expect(attack(selfie, "Quick Selfie"), "Quick Selfie is legal")
+	var selfie_labels: Array = []
+	for action in selfie.legal_actions():
+		selfie_labels.append(action["label"])
+	expect(selfie.choice_prompt() == "Choose one of your opponent's Darkners" and selfie_labels == ["Choose Tenna (Battle Zone, 100/100 HP)", "Choose Guei (Field 1, 80/80 HP)"], "the attacker chooses any of the opponent's Darkners: %s" % [selfie_labels])
+	expect(selfie_player.active.attached_energy.is_empty() and selfie_player.discard.size() == 2, "Shuttah's Energy is discarded first")
+	play(selfie, "Choose Guei (Field 1, 80/80 HP)")
+	expect(selfie.players[1 - selfie_index].bench[0].damage == 20, "2 damage counters on the chosen Darkner, without Weakness or Resistance")
+	expect(selfie.current_index != selfie_index and selfie.turn == selfie_turn + 1, "without a knockout the turn passes as usual")
+
+	var again := battle("shuttah", ["chaos_energy", "chaos_energy"], "tenna")
+	var again_index := again.current_index
+	var again_turn := again.turn
+	var again_opponent := again.opponent_player()
+	again_opponent.bench.append(in_play("guei", []))
+	again_opponent.bench[0].damage = 60
+	attack(again, "Quick Selfie")
+	play(again, "Choose Guei (Field 1, 20/80 HP)")
+	expect(again.players[again_index].prizes.size() == 3 and again_opponent.bench.is_empty(), "the 2 damage counters knock out Guei on the Field: a Mercy Card")
+	expect(again.current_index == again_index and again.turn == again_turn + 1 and again.events.has("Player %d takes another turn" % (again_index + 1)), "a knockout by Quick Selfie gives the attacker another turn")
+	var again_player := again.current_player()
+	again_player.active.attached_energy.append_array(cards(["chaos_energy", "chaos_energy"]))
+	expect(not has_action(again, "attack"), "Quick Selfie cannot be used in the turn after it was used")
+	again.apply({"type": "end_turn", "label": "End turn"})
+	again.apply({"type": "end_turn", "label": "End turn"})
+	expect(again.current_player() == again_player and has_action(again, "attack"), "after a turn without it, Quick Selfie can be used again")
+
+	var zone := battle("shuttah", ["chaos_energy", "chaos_energy"], "tenna")
+	var zone_index := zone.current_index
+	var zone_opponent := zone.opponent_player()
+	zone_opponent.bench.append(in_play("guei", []))
+	zone_opponent.active.damage = 80
+	attack(zone, "Quick Selfie")
+	play(zone, "Choose Tenna (Battle Zone, 20/100 HP)")
+	expect(zone_opponent.active.card.name == "Guei" and zone.current_index == zone_index, "a knockout in the Battle Zone: the opponent promotes, then the attacker takes another turn")
+
 	print("== Abilities")
 	var devotion := battle("cuptain", [], "tenna")
 	var devotee := devotion.current_player()

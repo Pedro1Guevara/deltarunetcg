@@ -41,6 +41,8 @@ var _attack_damaged: Array[CardInPlay] = []
 ## Triggered Abilities waiting to resolve after the attack: {"user": CardInPlay, "power": PowerData}.
 var _triggers: Array[Dictionary] = []
 var _turn_ends_after_promotions: bool = false
+## True when the player taking the turn takes another one after it (Quick Selfie).
+var _extra_turn: bool = false
 
 ## Every round rule comes from match_rules (MatchRules), never from constants.
 func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchRules, rng: Rng) -> void:
@@ -58,6 +60,7 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	_attack_damaged.clear()
 	_triggers.clear()
 	_turn_ends_after_promotions = false
+	_extra_turn = false
 	_setup = MatchSetup.new(players, rules, _rng, events)
 	_setup.deal(deck_a, deck_b)
 	_continue_setup(_setup.advance())
@@ -253,6 +256,11 @@ func _end_turn(attacked: bool) -> void:
 		_log("Player %d ends the turn" % (current_index + 1))
 	if rules.tp_max > 0 and not attacked:
 		_set_tp(player, rules.tp_max)
+	if _extra_turn:
+		_extra_turn = false
+		_log("Player %d takes another turn" % (current_index + 1))
+		_begin_turn(current_index)
+		return
 	_begin_turn(_opponent_index())
 
 
@@ -467,6 +475,7 @@ func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
 	var attack := attacker.active.card.attacks[attack_index]
 	_log("%s uses %s" % [attacker.active.card.name, attack.name])
+	attacker.attack_used_this_turn = attack.name
 	_attack_damaged.clear()
 
 	var context := _attack_context(attack)
@@ -659,6 +668,18 @@ func attach_from_discard(player: PlayerState, energy: CardData, target: CardInPl
 	target.attached_energy.append(energy)
 	_log("  Player %d attaches %s from their discard pile to %s" % [players.find(player) + 1, energy.name, target.card.name])
 
+## Attaches an Energy card from a player's hand through an effect. It is not the player's
+## once-per-turn attachment.
+func attach_from_hand(player: PlayerState, energy: CardData, target: CardInPlay) -> void:
+	player.hand.erase(energy)
+	target.attached_energy.append(energy)
+	_log("  Player %d attaches %s from their hand to %s" % [players.find(player) + 1, energy.name, target.card.name])
+
+
+## The player taking the turn takes another turn after this one.
+func grant_extra_turn() -> void:
+	_extra_turn = true
+
 ## Removes up to amount damage from a Darkner. Returns the damage removed.
 func heal(target: CardInPlay, amount: int) -> int:
 	var healed := mini(target.damage, maxi(amount, 0))
@@ -692,10 +713,10 @@ func shuffle_energy_into_deck(target: CardInPlay) -> int:
 	_log("  %s shuffles %d Energy card%s into the deck" % [target.card.name, count, "" if count == 1 else "s"])
 	return count
 
-## Deals attack damage to the defending Pokemon through the damage pipeline (4.5).
+## An attack with no printed damage deals none, so nothing is logged for it.
 func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
-	if defender == null:
+	if defender == null or base_damage <= 0:
 		return 0
 	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.card, base_damage), DAMAGE_ATTACK)
 
