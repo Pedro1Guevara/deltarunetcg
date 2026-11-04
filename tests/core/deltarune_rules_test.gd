@@ -62,6 +62,11 @@ func play(engine: MatchEngine, label: String) -> bool:
 	return false
 
 
+## Picks the card option with this label, then confirms the choice.
+func pick(engine: MatchEngine, label: String) -> bool:
+	return play(engine, label) and play(engine, "Confirm")
+
+
 func attack(engine: MatchEngine, name: String) -> bool:
 	for action in engine.legal_actions():
 		if action["type"] == "attack" and str(action["label"]).begins_with("Attack: %s " % name):
@@ -146,8 +151,8 @@ func _run() -> void:
 	var items := battle("jevil", [], "guei")
 	var item_player := items.current_player()
 	item_player.hand.append_array(cards(["glowshard", "glowshard"]))
-	expect(play(items, "Play Glowshard (Item)") and play(items, "Take Chaos Energy"), "an Item can be played")
-	expect(play(items, "Play Glowshard (Item)") and play(items, "Take Chaos Energy"), "Items have no per-turn limit")
+	expect(play(items, "Play Glowshard (Item)") and pick(items, "Take Chaos Energy"), "an Item can be played")
+	expect(play(items, "Play Glowshard (Item)") and pick(items, "Take Chaos Energy"), "Items have no per-turn limit")
 	expect(item_player.discard.size() == 2, "a played Item goes to the discard pile")
 
 	var first_lightner := start_round(rules, 2)
@@ -228,6 +233,11 @@ func _run() -> void:
 	var shown := search.choice_revealed()
 	expect(shown.size() == searcher.deck.size() and shown[0] == searcher.deck.back() and shown.back() == searcher.deck[0], "the whole deck is shown during the search, in its real order, top card first")
 	play(search, "Take Chaos Energy")
+	search_labels.clear()
+	for action in search.legal_actions():
+		search_labels.append(action["label"])
+	expect(search_labels == ["Undo: Take Chaos Energy", "Confirm"] and searcher.deck.size() == deck_before, "a single pick also waits for confirmation and can be undone: %s" % [search_labels])
+	play(search, "Confirm")
 	expect(searcher.deck.size() == deck_before - 1 and searcher.hand.back().name == "Chaos Energy", "the Energy found goes into the hand")
 	var darkners_only: Array[CardData] = []
 	for card in searcher.deck:
@@ -245,7 +255,7 @@ func _run() -> void:
 	knife.current_player().deck.append_array(cards(["cyber_city"]))
 	knife.current_player().hand.append_array(cards(["sharp_knife"]))
 	play(knife, "Play Sharp Knife (Item)")
-	expect(play(knife, "Take Cyber City") and knife.current_player().hand.back().name == "Cyber City", "Sharp Knife finds an Area")
+	expect(pick(knife, "Take Cyber City") and knife.current_player().hand.back().name == "Cyber City", "Sharp Knife finds an Area")
 
 	var revive := battle("jevil", [], "guei")
 	var reviver := revive.current_player()
@@ -258,7 +268,7 @@ func _run() -> void:
 	for action in revive.legal_actions():
 		revive_labels.append(action["label"])
 	expect(revive_labels == ["Take Chaos Energy", "Take Guei"], "the options are the basic Energy and the Darkner, not Kris: %s" % [revive_labels])
-	play(revive, "Take Guei")
+	pick(revive, "Take Guei")
 	expect(reviver.hand.back().name == "Guei" and not reviver.discard.any(func(card: CardData) -> bool: return card.name == "Guei"), "the chosen card leaves the discard pile for the hand")
 
 	var buster_blocked := battle("jevil", [], "guei")
@@ -283,7 +293,7 @@ func _run() -> void:
 				buster_labels.append(action["label"])
 			if not heads_seen:
 				expect(buster.choice_chooser() == buster_player and buster_labels == ["Discard Holy Energy from Guei (Battle Zone)", "Discard Fun Energy from Tenna (Field 1)"], "heads: the caster chooses among the opponent's Darkners, copies once: %s" % [buster_labels])
-				play(buster, "Discard Fun Energy from Tenna (Field 1)")
+				pick(buster, "Discard Fun Energy from Tenna (Field 1)")
 				expect(target_side.bench[0].attached_energy.is_empty() and target_side.active.attached_energy.size() == 2, "the chosen Energy is discarded")
 			heads_seen = true
 		elif not tails_seen:
@@ -369,7 +379,7 @@ func _run() -> void:
 	for action in bagel.legal_actions():
 		bagel_labels.append(action["label"])
 	expect(bagel.choice_prompt() == "Choose a card to discard from your hand" and bagel_labels == ["Discard CD Bagel", "Discard Guei"], "the player chooses the card to discard: %s" % [bagel_labels])
-	play(bagel, "Discard Guei")
+	pick(bagel, "Discard Guei")
 	bagel_labels.clear()
 	for action in bagel.legal_actions():
 		bagel_labels.append(action["label"])
@@ -390,9 +400,8 @@ func _run() -> void:
 	recruiter.hand.append_array(cards(["chaos_energy"]))
 	expect(play(manual, "Play Recruit Manual (Item)"), "Recruit Manual can be played with 2 other cards")
 	expect(manual.choice_prompt() == "Search your deck for Darkner" and recruiter.discard.size() == 2 and recruiter.hand.is_empty(), "two copies of the same card are discarded without asking")
-	play(manual, "Take Guei")
+	pick(manual, "Take Guei")
 	expect(recruiter.hand.size() == 1 and recruiter.hand[0].name == "Guei", "the Darkner goes into the hand")
-
 	var choosy := battle("jevil", [], "guei")
 	var chooser := choosy.current_player()
 	chooser.hand.assign(cards(["recruit_manual", "holy_energy", "holy_energy", "sans"]))
@@ -431,13 +440,13 @@ func _run() -> void:
 	var transit_target := transit.opponent_player().active
 	transit_player.bench.append(in_play("jevil", []))
 	attack(transit, "Violent Transit")
-	expect(transit.events.any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")	
+	expect(transit.events.any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")
 	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
 
 	var splash := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
 	var splasher := splash.current_player()
 	splasher.bench.append(in_play("guei", []))
-	expect(splasher.bench[0].damage == 10 and splasher.tp == 0, "using it heals 20 from each Darkner on the Field and pays 25% TP")
+	splasher.bench[0].damage = 30
 	splasher.tp = 1
 	attack(splash, "Refreshing Splash")
 	var splash_labels: Array = []
@@ -445,7 +454,7 @@ func _run() -> void:
 		splash_labels.append(action["label"])
 	expect(splash.choice_chooser() == splash.current_index and splash_labels == ["Use 25% TP", "Don't use TP"], "Refreshing Splash: the player chooses whether to use 25%% TP: %s" % [splash_labels])
 	play(splash, "Use 25% TP")
-	expect(splasher.bench[0].damage == 10 and splasher.tp == 1, "using it heals 20 from each Darkner on the Field (TP: 25% - 25% + 25% at the end of the turn)")
+	expect(splasher.bench[0].damage == 10 and splasher.tp == 0, "using it heals 20 from each Darkner on the Field and pays 25% TP")
 
 	var dry := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
 	var dry_player := dry.current_player()
@@ -497,7 +506,7 @@ func _run() -> void:
 	for action in devotion.legal_actions():
 		energy_labels.append(action["label"])
 	expect(energy_labels == ["Attach Chaos Energy", "Attach Holy Energy"], "the player chooses the Energy: %s" % [energy_labels])
-	play(devotion, "Attach Holy Energy")
+	pick(devotion, "Attach Holy Energy")
 	expect(play(devotion, "Attach Holy Energy to Guei (Field 2)"), "then the Darkner on the Field")
 	var mercy_before := devotion.opponent_player().prizes.size()
 	expect(devotee.active == null and devotion.choice_prompt() == "Choose a new Battling Darkner" and devotion.choice_chooser() == devotion.current_index, "40 damage knocks Cuptain out; its owner chooses the new Battling Darkner")
@@ -648,7 +657,7 @@ func _run() -> void:
 	# Darkner in four copies, which fills the Field with identical Darkners.
 	var picker := RandomNumberGenerator.new()
 	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1,
-			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1}	
+			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1}
 	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0

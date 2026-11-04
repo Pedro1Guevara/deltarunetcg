@@ -314,9 +314,8 @@ static func _switch_in(context: EffectContext, player: PlayerState, chooser: Pla
 ## their hand (their discard pile when to_discard) and shuffles the deck. The whole deck is
 ## shown while they choose, in its real order with the top card first, since the search ends
 ## in a shuffle anyway. They are asked even when nothing matches, so a search is also a look at
-## the deck (Design Document 3.3). The deck is hidden, so a search may find nothing: a null
-## answer stops a search for one card, and a search for several may be confirmed with fewer.
-## Returns how many cards were found.
+## the deck (Design Document 3.3). The deck is hidden, so a search may find nothing: the player
+## may confirm with fewer cards than count, or none. Returns how many cards were found.
 static func _search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int, to_discard: bool) -> Variant:
 	var verb := "Discard" if to_discard else "Take"
 	var prompt := "Search your deck for %s" % CardFilter.describe(filters)
@@ -324,22 +323,13 @@ static func _search_deck(context: EffectContext, player: PlayerState, filters: A
 		prompt += " to discard"
 	var top_first := player.deck.duplicate()
 	top_first.reverse()
+	var matching := CardFilter.select(player.deck, filters, [])
+	var picked: Variant = _choose_several(context, player, prompt, _each_card_options(matching, verb, ""), 0, count,
+			"%s nothing" % verb, top_first)
+	if picked is String:
+		return picked
 	var cards: Array[CardData] = []
-	if count >= 2:
-		var matching := CardFilter.select(player.deck, filters, [])
-		var picked: Variant = _choose_several(context, player, prompt, _each_card_options(matching, verb, ""), 0, count,
-				"%s nothing" % verb, top_first)
-		if picked is String:
-			return picked
-		cards.assign(picked as Array)
-	else:
-		var found := context.selection
-		if found.is_empty():
-			var options := _card_options(CardFilter.select(player.deck, filters, []), verb)
-			options.append({"label": "%s nothing" % verb, "value": null})
-			return context.ask_showing(player, prompt, options, top_first)
-		if found[0] != null:
-			cards.append(found[0] as CardData)
+	cards.assign(picked as Array)
 	if to_discard:
 		context.engine.discard_from_deck(player, cards)
 	else:
@@ -359,14 +349,12 @@ static func _take_from_discard(context: EffectContext, player: PlayerState, filt
 
 
 ## chooser discards up to count Energy cards that match filters from among every Darkner player
-## has in play. For one card, copies of the same card on the same Darkner are one option; for
-## several, every card is its own option, picked one at a time and confirmed (_choose_several).
-## Returns how many cards were discarded.
+## has in play, chosen with _choose_several(). Nothing is asked when the choice does not
+## matter. Returns how many cards were discarded.
 static func _discard_energy_in_play(context: EffectContext, player: PlayerState, chooser: PlayerState, filters: Array, count: int) -> Variant:
 	var holders := {}
 	var items: Array = []
-	var options: Array = []
-	var offered: Array[String] = []
+	var labels: Array[String] = []
 	for slot in range(-1, player.bench.size()):
 		var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
 		if target == null:
@@ -375,47 +363,25 @@ static func _discard_energy_in_play(context: EffectContext, player: PlayerState,
 			holders[energy] = target
 			var label := "Discard %s from %s (%s)" % [energy.name, target.card.name, MatchEngine.slot_name(slot)]
 			items.append({"label": label, "value": energy, "shows": energy})
-			var key := "%d/%s" % [slot, energy.id]
-			if not offered.has(key):
-				offered.append(key)
-				options.append({"label": label, "value": energy, "shows": energy})
+			if not labels.has(label):
+				labels.append(label)
 	var picked: Array = []
-	if items.size() <= count or offered.size() == 1:
+	if items.size() <= count or labels.size() == 1:
 		for index in mini(count, items.size()):
 			picked.append(items[index]["value"])
-	elif count >= 2:
-		var prompt := "Choose %d %s attached to Darkners to discard" % [count, CardFilter.describe(filters)]
-		var several: Variant = _choose_several(context, chooser, prompt, items, count, count, "", [])
+	else:
+		var noun := "%s attached to a Darkner" % CardFilter.describe(filters) if count == 1 \
+				else "%d %s attached to Darkners" % [count, CardFilter.describe(filters)]
+		var several: Variant = _choose_several(context, chooser, "Choose %s to discard" % noun, items, count, count, "", [])
 		if several is String:
 			return several
 		picked = several as Array
-	elif context.selection.is_empty():
-		return context.ask(chooser, "Choose %s attached to a Darkner to discard" % CardFilter.describe(filters), options)
-	else:
-		picked = [context.selection[0]]
 
 	var discarded := 0
 	for energy: Variant in picked:
 		var cards: Array[CardData] = [energy as CardData]
 		discarded += context.engine.discard_energy_cards(holders[energy] as CardInPlay, cards)
 	return discarded
-
-
-## One option per distinct card, labelled "Take <name>", valued with the card itself.
-static func _take_options(cards: Array[CardData]) -> Array:
-	return _card_options(cards, "Take")
-
-
-## One option per distinct card, labelled "<verb> <name>", valued with the card itself.
-static func _card_options(cards: Array[CardData], verb: String) -> Array:
-	var options: Array = []
-	var offered: Array[String] = []
-	for card in cards:
-		if offered.has(card.id):
-			continue
-		offered.append(card.id)
-		options.append({"label": "%s %s" % [verb, card.name], "value": card, "shows": card})
-	return options
 
 
 ## player discards count cards from their hand, other than the ACT card being played, chosen
@@ -430,35 +396,27 @@ static func _discard_from_hand(context: EffectContext, player: PlayerState, coun
 
 ## chooser picks count of candidates (all of them when count is -1 or there are no more). When
 ## the choice does not matter, because there are no more candidates than needed or they are all
-## the same card, they are picked without asking. One card is one question, with one option per
-## distinct card. Several cards are picked with _choose_several(). Returns Array[CardData], or
-## PENDING while waiting for an answer.
+## the same card, they are picked without asking. Otherwise they pick with _choose_several().
+## Returns Array[CardData], or PENDING while waiting for an answer.
 static func _pick_cards(context: EffectContext, chooser: PlayerState, candidates: Array[CardData], count: int,
 		prompt: String, verb: String, suffix: String) -> Variant:
 	if count < 0 or candidates.size() <= count or _all_same_card(candidates):
 		var taken := candidates.size() if count < 0 else mini(count, candidates.size())
 		return candidates.slice(candidates.size() - taken)
-	var picked: Array[CardData] = []
-	if count == 1:
-		if context.selection.is_empty():
-			var options: Array = []
-			for option in _card_options(candidates, verb):
-				option["label"] = str(option["label"]) + suffix
-				options.append(option)
-			return context.ask(chooser, prompt, options)
-		picked.append(context.selection[0] as CardData)
-		return picked
 	var several: Variant = _choose_several(context, chooser, prompt, _each_card_options(candidates, verb, suffix), count, count, "", [])
 	if several is String:
 		return several
+	var picked: Array[CardData] = []
 	picked.assign(several as Array)
 	return picked
 
 
 ## Asks chooser to pick between minimum and maximum of items ({label, value, shows}, each value
-## a distinct object) one at a time. Every item is its own option, copies numbered. A picked
-## item is offered again as "Undo: ..." until the chooser confirms, which they can do once at
-## least minimum are picked. Answers accumulate in context.selection. Returns the picked
+## a distinct object), one at a time. A picked item is offered again as "Undo: ..." until the
+## chooser confirms, which they can do once at least minimum are picked (Design Document 4.1).
+## When several can be picked, every item is its own option, copies numbered; when one can,
+## items with the same label are the same choice and offered once. Answers accumulate in
+## context.selection up to the confirmation (see _answers_after_choice()). Returns the picked
 ## values in the order they were picked, or PENDING while waiting for an answer.
 static func _choose_several(context: EffectContext, chooser: PlayerState, prompt: String, items: Array,
 		minimum: int, maximum: int, nothing_label: String, shown: Array[CardData]) -> Variant:
@@ -470,6 +428,15 @@ static func _choose_several(context: EffectContext, chooser: PlayerState, prompt
 			picked.erase(answer)
 		else:
 			picked.append(answer)
+	if maximum == 1:
+		var distinct: Array = []
+		var seen: Array[String] = []
+		for item: Variant in items:
+			var label := str((item as Dictionary)["label"])
+			if picked.has((item as Dictionary)["value"]) or not seen.has(label):
+				seen.append(label)
+				distinct.append(item)
+		items = distinct
 	var labels := _numbered_labels(items)
 	var options: Array = []
 	for index in items.size():
@@ -480,7 +447,21 @@ static func _choose_several(context: EffectContext, chooser: PlayerState, prompt
 		options.append({"label": ("Undo: %s" % labels[index]) if chosen else labels[index], "value": item["value"], "shows": item["shows"]})
 	if picked.size() >= minimum:
 		options.append({"label": nothing_label if picked.is_empty() else "Confirm", "value": CONFIRM})
-	return context.ask_showing(chooser, "%s (%d/%d chosen)" % [prompt, picked.size(), maximum], options, shown)
+	if maximum >= 2:
+		prompt = "%s (%d/%d chosen)" % [prompt, picked.size(), maximum]
+	return context.ask_showing(chooser, prompt, options, shown)
+
+
+## The answers given after a choice made with _choose_several() was confirmed, for the next
+## question of the same effect. All of them when no confirmation was needed.
+static func _answers_after_choice(context: EffectContext) -> Array:
+	var index := -1
+	for position in context.selection.size():
+		var answer: Variant = context.selection[position]
+		if answer is String and answer == CONFIRM:
+			index = position
+			break
+	return context.selection.slice(index + 1)
 
 
 ## One option per card, copies included, labelled "<verb> <name><suffix>".
@@ -519,24 +500,21 @@ static func _hand_without_card_played(context: EffectContext, player: PlayerStat
 	return cards
 
 ## player attaches 1 card that matches filters from their discard pile to 1 Darkner on their
-## Field. They choose the card, then the Darkner, each only when the choice matters. Returns 1
-## when a card was attached, 0 when there was nothing to attach or nowhere to attach it.
+## Field. They choose the card with _pick_cards(), then the Darkner, each only when the choice
+## matters. Returns 1 when a card was attached, 0 when there was nothing to attach or nowhere to
+## attach it.
 static func _attach_from_discard_to_benched(context: EffectContext, player: PlayerState, filters: Array) -> Variant:
-	var picked := context.selection
 	var candidates := CardFilter.select(player.discard, filters, [])
 	if candidates.is_empty() or player.bench.is_empty():
 		return 0
-	if picked.is_empty():
-		if not _all_same_card(candidates):
-			var options: Array = []
-			for option in _take_options(candidates):
-				options.append({"label": "Attach %s" % (option["value"] as CardData).name, "value": option["value"]})
-			return context.ask(player, "Choose a card from your discard pile to attach", options)
-		picked.append(candidates.back())
-	var energy := picked[0] as CardData
+	var picked: Variant = _pick_cards(context, player, candidates, 1, "Choose a card from your discard pile to attach", "Attach", "")
+	if picked is String:
+		return picked
+	var energy := (picked as Array[CardData])[0]
+	var answers := _answers_after_choice(context)
 	var slot := 0
-	if picked.size() > 1:
-		slot = int(picked[1])
+	if not answers.is_empty():
+		slot = int(answers[0])
 	elif player.bench.size() > 1:
 		var targets: Array = []
 		for index in player.bench.size():
