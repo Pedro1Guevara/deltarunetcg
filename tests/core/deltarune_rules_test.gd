@@ -437,7 +437,7 @@ func _run() -> void:
 	var splash := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
 	var splasher := splash.current_player()
 	splasher.bench.append(in_play("guei", []))
-	splasher.bench[0].damage = 30
+	expect(splasher.bench[0].damage == 10 and splasher.tp == 0, "using it heals 20 from each Darkner on the Field and pays 25% TP")
 	splasher.tp = 1
 	attack(splash, "Refreshing Splash")
 	var splash_labels: Array = []
@@ -648,7 +648,8 @@ func _run() -> void:
 	# Darkner in four copies, which fills the Field with identical Darkners.
 	var picker := RandomNumberGenerator.new()
 	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1,
-			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1}	var same_darkner := {"jevil": 4, "chaos_energy": 26}
+			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1}	
+	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0
 	for seed in SEEDS:
