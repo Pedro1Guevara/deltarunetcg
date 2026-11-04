@@ -28,6 +28,8 @@ var tp_max: int = 0
 ## TP recovered at the start of each of the player's turns, in quarters. A player who passes
 ## recovers up to tp_max at the end of that turn instead.
 var tp_recovery: int = 0
+## TP each player holds when the round starts, in quarters.
+var tp_start: int = 0
 
 
 
@@ -46,6 +48,7 @@ static func legacy() -> MatchRules:
 	rules.max_copies = 0
 	rules.tp_max = 0
 	rules.tp_recovery = 0
+	rules.tp_start = 0
 	return rules
 
 
@@ -64,6 +67,7 @@ static func deltarune() -> MatchRules:
 	rules.max_copies = 4
 	rules.tp_max = 4
 	rules.tp_recovery = 1
+	rules.tp_start = 4
 	return rules
 
 
@@ -82,4 +86,5 @@ func with_prize_count(count: int) -> MatchRules:
 	copy.max_copies = max_copies
 	copy.tp_max = tp_max
 	copy.tp_recovery = tp_recovery
+	copy.tp_start = tp_start
 	return copy

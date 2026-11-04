@@ -58,5 +58,23 @@
         "timing": "activated"
       }
     }
+  },
+  "revive_mint": {
+    "trainer": {"function": "recover_from_discard", "args": {"filter": ["pokemon"], "count": 1}}
+  },
+  "napstablook": {
+    "trainer": {"function": "search_deck_to_discard_pile", "args": {"filter": ["any"], "count": 2}}
+  },
+  "sans": {
+    "trainer": {"function": "discard_hand_then_search_deck", "args": {"filter": ["trainer"], "count": 2}}
+  },
+  "berdly": {
+    "trainer": {"function": "both_hands_to_bottom_of_deck_then_draw", "args": {"count": 4}}
+  },
+  "cd_bagel": {
+    "trainer": {"function": "discard_from_hand_then_search_deck", "args": {"discard": 1, "filter": ["basic_energy"], "count": 2}}
+  },
+  "recruit_manual": {
+    "trainer": {"function": "discard_from_hand_then_search_deck", "args": {"discard": 2, "filter": ["pokemon"], "count": 1}}
   }
 }

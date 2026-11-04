@@ -129,6 +129,7 @@ func answer(value: Variant) -> PendingChoice:
 func _deal_player(index: int, deck: Array[CardData]) -> PlayerState:
 	var player := PlayerState.new()
 	player.deck = deck
+	player.tp = _rules.tp_start
 
 	for attempt in MAX_ATTEMPTS:
 		_rng.shuffle(player.deck)

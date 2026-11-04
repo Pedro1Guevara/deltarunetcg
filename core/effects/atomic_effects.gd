@@ -66,6 +66,22 @@ const DECLARATIONS := {
 		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "count": "int"},
 		"returns": "int", "attack_only": false,
 	},
+	"search_deck_to_discard": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "count": "int"},
+		"returns": "int", "attack_only": false,
+	},
+	"discard_from_hand": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "count": "int"}, "returns": "int", "attack_only": false,
+	},
+	"discard_hand": {
+		"role": ROLE_EFFECT, "params": {"player": "player"}, "returns": "int", "attack_only": false,
+	},
+	"put_hand_on_bottom_of_deck": {
+		"role": ROLE_EFFECT, "params": {"player": "player"}, "returns": "int", "attack_only": false,
+	},
+	"has_cards_in_hand": {
+		"role": ROLE_CHECK, "params": {"player": "player", "count": "int"}, "returns": "", "attack_only": false,
+	},
 	"take_from_discard": {
 		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "count": "int"},
 		"returns": "int", "attack_only": false,
@@ -220,7 +236,15 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 		"shuffle_hand_into_deck":
 			return engine.shuffle_hand_into_deck(args["player"] as PlayerState)
 		"search_deck":
-			return _search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]))
+			return _search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), false)
+		"search_deck_to_discard":
+			return _search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), true)
+		"discard_from_hand":
+			return _discard_from_hand(context, args["player"] as PlayerState, int(args["count"]))
+		"discard_hand":
+			return engine.discard_from_hand(args["player"] as PlayerState, (args["player"] as PlayerState).hand.duplicate())
+		"put_hand_on_bottom_of_deck":
+			return engine.put_hand_on_bottom_of_deck(args["player"] as PlayerState)
 		"take_from_discard":
 			return _take_from_discard(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]))
 		"discard_energy_in_play":
@@ -229,9 +253,10 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 	push_error("AtomicEffects: '%s' is not an effect" % name)
 	return null
 
-
-static func check(name: String, _context: EffectContext, args: Dictionary) -> bool:
+static func check(name: String, context: EffectContext, args: Dictionary) -> bool:
 	match name:
+		"has_cards_in_hand":
+			return _hand_without_card_played(context, args["player"] as PlayerState).size() >= int(args["count"])
 		"has_benched":
 			return (args["player"] as PlayerState).bench.size() >= int(args["count"])
 		"has_cards_in_deck":
@@ -304,24 +329,31 @@ static func _switch_in(context: EffectContext, player: PlayerState, chooser: Pla
 	return 1
 
 ## player looks through their deck for up to count cards that match filters, puts them into
-## their hand and shuffles the deck. The whole deck is shown while they choose, in its real
-## order with the top card first, since the search ends in a shuffle anyway. They are asked
-## even when nothing matches, so a search is also a look at the deck (Design Document 3.3).
-## The deck is hidden, so a search may find nothing: a null answer stops it. Returns how many
-## cards were found.
-static func _search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
+## their hand (their discard pile when to_discard) and shuffles the deck. The whole deck is
+## shown while they choose, in its real order with the top card first, since the search ends
+## in a shuffle anyway. They are asked even when nothing matches, so a search is also a look at
+## the deck (Design Document 3.3). The deck is hidden, so a search may find nothing: a null
+## answer stops it. Returns how many cards were found.
+static func _search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int, to_discard: bool) -> Variant:
 	var found := context.selection
 	if found.size() < count and not found.has(null):
-		var options := _take_options(CardFilter.select(player.deck, filters, found))
-		options.append({"label": "Take nothing" if found.is_empty() else "Stop searching", "value": null})
+		var verb := "Discard" if to_discard else "Take"
+		var options := _card_options(CardFilter.select(player.deck, filters, found), verb)
+		options.append({"label": ("%s nothing" % verb) if found.is_empty() else "Stop searching", "value": null})
 		var top_first := player.deck.duplicate()
 		top_first.reverse()
-		return context.ask_showing(player, "Search your deck for %s" % CardFilter.describe(filters), options, top_first)
+		var prompt := "Search your deck for %s" % CardFilter.describe(filters)
+		if to_discard:
+			prompt += " to discard"
+		return context.ask_showing(player, prompt, options, top_first)
 	var cards: Array[CardData] = []
 	for card: Variant in found:
 		if card != null:
 			cards.append(card as CardData)
-	context.engine.take_from_deck(player, cards)
+	if to_discard:
+		context.engine.discard_from_deck(player, cards)
+	else:
+		context.engine.take_from_deck(player, cards)
 	context.engine.shuffle_deck(player)
 	return cards.size()
 
@@ -384,14 +416,49 @@ static func _discard_energy_in_play(context: EffectContext, player: PlayerState,
 
 ## One option per distinct card, labelled "Take <name>", valued with the card itself.
 static func _take_options(cards: Array[CardData]) -> Array:
+	return _card_options(cards, "Take")
+
+
+## One option per distinct card, labelled "<verb> <name>", valued with the card itself.
+static func _card_options(cards: Array[CardData], verb: String) -> Array:
 	var options: Array = []
 	var offered: Array[String] = []
 	for card in cards:
 		if offered.has(card.id):
 			continue
 		offered.append(card.id)
-		options.append({"label": "Take %s" % card.name, "value": card})
+		options.append({"label": "%s %s" % [verb, card.name], "value": card, "shows": card})
 	return options
+
+
+## player discards count cards from their hand, other than the ACT card being played. They
+## choose only when the choice matters: when more cards are left than must be discarded and
+## they are not all the same card. Returns how many cards were discarded.
+static func _discard_from_hand(context: EffectContext, player: PlayerState, count: int) -> Variant:
+	var picked := context.selection
+	var candidates: Array[CardData] = []
+	for card in _hand_without_card_played(context, player):
+		if not picked.has(card):
+			candidates.append(card)
+	while picked.size() < count and not candidates.is_empty():
+		if candidates.size() <= count - picked.size() or _all_same_card(candidates):
+			picked.append(candidates.pop_back())
+			continue
+		return context.ask(player, "Choose a card to discard from your hand", _card_options(candidates, "Discard"))
+	var cards: Array[CardData] = []
+	for card: Variant in picked:
+		cards.append(card as CardData)
+	return context.engine.discard_from_hand(player, cards)
+
+
+## A player's hand without the ACT card being played: requirements are checked while it is
+## still in the hand, and "other cards" never counts it.
+static func _hand_without_card_played(context: EffectContext, player: PlayerState) -> Array[CardData]:
+	var cards: Array[CardData] = []
+	for card in player.hand:
+		if card != context.card:
+			cards.append(card)
+	return cards
 
 ## player attaches 1 card that matches filters from their discard pile to 1 Darkner on their
 ## Field. They choose the card, then the Darkner, each only when the choice matters. Returns 1

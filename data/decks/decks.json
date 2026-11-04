@@ -1,26 +1,82 @@
 {
-  "deltarune_chaos": {
-	"name": "Chaos Test",
-	"cards": {
-	  "jevil": 4,
-	  "electro_dasher": 4,
-	  "chaos_energy": 14,
-	  "petal_feather": 2,
-	  "glowshard": 2,
-	  "kris": 2,
-	  "rude_buster": 2
+	"deltarune_chaos": {
+		"name": "Chaos Test",
+		"cards": {
+			"jevil": 4,
+			"electro_dasher": 4,
+			"chaos_energy": 12,
+			"cd_bagel": 3,
+			"sans": 3,
+			"napstablook": 2,
+			"recruit_manual": 2
+		}
+	},
+	"deltarune_holy": {
+		"name": "Holy Test",
+		"cards": {
+			"water_cooler": 4,
+			"guei": 4,
+			"cuptain": 4,
+			"holy_energy": 11,
+			"revive_mint": 3,
+			"berdly": 2,
+			"recruit_manual": 2
+		}
+	},
+	"creative": {
+		"name": "Creative",
+		"cards": {
+			"old_man": 4,
+			"hammer_of_justice": 3,
+			"koody": 2,
+			"dummy": 2,
+			"balthizard": 3,
+			"creative_energy": 10,
+			"sans": 2,
+			"berdly": 2,
+			"kris": 3,
+			"susie": 2,
+			"revive_song": 4,
+			"petal_feather": 3,
+			"cd_bagel": 4,
+			"revive_mint": 2,
+			"recruit_manual": 4
+		}
+	},
+	"holy": {
+		"name": "Holy",
+		"cards": {
+			"water_cooler": 2,
+			"miss_mizzle": 2,
+			"guei": 3,
+			"cuptain": 4,
+			"holy_energy": 14,
+			"dark_zone": 2,
+			"cd_bagel": 4,
+			"revive_song": 2,
+			"kris": 4,
+			"susie": 2,
+			"petal_feather": 3,
+			"recruit_manual": 4,
+			"napstablook": 4
+		}
+	},
+	"chaos": {
+		"name": "Chaos",
+		"cards": {
+			"jevil": 4,
+			"shuttah": 3,
+			"electro_dasher": 4,
+			"chaos_energy": 12,
+			"kris": 4,
+			"susie": 4,
+			"rude_buster": 2,
+			"revive_mint": 1,
+			"cold_place": 2,
+			"petal_feather": 4,
+			"recruit_manual": 3,
+			"revive_song": 4,
+			"glowshard": 3
+		}
 	}
-  },
-  "deltarune_holy": {
-	"name": "Holy Test",
-	"cards": {
-	  "water_cooler": 4,
-	  "guei": 4,
-	  "cuptain": 4,
-	  "holy_energy": 12,
-	  "sharp_knife": 2,
-	  "susie": 2,
-	  "cyber_city": 2
-	}
-  }
 }

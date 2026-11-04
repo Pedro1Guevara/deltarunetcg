@@ -255,5 +255,44 @@
       {"call": "flip_coins", "args": {"count": 1}, "as": "heads"},
       {"call": "place_damage_counters_on_attack_damaged", "args": {"count": "$counters"}, "when": {"value": "$heads", "eq": 1}}
     ]
+  },
+  "search_deck_to_discard_pile": {
+    "params": { "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "search_deck_to_discard", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
+    ]
+  },
+  "discard_hand_then_search_deck": {
+    "params": { "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "discard_hand", "args": {"player": "$player"}},
+      {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
+    ]
+  },
+  "discard_from_hand_then_search_deck": {
+    "params": { "discard": "int", "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_cards_in_hand", "args": {"player": "$player", "count": "$discard"}},
+      {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "discard_from_hand", "args": {"player": "$player", "count": "$discard"}},
+      {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
+    ]
+  },
+  "both_hands_to_bottom_of_deck_then_draw": {
+    "params": { "count": "int" },
+    "steps": [
+      {"call": "put_hand_on_bottom_of_deck", "args": {"player": "$player"}},
+      {"call": "put_hand_on_bottom_of_deck", "args": {"player": "$opponent"}},
+      {"call": "draw_cards", "args": {"player": "$player", "count": "$count"}},
+      {"call": "draw_cards", "args": {"player": "$opponent", "count": "$count"}}
+    ]
   }
 }

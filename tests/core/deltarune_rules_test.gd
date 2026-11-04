@@ -119,20 +119,20 @@ func _run() -> void:
 
 	print("== TP")
 	var tp_round := start_round(rules, 2)
-	expect(tp_round.players[0].tp == 0 and tp_round.players[1].tp == 0, "both players start the round at 0% TP")
-	finish_setup(tp_round)
-	var opener := tp_round.current_index
-	expect(tp_round.players[opener].tp == 1, "the first player gains 25% at the start of turn 1")
-	tp_round.apply({"type": "end_turn", "label": "End turn"})
-	expect(tp_round.players[opener].tp == 4, "the first player cannot attack on turn 1, so ending it is a pass: 100%")
-	expect(tp_round.current_player().tp == 1, "the second player gains 25% at the start of turn 2")
+	expect(tp_round.players[0].tp == 4 and tp_round.players[1].tp == 4, "both players start the round at 100% TP")
 
 	var tp_attack := battle("jevil", ["chaos_energy"], "guei")
-	var tp_attacker := tp_attack.current_index
+	var tp_attacker := tp_attack.current_player()
 	var tp_waiting := tp_attack.opponent_player()
+	tp_attacker.tp = 1
 	expect(attack(tp_attack, "Slash"), "Slash is legal with 1 Chaos")
-	expect(tp_attack.players[tp_attacker].tp == 1, "attacking recovers nothing at the end of the turn")
+	expect(tp_attacker.tp == 1, "attacking recovers nothing at the end of the turn")
 	expect(tp_waiting.tp == 4, "TP never goes above 100%: a player at 100% stays there at the start of their turn")
+	tp_attack.apply({"type": "end_turn", "label": "End turn"})
+	expect(tp_attacker.tp == 2, "a player gains 25% at the start of their turn")
+	tp_attacker.tp = 1
+	tp_attack.apply({"type": "end_turn", "label": "End turn"})
+	expect(tp_attacker.tp == 4, "passing refills TP to 100%")
 
 	var tp_legacy := start_round(MatchRules.legacy(), 5)
 	finish_setup(tp_legacy)
@@ -290,6 +290,128 @@ func _run() -> void:
 			tails_seen = true
 			expect(not buster.is_waiting_for_choice() and target_side.active.attached_energy.size() == 2 and target_side.bench[0].attached_energy.size() == 1, "tails: nothing is discarded")
 	expect(heads_seen and tails_seen, "both coin results were seen")
+
+	var mint := battle("jevil", [], "guei")
+	var minter := mint.current_player()
+	minter.hand.assign(cards(["revive_mint"]))
+	minter.discard.assign(cards(["chaos_energy"]))
+	expect(not has_label(mint, "Play Revive Mint (Item)"), "Revive Mint cannot be played without a Darkner in the discard pile")
+	minter.discard.append_array(cards(["guei"]))
+	expect(play(mint, "Play Revive Mint (Item)") and minter.hand.back().name == "Guei" and minter.discard.size() == 2, "Revive Mint puts the only Darkner into the hand without asking; the Energy stays")
+
+	var nap := battle("jevil", [], "guei")
+	var napper := nap.current_player()
+	napper.hand.assign(cards(["napstablook"]))
+	napper.deck.assign(cards(["chaos_energy", "kris", "guei"]))
+	expect(play(nap, "Play Napstablook (Lightner)"), "Napstablook can be played")
+	var nap_labels: Array = []
+	for action in nap.legal_actions():
+		nap_labels.append(action["label"])
+	expect(nap.choice_prompt() == "Search your deck for any card to discard (0/2 chosen)" and nap_labels == ["Discard Chaos Energy", "Discard Kris", "Discard Guei", "Discard nothing"], "Napstablook offers every card in the deck: %s" % [nap_labels])
+	play(nap, "Discard Kris")
+	nap_labels.clear()
+	for action in nap.legal_actions():
+		nap_labels.append(action["label"])
+	expect(nap.choice_prompt().ends_with("(1/2 chosen)") and nap_labels == ["Discard Chaos Energy", "Undo: Discard Kris", "Discard Guei", "Confirm"], "a picked card can be undone, and the player may confirm fewer: %s" % [nap_labels])
+	expect(napper.deck.size() == 3, "nothing leaves the deck before confirming")
+	play(nap, "Undo: Discard Kris")
+	play(nap, "Discard Guei")
+	play(nap, "Discard Kris")
+	nap_labels.clear()
+	for action in nap.legal_actions():
+		nap_labels.append(action["label"])
+	expect(nap_labels == ["Undo: Discard Kris", "Undo: Discard Guei", "Confirm"], "with 2 picked, only undoing or confirming is left: %s" % [nap_labels])
+	play(nap, "Confirm")
+	expect(not nap.is_waiting_for_choice() and napper.deck.size() == 1, "up to 2 cards leave the deck")
+	expect(napper.discard.map(func(card: CardData) -> String: return card.name) == ["Guei", "Kris", "Napstablook"], "they go to the discard pile in the order picked, then Napstablook")
+
+	var sans := battle("jevil", [], "guei")
+	var sanser := sans.current_player()
+	sanser.hand.assign(cards(["sans", "chaos_energy", "guei"]))
+	sanser.deck.assign(cards(["glowshard", "chaos_energy", "rude_buster", "kris"]))
+	expect(play(sans, "Play Sans (Lightner)"), "Sans can be played")
+	expect(sanser.hand.is_empty() and sanser.discard.size() == 2, "Sans discards the rest of the hand first")
+	var sans_labels: Array = []
+	for action in sans.legal_actions():
+		sans_labels.append(action["label"])
+	expect(sans.choice_prompt() == "Search your deck for ACT card (0/2 chosen)" and sans_labels == ["Take Glowshard", "Take Rude Buster", "Take Kris", "Take nothing"], "then searches for ACT cards: %s" % [sans_labels])
+	play(sans, "Take Kris")
+	play(sans, "Take Glowshard")
+	play(sans, "Confirm")
+	expect(sanser.hand.map(func(card: CardData) -> String: return card.name) == ["Kris", "Glowshard"] and sanser.deck.size() == 2, "up to 2 ACT cards go into the hand")
+	var sans_empty := battle("jevil", [], "guei")
+	sans_empty.current_player().hand.assign(cards(["sans"]))
+	expect(has_label(sans_empty, "Play Sans (Lightner)"), "Sans can be played with nothing else in hand")
+
+	var berdly := battle("jevil", [], "guei")
+	var berdly_player := berdly.current_player()
+	var berdly_opponent := berdly.opponent_player()
+	berdly_player.hand.assign(cards(["berdly", "kris", "glowshard"]))
+	berdly_opponent.hand.assign(cards(["guei"]))
+	var top_card: CardData = berdly_player.deck.back()
+	expect(play(berdly, "Play Berdly (Lightner)"), "Berdly can be played")
+	expect(berdly_player.hand.size() == 4 and berdly_opponent.hand.size() == 4, "each player draws 4")
+	var bottom := [berdly_player.deck[0].name, berdly_player.deck[1].name]
+	bottom.sort()
+	expect(bottom == ["Glowshard", "Kris"] and berdly_opponent.deck[0].name == "Guei", "each hand goes to the bottom of its owner's deck")
+	expect(berdly_player.hand.has(top_card), "the new cards come from the top")
+
+	var bagel := battle("jevil", [], "guei")
+	var bagger := bagel.current_player()
+	bagger.hand.assign(cards(["cd_bagel"]))
+	bagger.deck.assign(cards(["chaos_energy", "chaos_energy", "holy_energy", "kris"]))
+	expect(not has_label(bagel, "Play CD Bagel (Item)"), "CD Bagel cannot be played without another card in hand to discard")
+	bagger.hand.append_array(cards(["cd_bagel"]))
+	expect(has_label(bagel, "Play CD Bagel (Item)"), "another copy of CD Bagel counts as another card")
+	bagger.hand.append_array(cards(["guei"]))
+	play(bagel, "Play CD Bagel (Item)")
+	var bagel_labels: Array = []
+	for action in bagel.legal_actions():
+		bagel_labels.append(action["label"])
+	expect(bagel.choice_prompt() == "Choose a card to discard from your hand" and bagel_labels == ["Discard CD Bagel", "Discard Guei"], "the player chooses the card to discard: %s" % [bagel_labels])
+	play(bagel, "Discard Guei")
+	bagel_labels.clear()
+	for action in bagel.legal_actions():
+		bagel_labels.append(action["label"])
+	expect(bagel.choice_prompt() == "Search your deck for basic Energy (0/2 chosen)" and bagel_labels == ["Take Chaos Energy #1", "Take Chaos Energy #2", "Take Holy Energy", "Take nothing"], "then searches the deck; when picking several, every copy is its own option: %s" % [bagel_labels])
+	play(bagel, "Take Holy Energy")
+	play(bagel, "Take Chaos Energy #2")
+	play(bagel, "Confirm")
+	expect(bagger.hand.map(func(card: CardData) -> String: return card.name) == ["CD Bagel", "Holy Energy", "Chaos Energy"], "up to 2 basic Energy go into the hand")
+	expect(bagger.discard.map(func(card: CardData) -> String: return card.name) == ["Guei", "CD Bagel"] and bagger.deck.size() == 2, "the discarded card, then CD Bagel, go to the discard pile")
+	bagger.deck.clear()
+	expect(not has_label(bagel, "Play CD Bagel (Item)"), "CD Bagel cannot be played with an empty deck")
+
+	var manual := battle("jevil", [], "guei")
+	var recruiter := manual.current_player()
+	recruiter.hand.assign(cards(["recruit_manual", "chaos_energy"]))
+	recruiter.deck.assign(cards(["guei", "kris"]))
+	expect(not has_label(manual, "Play Recruit Manual (Item)"), "Recruit Manual needs 2 other cards in hand")
+	recruiter.hand.append_array(cards(["chaos_energy"]))
+	expect(play(manual, "Play Recruit Manual (Item)"), "Recruit Manual can be played with 2 other cards")
+	expect(manual.choice_prompt() == "Search your deck for Darkner" and recruiter.discard.size() == 2 and recruiter.hand.is_empty(), "two copies of the same card are discarded without asking")
+	play(manual, "Take Guei")
+	expect(recruiter.hand.size() == 1 and recruiter.hand[0].name == "Guei", "the Darkner goes into the hand")
+
+	var choosy := battle("jevil", [], "guei")
+	var chooser := choosy.current_player()
+	chooser.hand.assign(cards(["recruit_manual", "holy_energy", "holy_energy", "sans"]))
+	play(choosy, "Play Recruit Manual (Item)")
+	var choosy_labels: Array = []
+	for action in choosy.legal_actions():
+		choosy_labels.append(action["label"])
+	expect(choosy.choice_prompt() == "Choose 2 cards to discard from your hand (0/2 chosen)" and choosy_labels == ["Discard Holy Energy #1", "Discard Holy Energy #2", "Discard Sans"], "discarding 2: every card is its own option and there is nothing to confirm yet: %s" % [choosy_labels])
+	play(choosy, "Discard Holy Energy #1")
+	play(choosy, "Discard Holy Energy #2")
+	choosy_labels.clear()
+	for action in choosy.legal_actions():
+		choosy_labels.append(action["label"])
+	expect(choosy_labels == ["Undo: Discard Holy Energy #1", "Undo: Discard Holy Energy #2", "Confirm"], "with 2 picked: %s" % [choosy_labels])
+	play(choosy, "Undo: Discard Holy Energy #2")
+	play(choosy, "Discard Sans")
+	expect(chooser.hand.size() == 3 and chooser.discard.is_empty(), "nothing is discarded before confirming")
+	play(choosy, "Confirm")
+	expect(chooser.discard.map(func(card: CardData) -> String: return card.name) == ["Holy Energy", "Sans"] and choosy.choice_prompt() == "Search your deck for Darkner", "confirming discards the 2 picked cards, then the search starts")
 
 	print("== Darkner attack effects")
 	var bomb := battle("jevil", ["chaos_energy", "chaos_energy"], "guei")
@@ -525,8 +647,8 @@ func _run() -> void:
 	# Random play with two kinds of deck: Darkners with ACT cards of every subtype, and one
 	# Darkner in four copies, which fills the Field with identical Darkners.
 	var picker := RandomNumberGenerator.new()
-	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1}	
-	var same_darkner := {"jevil": 4, "chaos_energy": 26}
+	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1,
+			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1}	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0
 	for seed in SEEDS:

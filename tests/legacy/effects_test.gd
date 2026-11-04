@@ -32,6 +32,13 @@ func attack(engine: MatchEngine, name: String) -> bool:
 			return true
 	return false
 
+## Applies the legal action with this label. False when there is none.
+func play(engine: MatchEngine, label: String) -> bool:
+	for action in engine.legal_actions():
+		if action["label"] == label:
+			engine.apply(action)
+			return true
+	return false
 
 func _run() -> void:
 	db = DataLoader.load_legacy_card_database()
@@ -309,12 +316,16 @@ func _run() -> void:
 	var labels: Array = []
 	for action in choices:
 		labels.append(action["label"])
-	expect(choices.size() == 2, "two options, Fire Energy and DCE, not five: %s" % [labels])
+	expect(labels == ["Discard Fire Energy from Charizard #1", "Discard Fire Energy from Charizard #2", "Discard Fire Energy from Charizard #3",
+			"Discard Fire Energy from Charizard #4", "Discard Double Colorless Energy from Charizard"], "discarding 2: every card is its own option: %s" % [labels])
 	expect(fs.players[0].discard.is_empty() and last_defender.damage == 0, "nothing happens before the choice")
-	for action in choices:
-		if str(action["label"]).contains("Double Colorless"):
-			fs.apply(action)
-	expect(not fs.is_waiting_for_choice(), "the second card is the only kind left and needs no choice")
+	play(fs, "Discard Fire Energy from Charizard #2")
+	play(fs, "Discard Fire Energy from Charizard #3")
+	play(fs, "Undo: Discard Fire Energy from Charizard #3")
+	play(fs, "Discard Double Colorless Energy from Charizard")
+	expect(fs.is_waiting_for_choice() and fs.players[0].discard.is_empty(), "picks can be undone; nothing is discarded before confirming")
+	play(fs, "Confirm")
+	expect(not fs.is_waiting_for_choice(), "confirming ends the choice")
 	var discarded_names: Array = []
 	for card in fs.players[0].discard:
 		discarded_names.append(card.name)
