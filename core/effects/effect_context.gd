@@ -3,6 +3,9 @@ extends RefCounted
 ## What a resolving effect can see: the engine, the context values of Design Document 7.3,
 ## and the player's choice in progress (7.6).
 
+## The changes the effect may make to the round. Held strongly: it holds no reference back.
+var operations: MatchOperations
+
 const KIND_ATTACK := "attack"
 const KIND_POWER := "power"
 const KIND_TRAINER := "trainer"

@@ -101,9 +101,9 @@ func _bind(params: Dictionary, args: Dictionary, scope: Dictionary, callee: Stri
 			continue
 		var neutral: Variant = EffectTypes.neutral(type)
 		if neutral == null:
-			_context.engine.log_event("[effect warning] %s: '%s' has no valid %s; step skipped" % [callee, param, type])
+			_context.operations.log_event("[effect warning] %s: '%s' has no valid %s; step skipped" % [callee, param, type])
 			return null
-		_context.engine.log_event("[effect warning] %s: '%s' is not a valid %s; using %s" % [callee, param, type, neutral])
+		_context.operations.log_event("[effect warning] %s: '%s' is not a valid %s; using %s" % [callee, param, type, neutral])
 		bound[param] = neutral
 	return bound
 
@@ -120,7 +120,7 @@ func _resolve(value: Variant, scope: Dictionary) -> Variant:
 func _condition_holds(condition: Dictionary, scope: Dictionary) -> bool:
 	var value: Variant = _resolve(condition.get("value"), scope)
 	if not EffectTypes.runtime_matches(EffectTypes.INT, value):
-		_context.engine.log_event("[effect warning] when compares a value that is not an int; step skipped")
+		_context.operations.log_event("[effect warning] when compares a value that is not an int; step skipped")
 		return false
 	var left := int(value)
 	for key: Variant in condition:

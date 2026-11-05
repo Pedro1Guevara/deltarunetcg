@@ -2,12 +2,6 @@ class_name MatchEngine
 extends RefCounted
 
 const NO_WINNER := -1
-## How damage reached a Darkner (_apply_damage). Attack: from an attack, after Weakness and
-## Resistance. Direct: damage that is not an attack's, such as an attacker hurting itself.
-## Counters: damage counters placed by an effect.
-const DAMAGE_ATTACK := "attack"
-const DAMAGE_DIRECT := "direct"
-const DAMAGE_COUNTERS := "counters"
 ## Both players won at the same time and in the same number of ways: play Sudden Death.
 const SUDDEN_DEATH := -2
 
@@ -20,6 +14,8 @@ var events: Array[String] = []
 var rules: MatchRules
 ## Null means every attack resolves as its printed damage.
 var effects: EffectLibrary = null
+## The changes card effects make to the round. Set by start().
+var operations: MatchOperations
 
 ## The Area in play, or null. One slot shared by both players (Design Document 4.0).
 var stadium: CardData = null
@@ -36,13 +32,9 @@ var _pending: PendingChoice = null
 ## The setup in progress, or null once the first turn has begun.
 var _setup: MatchSetup = null
 var _promotion_queue: Array[int] = []
-## The Darkners the resolving attack has damaged, in order. Cleared when an attack starts.
-var _attack_damaged: Array[CardInPlay] = []
 ## Triggered Abilities waiting to resolve after the attack: {"user": CardInPlay, "power": PowerData}.
 var _triggers: Array[Dictionary] = []
 var _turn_ends_after_promotions: bool = false
-## True when the player taking the turn takes another one after it (Quick Selfie).
-var _extra_turn: bool = false
 
 ## Every round rule comes from match_rules (MatchRules), never from constants.
 func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchRules, rng: Rng) -> void:
@@ -57,10 +49,9 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	resolving_trainer = null
 	_pending = null
 	_promotion_queue.clear()
-	_attack_damaged.clear()
 	_triggers.clear()
 	_turn_ends_after_promotions = false
-	_extra_turn = false
+	operations = MatchOperations.new(players, _rng, events)
 	_setup = MatchSetup.new(players, rules, _rng, events)
 	_setup.deal(deck_a, deck_b)
 	_continue_setup(_setup.advance())
@@ -256,8 +247,8 @@ func _end_turn(attacked: bool) -> void:
 		_log("Player %d ends the turn" % (current_index + 1))
 	if rules.tp_max > 0 and not attacked:
 		_set_tp(player, rules.tp_max)
-	if _extra_turn:
-		_extra_turn = false
+	if operations.extra_turn:
+		operations.extra_turn = false
 		_log("Player %d takes another turn" % (current_index + 1))
 		_begin_turn(current_index)
 		return
@@ -352,7 +343,7 @@ func _can_play_trainer(player: PlayerState, card: CardData) -> bool:
 		CardData.TRAINER_STADIUM:
 			allowed = not player.stadium_played_this_turn and (stadium == null or stadium.name != card.name)
 		CardData.TRAINER_SPELL:
-			allowed = can_spend_tp(player, spell_cost(card))
+			allowed = operations.can_spend_tp(player, spell_cost(card))
 	# A card that is known to have no effect cannot be played.
 	return allowed and _trainer_requirements_met(card)
 
@@ -383,7 +374,7 @@ func _do_play_trainer(hand_index: int) -> void:
 	match card.trainer_type:
 		CardData.TRAINER_SPELL:
 			_log("Player %d casts %s" % [current_index + 1, card.name])
-			spend_tp(player, spell_cost(card))
+			operations.spend_tp(player, spell_cost(card))
 		CardData.TRAINER_SUPPORTER:
 			player.supporter_played_this_turn = true
 			_log("Player %d plays %s" % [current_index + 1, card.name])
@@ -476,7 +467,7 @@ func _do_attack(attack_index: int) -> void:
 	var attack := attacker.active.card.attacks[attack_index]
 	_log("%s uses %s" % [attacker.active.card.name, attack.name])
 	attacker.attack_used_this_turn = attack.name
-	_attack_damaged.clear()
+	operations.begin_attack()
 
 	var context := _attack_context(attack)
 	var binding := _attack_binding(attack)
@@ -484,7 +475,7 @@ func _do_attack(attack_index: int) -> void:
 		if attack.has_effect():
 			# Known divergence (4.8): without a card effect entry only the printed number is dealt.
 			_log("  [effect not implemented]")
-		deal_attack_damage(context, attack.damage)
+		operations.deal_attack_damage(context, attack.damage)
 		_finish_attack()
 		return
 
@@ -555,7 +546,7 @@ func _attack_damage_triggers() -> Array[Dictionary]:
 	var queue: Array[Dictionary] = []
 	var opponent := opponent_player()
 	var damaged_opponent := false
-	for darkner in _attack_damaged:
+	for darkner in operations.damaged_by_attack():
 		if darkner == opponent.active or opponent.bench.has(darkner):
 			damaged_opponent = true
 	if not damaged_opponent:
@@ -645,235 +636,12 @@ func retreat_cost(pokemon: CardInPlay) -> Array[String]:
 func spell_cost(spell: CardData) -> int:
 	return spell.tp_cost
 
-# --- Mutations available to atomic effects ---------------------------------------------
-
-## Attack damage to a Darkner on the Field. Weakness and Resistance never apply on the Field.
-func deal_benched_attack_damage(_context: EffectContext, target: CardInPlay, amount: int) -> int:
-	if amount <= 0:
-		return 0
-	return _apply_damage(target, amount, DAMAGE_ATTACK)
-
-## Places damage counters on a Darkner: 10 damage each, never changed by Weakness or Resistance.
-func place_damage_counters(target: CardInPlay, count: int) -> int:
-	if count <= 0:
-		return 0
-	_apply_damage(target, count * 10, DAMAGE_COUNTERS)
-	return count
-
-
-## Attaches an Energy card from a player's discard pile to one of their Darkners. An effect,
-## so it does not use the once-per-turn attachment.
-func attach_from_discard(player: PlayerState, energy: CardData, target: CardInPlay) -> void:
-	player.discard.erase(energy)
-	target.attached_energy.append(energy)
-	_log("  Player %d attaches %s from their discard pile to %s" % [players.find(player) + 1, energy.name, target.card.name])
-
-## Attaches an Energy card from a player's hand through an effect. It is not the player's
-## once-per-turn attachment.
-func attach_from_hand(player: PlayerState, energy: CardData, target: CardInPlay) -> void:
-	player.hand.erase(energy)
-	target.attached_energy.append(energy)
-	_log("  Player %d attaches %s from their hand to %s" % [players.find(player) + 1, energy.name, target.card.name])
-
-
-## The player taking the turn takes another turn after this one.
-func grant_extra_turn() -> void:
-	_extra_turn = true
-
-## Removes up to amount damage from a Darkner. Returns the damage removed.
-func heal(target: CardInPlay, amount: int) -> int:
-	var healed := mini(target.damage, maxi(amount, 0))
-	if healed > 0:
-		target.damage -= healed
-		_log("  %s heals %d damage (%d/%d HP)" % [target.card.name, healed, target.remaining_hp(), target.card.hp])
-	return healed
-
-
-## Whether a player has this much TP, in quarters. Every TP payment asks this first.
-func can_spend_tp(player: PlayerState, quarters: int) -> bool:
-	return player.tp >= quarters
-
-
-## Spends TP, in quarters. Every TP payment ends here, Spells and effects alike; the caller
-## has asked can_spend_tp() first.
-func spend_tp(player: PlayerState, quarters: int) -> void:
-	player.tp -= quarters
-	_log("  Player %d uses %d%% TP (%d%% left)" % [players.find(player) + 1, quarters * 25, player.tp * 25])
-
-
-## Shuffles every Energy card attached to a Darkner into its owner's deck. Returns how many.
-func shuffle_energy_into_deck(target: CardInPlay) -> int:
-	var owner := owner_of(target)
-	var count := target.attached_energy.size()
-	if owner == null or count == 0:
-		return 0
-	owner.deck.append_array(target.attached_energy)
-	target.attached_energy.clear()
-	_rng.shuffle(owner.deck)
-	_log("  %s shuffles %d Energy card%s into the deck" % [target.card.name, count, "" if count == 1 else "s"])
-	return count
-
-## An attack with no printed damage deals none, so nothing is logged for it.
-func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
-	var defender := context.defender
-	if defender == null or base_damage <= 0:
-		return 0
-	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.card, base_damage), DAMAGE_ATTACK)
-
-
-## Damage without Weakness or Resistance, such as an attacker damaging itself.
-func deal_direct_damage(target: CardInPlay, amount: int) -> int:
-	if amount <= 0:
-		return 0
-	return _apply_damage(target, amount, DAMAGE_DIRECT)
-
-## The Darkners the resolving attack has damaged, in order.
-func damaged_by_attack() -> Array[CardInPlay]:
-	return _attack_damaged.duplicate()
-
-## The one place damage lands on a Darkner. Every way of dealing damage ends here, so what must
-## happen to all damage (preventing it, effects that watch for it) is written once.
-func _apply_damage(target: CardInPlay, amount: int, kind: String) -> int:
-	target.damage += amount
-	if kind == DAMAGE_ATTACK and amount > 0 and not _attack_damaged.has(target):
-		_attack_damaged.append(target)
-	var hp := "(%d/%d HP)" % [target.remaining_hp(), target.card.hp]
-	match kind:
-		DAMAGE_ATTACK:
-			_log("  %d damage to %s %s" % [amount, target.card.name, hp])
-		DAMAGE_COUNTERS:
-			var counters := amount / 10
-			_log("  %d damage counter%s on %s %s" % [counters, "" if counters == 1 else "s", target.card.name, hp])
-		_:
-			_log("  %s takes %d damage %s" % [target.card.name, amount, hp])
-	return amount
-
-
-## Discards the given Energy cards from a Pokemon into its owner's discard pile.
-func discard_energy_cards(target: CardInPlay, cards: Array[CardData]) -> int:
-	var owner := owner_of(target)
-	var discarded := 0
-	for energy in cards:
-		var index := target.attached_energy.find(energy)
-		if index == -1:
-			continue
-		target.attached_energy.remove_at(index)
-		if owner != null:
-			owner.discard.append(energy)
-		discarded += 1
-		_log("  %s discards %s" % [target.card.name, energy.name])
-	return discarded
-
-## Swaps a player's Active Pokémon with the Pokémon at a Bench slot. It is not a Retreat: no
-## cost is paid and the once-per-turn Retreat is still available.
-func switch_in(player: PlayerState, slot: int) -> void:
-	var leaving := player.active
-	player.active = player.bench[slot]
-	player.bench[slot] = leaving
-	_log("  Player %d switches %s into the Battle Zone; %s goes to the Field" % [
-		players.find(player) + 1, player.active.card.name, leaving.card.name,
-	])
-
-
-## Shuffles a player's hand into their deck. Returns how many cards the hand held.
-func shuffle_hand_into_deck(player: PlayerState) -> int:
-	var count := player.hand.size()
-	player.deck.append_array(player.hand)
-	player.hand.clear()
-	_rng.shuffle(player.deck)
-	_log("  Player %d shuffles %d card%s from their hand into their deck" % [players.find(player) + 1, count, "" if count == 1 else "s"])
-	return count
-
-## Moves the given cards from a player's deck into their hand. Returns how many moved.
-func take_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
-	var index := players.find(player) + 1
-	if cards.is_empty():
-		_log("  Player %d finds nothing" % index)
-	for card in cards:
-		player.deck.erase(card)
-		player.hand.append(card)
-		_log("  Player %d puts %s from their deck into their hand" % [index, card.name])
-	return cards.size()
-
-## Moves the given cards from a player's deck to their discard pile. Returns how many moved.
-func discard_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
-	var index := players.find(player) + 1
-	if cards.is_empty():
-		_log("  Player %d discards nothing" % index)
-	for card in cards:
-		player.deck.erase(card)
-		player.discard.append(card)
-		_log("  Player %d discards %s from their deck" % [index, card.name])
-	return cards.size()
-
-
-## Moves the given cards from a player's hand to their discard pile. Returns how many moved.
-func discard_from_hand(player: PlayerState, cards: Array[CardData]) -> int:
-	var index := players.find(player) + 1
-	for card in cards:
-		player.hand.erase(card)
-		player.discard.append(card)
-		_log("  Player %d discards %s from their hand" % [index, card.name])
-	return cards.size()
-
-
-## Shuffles a player's hand and puts it on the bottom of their deck. Returns how many cards the
-## hand held.
-func put_hand_on_bottom_of_deck(player: PlayerState) -> int:
-	var cards := player.hand.duplicate()
-	player.hand.clear()
-	_rng.shuffle(cards)
-	for card: CardData in cards:
-		player.deck.insert(0, card)
-	var count := cards.size()
-	_log("  Player %d puts %d card%s from their hand on the bottom of their deck" % [players.find(player) + 1, count, "" if count == 1 else "s"])
-	return count
-
-## Moves the given cards from a player's discard pile into their hand. Returns how many moved.
-func take_from_discard(player: PlayerState, cards: Array[CardData]) -> int:
-	for card in cards:
-		player.discard.erase(card)
-		player.hand.append(card)
-		_log("  Player %d puts %s from their discard pile into their hand" % [players.find(player) + 1, card.name])
-	return cards.size()
-
-
-func shuffle_deck(player: PlayerState) -> void:
-	_rng.shuffle(player.deck)
-	_log("  Player %d shuffles their deck" % (players.find(player) + 1))
-
-func draw_cards(player: PlayerState, count: int) -> int:
-	var drawn := 0
-	for _i in maxi(count, 0):
-		if not player.draw_card():
-			break
-		drawn += 1
-	_log("  Player %d draws %d card%s" % [players.find(player) + 1, drawn, "" if drawn == 1 else "s"])
-	return drawn
-
-
-func flip_coin() -> bool:
-	var heads := _rng.coin_flip()
-	_log("  Coin flip: %s" % ("heads" if heads else "tails"))
-	return heads
-
-
-func owner_of(pokemon: CardInPlay) -> PlayerState:
-	for player in players:
-		if player.active == pokemon or player.bench.has(pokemon):
-			return player
-	return null
-
-
-func log_event(text: String) -> void:
-	_log(text)
-
-
 # --- Attack resolution helpers ----------------------------------------------------------
 
 func _power_context(user: CardInPlay) -> EffectContext:
 	var context := EffectContext.new()
 	context.engine = self
+	context.operations = operations
 	context.kind = EffectContext.KIND_POWER
 	context.source = user
 	context.defender = opponent_player().active
@@ -900,6 +668,7 @@ func _power_usable(user: CardInPlay, power: PowerData) -> bool:
 func _attack_context(attack: AttackData) -> EffectContext:
 	var context := EffectContext.new()
 	context.engine = self
+	context.operations = operations
 	context.kind = EffectContext.KIND_ATTACK
 	context.source = current_player().active
 	context.defender = opponent_player().active
@@ -917,6 +686,7 @@ func _attack_binding(attack: AttackData) -> Dictionary:
 func _trainer_context(card: CardData) -> EffectContext:
 	var context := EffectContext.new()
 	context.engine = self
+	context.operations = operations
 	context.kind = EffectContext.KIND_TRAINER
 	context.card = card
 	context.defender = opponent_player().active
