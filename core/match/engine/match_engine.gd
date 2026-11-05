@@ -172,7 +172,7 @@ func legal_actions() -> Array[Dictionary]:
 		if user == null:
 			continue
 		for power in user.card.powers:
-			if _power_usable(user, power):
+			if EffectBindings.power_usable(self, user, power):
 				actions.append({
 					"type": "use_power",
 					"slot": slot,
@@ -192,7 +192,7 @@ func legal_actions() -> Array[Dictionary]:
 		var attacks := player.active.card.attacks
 		for attack_index in attacks.size():
 			var attack := attacks[attack_index]
-			if player.active.can_pay(attack_cost(player.active, attack)) and _attack_requirements_met(attack):
+			if player.active.can_pay(attack_cost(player.active, attack)) and EffectBindings.attack_requirements_met(self, attack):
 				actions.append({
 					"type": "attack",
 					"attack_index": attack_index,
@@ -345,7 +345,7 @@ func _can_play_trainer(player: PlayerState, card: CardData) -> bool:
 		CardData.TRAINER_SPELL:
 			allowed = operations.can_spend_tp(player, spell_cost(card))
 	# A card that is known to have no effect cannot be played.
-	return allowed and _trainer_requirements_met(card)
+	return allowed and EffectBindings.trainer_requirements_met(self, card)
 
 
 ## The player going first cannot play a Supporter
@@ -394,17 +394,14 @@ func _do_play_trainer(hand_index: int) -> void:
 ## choice; _finish_effect() finishes the card once it is answered.
 func _resolve_trainer(card: CardData) -> void:
 	resolving_trainer = card
-	var binding := _trainer_binding(card)
+	var binding := EffectBindings.trainer_binding(self, card)
 	if binding.is_empty():
 		_log("  [effect not implemented]")
 		_finish_trainer(card)
 		return
-	var context := _trainer_context(card)
-	var resolver := EffectResolver.new(effects, context)
-	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+	_pending = EffectBindings.run(self, binding, EffectBindings.trainer_context(self, card))
+	if _pending == null:
 		_finish_trainer(card)
-	else:
-		_pending = _effect_choice(resolver, context)
 
 
 ## Once its effect has resolved, a Stadiumstays in the shared slot and every other Trainer card
@@ -443,14 +440,11 @@ func _do_use_power(slot: int, power_name: String) -> void:
 	var binding := {}
 	for power in user.card.powers:
 		if power.name == power_name:
-			binding = _power_binding(user, power)
+			binding = EffectBindings.power_binding(self, user, power)
 	_log("%s uses %s" % [user.card.name, power_name])
-	var context := _power_context(user)
-	var resolver := EffectResolver.new(effects, context)
-	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+	_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_POWER))
+	if _pending == null:
 		_finish_power()
-	else:
-		_pending = _effect_choice(resolver, context)
 
 
 ## An Ability can knock out a Darkner during its owner's turn, even the one using it: the
@@ -469,8 +463,8 @@ func _do_attack(attack_index: int) -> void:
 	attacker.attack_used_this_turn = attack.name
 	operations.begin_attack()
 
-	var context := _attack_context(attack)
-	var binding := _attack_binding(attack)
+	var context := EffectBindings.attack_context(self, attack)
+	var binding := EffectBindings.attack_binding(self, attack)
 	if binding.is_empty():
 		if attack.has_effect():
 			# Known divergence (4.8): without a card effect entry only the printed number is dealt.
@@ -479,11 +473,9 @@ func _do_attack(attack_index: int) -> void:
 		_finish_attack()
 		return
 
-	var resolver := EffectResolver.new(effects, context)
-	if resolver.run(str(binding["function"]), binding["args"] as Dictionary):
+	_pending = EffectBindings.run(self, binding, context)
+	if _pending == null:
 		_finish_attack()
-	else:
-		_pending = _effect_choice(resolver, context)
 
 ## Continues the turn once a suspended effect has finished resolving.
 func _finish_effect(context: EffectContext) -> void:
@@ -497,17 +489,6 @@ func _finish_effect(context: EffectContext) -> void:
 		_:
 			_finish_attack()
 
-## Wraps the question a suspended effect is asking. The effect names who answers.
-func _effect_choice(resolver: EffectResolver, context: EffectContext) -> PendingChoice:
-	var asked := context.choice
-	var choice := PendingChoice.new(players.find(asked["chooser"]), str(asked["prompt"]),
-			asked["options"] as Array, PendingChoice.RESUME_EFFECT, {})
-	choice.revealed.assign(asked["revealed"] as Array)
-	choice.resolver = resolver
-	choice.context = context
-	return choice
-
-
 func _do_choose(option: int) -> void:
 	var choice := _pending
 	_pending = null
@@ -520,7 +501,7 @@ func _do_choose(option: int) -> void:
 			if choice.resolver.resume():
 				_finish_effect(choice.context)
 			else:
-				_pending = _effect_choice(choice.resolver, choice.context)
+				_pending = EffectBindings.choice_for(choice.resolver, choice.context)
 		PendingChoice.RESUME_SETUP:
 			_continue_setup(_setup.answer(picked["value"]))
 		PendingChoice.RESUME_PROMOTE:
@@ -556,7 +537,7 @@ func _attack_damage_triggers() -> Array[Dictionary]:
 		if darkner == null:
 			continue
 		for power in darkner.card.powers:
-			if _power_binding(darkner, power).get(EffectLibrary.TIMING_KEY) == EffectLibrary.TIMING_ON_ATTACK_DAMAGE:
+			if EffectBindings.power_binding(self, darkner, power).get(EffectLibrary.TIMING_KEY) == EffectLibrary.TIMING_ON_ATTACK_DAMAGE:
 				queue.append({"user": darkner, "power": power})
 	return queue
 
@@ -568,13 +549,10 @@ func _continue_attack() -> void:
 		var trigger: Dictionary = _triggers.pop_front()
 		var user := trigger["user"] as CardInPlay
 		var power := trigger["power"] as PowerData
-		var binding := _power_binding(user, power)
+		var binding := EffectBindings.power_binding(self, user, power)
 		_log("%s: %s" % [user.card.name, power.name])
-		var context := _power_context(user)
-		context.kind = EffectContext.KIND_TRIGGER
-		var resolver := EffectResolver.new(effects, context)
-		if not resolver.run(str(binding["function"]), binding["args"] as Dictionary):
-			_pending = _effect_choice(resolver, context)
+		_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_TRIGGER))
+		if _pending != null:
 			return
 	_resolve_knockouts()
 	if is_over():
@@ -636,89 +614,11 @@ func retreat_cost(pokemon: CardInPlay) -> Array[String]:
 func spell_cost(spell: CardData) -> int:
 	return spell.tp_cost
 
-# --- Attack resolution helpers ----------------------------------------------------------
-
-func _power_context(user: CardInPlay) -> EffectContext:
-	var context := EffectContext.new()
-	context.engine = self
-	context.operations = operations
-	context.kind = EffectContext.KIND_POWER
-	context.source = user
-	context.defender = opponent_player().active
-	context.player = current_player()
-	context.opponent = opponent_player()
-	return context
-
-
-func _power_binding(user: CardInPlay, power: PowerData) -> Dictionary:
-	if effects == null:
-		return {}
-	return effects.binding_for(user.card.id, EffectLibrary.SECTION_POWERS, power.name)
-
-
-## An activated Ability can be used when it has a binding and its requirements hold, which
-## includes "it would do something" (Design Document 3.3 applies to Abilities too).
-func _power_usable(user: CardInPlay, power: PowerData) -> bool:
-	var binding := _power_binding(user, power)
-	if binding.is_empty() or binding.get(EffectLibrary.TIMING_KEY) != EffectLibrary.TIMING_ACTIVATED:
-		return false
-	var resolver := EffectResolver.new(effects, _power_context(user))
-	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
-
-func _attack_context(attack: AttackData) -> EffectContext:
-	var context := EffectContext.new()
-	context.engine = self
-	context.operations = operations
-	context.kind = EffectContext.KIND_ATTACK
-	context.source = current_player().active
-	context.defender = opponent_player().active
-	context.player = current_player()
-	context.opponent = opponent_player()
-	context.attack = attack
-	return context
-
-
-func _attack_binding(attack: AttackData) -> Dictionary:
-	if effects == null:
-		return {}
-	return effects.binding_for(current_player().active.card.id, EffectLibrary.SECTION_ATTACKS, attack.name)
-
-func _trainer_context(card: CardData) -> EffectContext:
-	var context := EffectContext.new()
-	context.engine = self
-	context.operations = operations
-	context.kind = EffectContext.KIND_TRAINER
-	context.card = card
-	context.defender = opponent_player().active
-	context.player = current_player()
-	context.opponent = opponent_player()
-	return context
-
-
-func _trainer_binding(card: CardData) -> Dictionary:
-	if effects == null:
-		return {}
-	return effects.binding_for(card.id, EffectLibrary.SECTION_TRAINER, card.name)
-
-
-func _trainer_requirements_met(card: CardData) -> bool:
-	var binding := _trainer_binding(card)
-	if binding.is_empty():
-		return true
-	var resolver := EffectResolver.new(effects, _trainer_context(card))
-	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
 
 ## Current standard rule (Design Document 4.2): the player going first cannot attack on
 ## their first turn. Turn 1 is always that turn, since start() resets the counter.
 func _attacks_allowed() -> bool:
 	return rules.first_player_can_attack or turn > 1
-
-func _attack_requirements_met(attack: AttackData) -> bool:
-	var binding := _attack_binding(attack)
-	if binding.is_empty():
-		return true
-	var resolver := EffectResolver.new(effects, _attack_context(attack))
-	return resolver.requirements_met(str(binding["function"]), binding["args"] as Dictionary)
 
 
 ## Resolves every knocked out Darkner at once, as the rulebook does, in the Active Spot or on
