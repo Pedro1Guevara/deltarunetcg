@@ -1,27 +1,37 @@
 extends Control
-## Debug screen that chooses each player's deck from data/decks/decks.json, then opens the
-## hotseat with them. The hotseat's Change decks button comes back here.
+## Debug screen that chooses each player's deck from data/decks/decks.json and who plays it, a
+## human or the CPU, then opens the hotseat with them. The hotseat's Change decks button comes
+## back here.
 
 const HOTSEAT_SCENE := "res://game/screen/debug/hotseat/hotseat.tscn"
 const FONT_SIZE := 22
 ## The decks each list starts on, by decks.json id, unless setup() names others.
 const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
+## Who plays each seat unless setup() says otherwise: a human, then the CPU.
+const DEFAULT_CPU_SEATS: Array[bool] = [false, true]
+## Items of each player's Human / CPU selector.
+const SEAT_HUMAN := 0
+const SEAT_CPU := 1
 
 var _deck_ids: Array[String] = []
 var _deck_defs: Dictionary = {}
 var _database: CardDatabase
 var _lists: Array[ItemList] = []
 var _details: Array[Label] = []
+var _seats: Array[OptionButton] = []
 ## One list of the selected deck's cards per player, under its list of decks.
 var _contents: Array[VBoxContainer] = []
 var _start_button: Button
 ## The decks to select when the screen opens.
 var _initial: Array[String] = DEFAULT_DECKS.duplicate()
+var _initial_cpu_seats: Array[bool] = DEFAULT_CPU_SEATS.duplicate()
 
 
-## Called before the screen enters the tree, with the decks to select (decks.json ids).
-func setup(deck_ids: Array[String]) -> void:
+## Called before the screen enters the tree, with the decks to select (decks.json ids) and
+## which players the CPU plays.
+func setup(deck_ids: Array[String], cpu_seats: Array[bool]) -> void:
 	_initial = deck_ids.duplicate()
+	_initial_cpu_seats = cpu_seats.duplicate()
 
 
 func _ready() -> void:
@@ -56,9 +66,18 @@ func _build_ui() -> void:
 		var column := VBoxContainer.new()
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		columns.add_child(column)
+		var heading_row := HBoxContainer.new()
+		heading_row.add_theme_constant_override("separation", 16)
+		column.add_child(heading_row)
 		var heading := Label.new()
 		heading.text = "Player %d" % (index + 1)
-		column.add_child(heading)
+		heading_row.add_child(heading)
+		var seat := OptionButton.new()
+		seat.add_item("Human", SEAT_HUMAN)
+		seat.add_item("CPU", SEAT_CPU)
+		seat.select(seat.get_item_index(SEAT_CPU if index < _initial_cpu_seats.size() and _initial_cpu_seats[index] else SEAT_HUMAN))
+		heading_row.add_child(seat)
+		_seats.append(seat)
 		var list := ItemList.new()
 		list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		list.select_mode = ItemList.SELECT_SINGLE
@@ -159,7 +178,10 @@ func _picked() -> Array[String]:
 
 func _start() -> void:
 	var hotseat: Node = (load(HOTSEAT_SCENE) as PackedScene).instantiate()
-	hotseat.call("setup", _picked())
+	var cpu_seats: Array[bool] = []
+	for seat in _seats:
+		cpu_seats.append(seat.get_selected_id() == SEAT_CPU)
+	hotseat.call("setup", _picked(), cpu_seats)
 	var tree := get_tree()
 	tree.root.add_child(hotseat)
 	tree.current_scene = hotseat

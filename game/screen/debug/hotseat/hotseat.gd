@@ -3,6 +3,12 @@ extends Control
 const DECK_SELECT_SCENE := "res://game/screen/debug/deck_select/deck_select.tscn"
 ## The decks played when the scene is run on its own, without the deck select screen.
 const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
+## Which players the CPU plays when the scene is run on its own: player 2.
+const DEFAULT_CPU_SEATS: Array[bool] = [false, true]
+## Seconds between two CPU decisions, so each one can be followed on the board.
+const CPU_DELAY := 0.6
+## A CPU turn that takes more decisions than this is ended, as a safety net.
+const CPU_DECISIONS_PER_TURN := 300
 const FONT_SIZE := 22
 ## The ways to copy a replay, as ids of the Copy replay menu.
 const REPLAY_AS_TEXT := 0
@@ -25,11 +31,22 @@ var _discard_open: Array[bool] = [false, false]
 ## Each player's deck, by decks.json id, and its display name.
 var _deck_ids: Array[String] = DEFAULT_DECKS.duplicate()
 var _deck_names: Array[String] = []
+## Whether the CPU plays each seat.
+var _cpu_seats: Array[bool] = DEFAULT_CPU_SEATS.duplicate()
+var _cpu := CpuPlayer.new()
+## A CPU decision is waiting for its pause to end.
+var _cpu_waiting := false
+## Bumped by every new round, so a pause started in the previous round does nothing.
+var _round_number := 0
+var _cpu_turn := -1
+var _cpu_decisions := 0
 
 
-## Called by the deck select screen before the scene enters the tree.
-func setup(deck_ids: Array[String]) -> void:
+## Called by the deck select screen before the scene enters the tree: each player's deck, and
+## whether the CPU plays it.
+func setup(deck_ids: Array[String], cpu_seats: Array[bool]) -> void:
 	_deck_ids = deck_ids.duplicate()
+	_cpu_seats = cpu_seats.duplicate()
 
 func _ready() -> void:
 	var ui_theme := Theme.new()
@@ -161,6 +178,8 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 
 
 	_seed = randi()
+	_round_number += 1
+	_cpu_waiting = false
 	_engine = MatchEngine.new()
 	_engine.effects = DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
 
@@ -198,7 +217,7 @@ func _copy_replay(format: int) -> void:
 ## Goes back to the deck select screen, with this match's decks selected.
 func _change_decks() -> void:
 	var deck_select: Node = (load(DECK_SELECT_SCENE) as PackedScene).instantiate()
-	deck_select.call("setup", _deck_ids)
+	deck_select.call("setup", _deck_ids, _cpu_seats)
 	var tree := get_tree()
 	tree.root.add_child(deck_select)
 	tree.current_scene = deck_select
@@ -210,6 +229,8 @@ func _refresh() -> void:
 		_status_label.text = "Turn %d  |  Seed %d  |  Both players won: Sudden Death" % [_engine.turn, _seed]
 	elif _engine.is_over():
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d wins" % [_engine.turn, _seed, _engine.winner + 1]
+	elif _engine.is_waiting_for_choice() and _is_hidden(_engine.choice_chooser()):
+		_status_label.text = "Turn %d  |  Seed %d  |  Player %d (CPU) is choosing" % [_engine.turn, _seed, _engine.choice_chooser() + 1]
 	elif _engine.is_waiting_for_choice():
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, _engine.choice_prompt()]
 	else:
@@ -224,6 +245,11 @@ func _refresh() -> void:
 		_actions_box.remove_child(child)
 		child.queue_free()
 
+
+	if _cpu_seats[_actor()] and not _engine.is_over():
+		_add_text(_actions_box, "Player %d (CPU) is thinking..." % (_actor() + 1))
+		_finish_refresh()
+		return
 
 	var revealed := _engine.choice_revealed()
 	if not revealed.is_empty():
@@ -267,9 +293,54 @@ func _refresh() -> void:
 		sudden_death.pressed.connect(_start_with_rules.bind(_engine.rules.with_prize_count(1)))
 		_actions_box.add_child(sudden_death)
 
+	_finish_refresh()
+
+
+## The log, then the CPU's next decision if it is to act.
+func _finish_refresh() -> void:
 	var lines := PackedStringArray(_engine.events)
 	lines.reverse()
 	_log_label.text = "\n".join(lines)
+	_schedule_cpu()
+
+
+## The player who answers the open question, or else the player taking the turn.
+func _actor() -> int:
+	return _engine.choice_chooser() if _engine.is_waiting_for_choice() else _engine.current_index
+
+
+## Whether a player's hidden cards are hidden on screen: the CPU's, when a human plays
+## against it. With two humans or two CPUs, everything is shown.
+func _is_hidden(index: int) -> bool:
+	return _cpu_seats[index] and not _cpu_seats[1 - index]
+
+
+## Starts the pause before the CPU's next decision, once.
+func _schedule_cpu() -> void:
+	if _cpu_waiting or _engine.is_over() or not _cpu_seats[_actor()]:
+		return
+	_cpu_waiting = true
+	get_tree().create_timer(CPU_DELAY).timeout.connect(_play_cpu.bind(_round_number))
+
+
+## The CPU decides from its own view of the round (PlayerView) and its action is applied.
+func _play_cpu(round_number: int) -> void:
+	if round_number != _round_number:
+		return
+	_cpu_waiting = false
+	if _engine.is_over() or not _cpu_seats[_actor()]:
+		return
+	if _engine.turn != _cpu_turn:
+		_cpu_turn = _engine.turn
+		_cpu_decisions = 0
+	_cpu_decisions += 1
+	var action := _cpu.choose(_engine.view_for(_actor()))
+	if _cpu_decisions > CPU_DECISIONS_PER_TURN and _engine.is_legal({"type": "end_turn"}):
+		push_warning("Hotseat: the CPU took more than %d decisions this turn; ending it" % CPU_DECISIONS_PER_TURN)
+		action = {"type": "end_turn"}
+	_open_group = ""
+	_engine.apply(action)
+	_refresh()
 
 
 ## Actions that share a first choice (which card) and differ in a second (which target)
@@ -361,9 +432,8 @@ func _fill_player_panel(index: int) -> void:
 		child.queue_free()
 
 	var player := _engine.players[index]
-	var header := "PLAYER %d (%s)" % [index + 1, _deck_names[index]]
-	var actor := _engine.choice_chooser() if _engine.is_waiting_for_choice() else _engine.current_index
-	if not _engine.is_over() and actor == index:
+	var header := "PLAYER %d (%s)%s" % [index + 1, _deck_names[index], "  CPU" if _cpu_seats[index] else ""]
+	if not _engine.is_over() and _actor() == index:
 		header += "   <- to act"
 	_add_text(panel, header)
 	var counters := HBoxContainer.new()
@@ -402,9 +472,12 @@ func _fill_player_panel(index: int) -> void:
 
 	var hand := HFlowContainer.new()
 	hand.add_theme_constant_override("h_separation", 16)
-	_add_text(hand, "Hand:")
-	for card in player.hand:
-		hand.add_child(CardChip.for_card(card))
+	if _is_hidden(index):
+		_add_text(hand, "Hand: %d card%s" % [player.hand.size(), "" if player.hand.size() == 1 else "s"])
+	else:
+		_add_text(hand, "Hand:")
+		for card in player.hand:
+			hand.add_child(CardChip.for_card(card))
 	panel.add_child(hand)
 
 

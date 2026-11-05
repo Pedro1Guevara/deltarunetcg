@@ -32,11 +32,11 @@ Layers are top-level folders (Design Document 8.2). Dependencies point one way: 
 
 - `addons/card-framework/`, `example1/`, `freecell/`, `docs/`, `scripts/` — the card-framework fork (chun92/card-framework). **Never modify anything that ships with the fork.** Extend it by subclassing.
 - `core/` — rules engine. Pure GDScript, every class extends RefCounted. No scene tree, input, threads or file I/O. `cards/` (card model; `parsers/` turns JSON into CardData), `match/` (round state; `engine/` holds MatchEngine and the parts it owns: MatchSetup, MatchOperations, KnockoutResolver, LegalActions, EffectBindings, ContinuousEffects), `rules/` (pure checks and calculations), `effects/` (library, resolver, context; `atomic/` holds AtomicEffects and its helpers EffectChoices, CardMoves, EnergyEffects), `rng.gd`.
-- `ai/` — CPU opponents. `meta/` — story progression (and the frozen roguelite). `net/` — multiplayer, out of scope. None exist yet.
+- `ai/` — CPU opponents (`CpuPlayer`). `meta/` — story progression (and the frozen roguelite). `net/` — multiplayer, out of scope. `meta/` and `net/` do not exist yet.
 - `game/` — the Godot app. `app/`, `services/` (DataLoader, SaveService), `presentation/` (CardText: words the player reads), `ui/` (reusable widgets such as CardChip), `screens/` (`debug/hotseat/` today).
 - `data/` — `cards/cards.json`, `decks/decks.json`, `effects/` (`functions.json`, `card_effects.json`), `legacy/` (WOTC regression fixture).
 - `assets/` — images, sounds, fonts and the Godot resources built only from them (Theme, TileSet, SpriteFrames); never scripts or scenes. Card art is `assets/cards/fronts/<card_id>.png`. Board graphics in `board/`, menus and HUD in `ui/`, type icons in `icons/types/`. `legacy/tcgdex/` holds downloaded WOTC art, not committed.
-- `tests/` — headless checks extending `tests/support/test_case.gd`: `godot --headless --path . --script res://tests/core/<file>.gd` (legacy suite in `tests/legacy/`).
+- `tests/` — headless checks extending `tests/support/test_case.gd`, one folder per layer: `godot --headless --path . --script res://tests/core/<file>.gd` (also `tests/ai/`; legacy suite in `tests/legacy/`).
 - `tools/` — scripts run by hand; `legacy/` for the WOTC importer and effect report.
 - Move files from the Godot editor's FileSystem dock so `.tscn` paths and `.uid` files follow.
 
@@ -45,7 +45,8 @@ Layers are top-level folders (Design Document 8.2). Dependencies point one way: 
 - `MatchEngine` and the parts it owns are the only objects that mutate game state. `MatchSetup` and `KnockoutResolver` are called only by the engine. `MatchOperations` holds the changes card effects make, and effects reach it only through their `EffectContext`. `LegalActions`, `EffectBindings` and `ContinuousEffects` are static and only read the engine's public state. No part keeps a strong reference to the engine. Ownership flows MatchEngine → PlayerState → CardInPlay → CardData.
 - One open question at a time, as a `PendingChoice` with an explicit `chooser`. Pure calculations live in `core/rules/` as static functions.
 - Every decision goes through `legal_actions()` / `apply()`. The engine does not know who answers. Choices can be answered by the player who is not taking the turn (Bump, Hazy Memory), so the seam must say which player answers.
-- `Rng` is the only source of shuffles and coin flips.
+- `Rng` is the only source of shuffles and coin flips. A round starts with a fresh `Rng`: its replay (`MatchReplay`) records only the seed, the rules, the decks and the actions applied.
+- `view_for(player)` (`PlayerView`) is what one player can see. A CPU decides from its view only, never from the engine.
 - Legality never reads a printed cost. Spell TP costs, attack Energy costs and Flee costs are computed as effective costs through one continuous-effects layer (`ContinuousEffects`), which also filters `legal_actions()`. Continuous Abilities name modifiers, a third kind of atomic besides effects and checks, which the layer reads and never runs as steps.
 - TP is an integer number of quarters, 0 to 4.
 - The number of Mercy Cards taken per knockout and the round-start draw advantage are values effects can modify, never constants.
