@@ -71,6 +71,38 @@ static func deltarune() -> MatchRules:
 	return rules
 
 
+## Every rule by name, for a replay.
+func to_dict() -> Dictionary:
+	var values := {}
+	for property in _rule_names():
+		values[property] = get(property)
+	return values
+
+
+## The rules to_dict() wrote, or null when a rule is missing. Numbers read back from JSON are
+## turned back into whole numbers.
+static func from_dict(values: Dictionary) -> MatchRules:
+	var rules := MatchRules.new()
+	for property in rules._rule_names():
+		if not values.has(property):
+			return null
+		var value: Variant = values[property]
+		if rules.get(property) is int:
+			value = int(value)
+		elif rules.get(property) is bool:
+			value = bool(value)
+		rules.set(property, value)
+	return rules
+
+
+func _rule_names() -> Array[String]:
+	var names: Array[String] = []
+	for property in get_property_list():
+		if int(property["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			names.append(str(property["name"]))
+	return names
+
+
 ## The same rules with a different prize count, for Sudden Death.
 func with_prize_count(count: int) -> MatchRules:
 	var copy := MatchRules.new()

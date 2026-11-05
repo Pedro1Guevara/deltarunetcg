@@ -963,6 +963,40 @@ func _run() -> void:
 			"the player who answers sees the legal actions, even when it is not their turn")
 	expect(promote_view.view_for(view_promoter).me().active == null, "an empty Battle Zone shows as empty")
 
+	print("== replays")
+	var recorded := start_round(MatchRules.deltarune().with_prize_count(1), 12)
+	finish_setup(recorded)
+	recorded.apply({"type": "end_turn"})
+	var record := recorded.replay()
+	expect(record.rng_seed == 12 and record.decks.size() == 2 and record.decks[0].size() == 30 and record.decks[0][0] == "jevil",
+			"a replay holds the seed and both decks as card ids, in the order they were handed in")
+	expect(MatchRules.from_dict(record.rules).prize_count == 1 and MatchRules.from_dict(record.rules).hand_size == 10, "and the rules the round started with")
+	expect(not record.actions.is_empty() and record.actions.back() == {"type": "end_turn"} and record.actions.all(func(action: Dictionary) -> bool: return not action.has("label")),
+			"and every action applied, without labels")
+	record.actions.clear()
+	expect(not recorded.replay().actions.is_empty(), "a replay is a copy")
+	var code := recorded.replay().to_code()
+	expect(code.begins_with(MatchReplay.CODE_PREFIX) and not code.contains(" ") and code.length() * 3 < recorded.replay().to_text().length(),
+			"a code is one line, a third the length of the text or less (%d against %d)" % [code.length(), recorded.replay().to_text().length()])
+	expect(MatchReplay.from_text(code).to_text() == recorded.replay().to_text() and MatchReplay.from_text("  %s\n" % code) != null, "and reads back as the same replay, spaces around it ignored")
+	var odd_power := {"type": "use_power", "slot": -1, "power": "Way of the Worm, | 100%"}
+	expect(MatchReplay._token_action(MatchReplay._action_token(odd_power)) == odd_power, "an Ability name with commas, bars or percent signs survives its token")
+	expect(MatchReplay.from_text(MatchReplay.CODE_PREFIX + "not base64 at all") == null, "a broken code reads as null")
+	var big_seed := MatchReplay.new()
+	big_seed.rng_seed = 9007199254740993
+	big_seed.rules = MatchRules.deltarune().to_dict()
+	big_seed.decks.assign([PackedStringArray(["jevil"]), PackedStringArray(["guei"])])
+	var big_seed_back := MatchReplay.from_text(big_seed.to_text())
+	expect(big_seed_back != null and big_seed_back.rng_seed == 9007199254740993, "a seed too big for a JSON number survives the text")
+	expect(MatchReplay.from_text("not a replay") == null and MatchReplay.from_text("{\"format\": 1}") == null, "text that is not a replay reads as null")
+	var rules_missing := MatchRules.deltarune().to_dict()
+	rules_missing.erase("tp_max")
+	expect(MatchRules.from_dict(rules_missing) == null, "rules with a missing value are refused, not filled with a default")
+	var diverged := recorded.replay()
+	diverged.actions.insert(diverged.actions.size() - 1, {"type": "attack", "attack_index": 7})
+	print("  (a warning about action %d is expected)" % (diverged.actions.size() - 1))
+	expect(diverged.play(db, library).replay().actions.size() == diverged.actions.size() - 2, "playing again stops at the first action that is not legal")
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()
@@ -1057,6 +1091,9 @@ func _run() -> void:
 	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0
+	var replay_mismatch := ""
+	var code_mismatch := ""
+	var action_types := {}
 	for seed in SEEDS:
 		picker.seed = seed
 		var counts: Dictionary = same_darkner if seed % 2 == 1 else mixed
@@ -1071,7 +1108,21 @@ func _run() -> void:
 			if repeated.is_empty() and not labels_distinct(actions):
 				repeated = "seed %d, turn %d: %s" % [seed, game.turn, actions]
 			game.apply(actions[picker.randi_range(0, actions.size() - 1)])
+		var from_text := MatchReplay.from_text(game.replay().to_text())
+		var replayed := from_text.play(db, library)
+		if replay_mismatch.is_empty() and (replayed.events != game.events or replayed.turn != game.turn or replayed.winner != game.winner
+				or replayed.replay().actions.size() != game.replay().actions.size()):
+			replay_mismatch = "seed %d" % seed
+		var from_code := MatchReplay.from_text(game.replay().to_code())
+		if code_mismatch.is_empty() and (from_code == null or from_code.to_text() != game.replay().to_text() or from_text.to_text() != game.replay().to_text()):
+			code_mismatch = "seed %d" % seed
+		for action in game.replay().actions:
+			action_types[action["type"]] = true
 	expect(repeated.is_empty(), "no two legal actions share a label: %s" % repeated)
+	expect(replay_mismatch.is_empty(), "every random round, written as text and played again, gives the same log, turn and winner: %s" % replay_mismatch)
+	expect(code_mismatch.is_empty(), "and written as text or as a code it reads back as the same replay: %s" % code_mismatch)
+	var untokened := action_types.keys().filter(func(type: Variant) -> bool: return not MatchReplay.TOKENS.has(type))
+	expect(untokened.is_empty() and action_types.size() == MatchReplay.TOKENS.size(), "random play used every action type, and each has a token (%s; missing %s)" % [action_types.keys(), untokened])
 	expect(rounds_finished > 0, "random play finishes rounds (%d of %d)" % [rounds_finished, SEEDS])
 
 	print("== deck validation")

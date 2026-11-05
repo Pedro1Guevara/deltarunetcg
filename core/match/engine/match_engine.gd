@@ -39,9 +39,20 @@ var _triggers: Array[Dictionary] = []
 var _on_play_user: CardInPlay = null
 var _on_play_queue: Array[PowerData] = []
 var _turn_ends_after_promotions: bool = false
+## This round so far, to play it again (MatchReplay).
+var _replay: MatchReplay = null
 
-## Every round rule comes from match_rules (MatchRules), never from constants.
+## Every round rule comes from match_rules (MatchRules), never from constants. rng must be
+## fresh: the replay records only its seed.
 func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchRules, rng: Rng) -> void:
+	_replay = MatchReplay.new()
+	_replay.rng_seed = rng.seed_value
+	_replay.rules = match_rules.to_dict()
+	for deck in [deck_a, deck_b]:
+		var ids := PackedStringArray()
+		for card: CardData in deck:
+			ids.append(card.id)
+		_replay.decks.append(ids)
 	rules = match_rules
 	_rng = rng
 	players.clear()
@@ -202,6 +213,9 @@ func apply(requested: Dictionary) -> void:
 	if action.is_empty():
 		push_error("MatchEngine: illegal action %s" % requested)
 		return
+	var recorded := action.duplicate()
+	recorded.erase("label")
+	_replay.actions.append(recorded)
 
 	match str(action["type"]):
 		"bench":
@@ -224,6 +238,16 @@ func apply(requested: Dictionary) -> void:
 			_end_turn(false)
 		"choose":
 			_do_choose(int(action["option"]))
+
+
+## Whether requested is one of the legal actions, compared as apply() compares them.
+func is_legal(requested: Dictionary) -> bool:
+	return not _legal_action_like(requested).is_empty()
+
+
+## The round so far: its seed, rules, decks and every action applied (MatchReplay). A copy.
+func replay() -> MatchReplay:
+	return _replay.duplicate_replay()
 
 
 ## The legal action with the same fields as requested, label aside, or an empty Dictionary.

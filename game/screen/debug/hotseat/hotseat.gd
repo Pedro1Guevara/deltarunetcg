@@ -4,11 +4,16 @@ const DECK_SELECT_SCENE := "res://game/screen/debug/deck_select/deck_select.tscn
 ## The decks played when the scene is run on its own, without the deck select screen.
 const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
 const FONT_SIZE := 22
+## The ways to copy a replay, as ids of the Copy replay menu.
+const REPLAY_AS_TEXT := 0
+const REPLAY_AS_CODE := 1
 
 var _engine := MatchEngine.new()
 var _seed: int = 0
 
 var _status_label: Label
+## The status line as _refresh() wrote it, before any notice is added to it.
+var _status_text: String = ""
 ## The Area in play and the ACT card being played, as cards to hover.
 var _shared_row: HBoxContainer
 var _player_panels: Array[VBoxContainer] = []
@@ -106,19 +111,24 @@ func _build_ui() -> void:
 	var controls := WindowControls.new()
 	add_child(controls)
 
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 12)
+	# Buttons wrap onto a second line instead of widening the column.
+	var buttons := HFlowContainer.new()
+	buttons.add_theme_constant_override("h_separation", 12)
+	buttons.add_theme_constant_override("v_separation", 12)
 	side_panel.add_child(buttons)
 	for entry: Array in [
 		["New match", _start_match],
 		["Change decks", _change_decks],
+		["Copy replay ▾", Callable()],
 		["Window / Fullscreen (F11)", WindowControls.toggle_windowed],
 		["Quit (Esc)", controls.quit],
 	]:
-		var button := Button.new()
+		var callback := entry[1] as Callable
+		var button: Button = Button.new() if callback.is_valid() else _make_replay_menu()
 		button.text = str(entry[0])
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(entry[1] as Callable)
+		if callback.is_valid():
+			button.pressed.connect(callback)
 		buttons.add_child(button)
 
 
@@ -164,6 +174,27 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 	_refresh()
 
 
+## A button that opens the two ways to copy the replay.
+func _make_replay_menu() -> MenuButton:
+	var menu := MenuButton.new()
+	menu.flat = false
+	var popup := menu.get_popup()
+	popup.add_item("Copy replay as legible text", REPLAY_AS_TEXT)
+	popup.add_item("Copy replay as compressed code", REPLAY_AS_CODE)
+	popup.id_pressed.connect(_copy_replay)
+	return menu
+
+
+## Puts this round's replay (MatchReplay) on the clipboard, to paste into a bug report: as
+## legible JSON, or as a short code. Both paste back the same way.
+func _copy_replay(format: int) -> void:
+	var replay := _engine.replay()
+	var text := replay.to_code() if format == REPLAY_AS_CODE else replay.to_text()
+	DisplayServer.clipboard_set(text)
+	# Only the latest notice: it replaces the previous one, and the next action clears it.
+	_status_label.text = _status_text + "  |  Replay copied as %s (%d characters)" % ["compressed code" if format == REPLAY_AS_CODE else "legible text", text.length()]
+
+
 ## Goes back to the deck select screen, with this match's decks selected.
 func _change_decks() -> void:
 	var deck_select: Node = (load(DECK_SELECT_SCENE) as PackedScene).instantiate()
@@ -183,6 +214,7 @@ func _refresh() -> void:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, _engine.choice_prompt()]
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
+	_status_text = _status_label.text
 	_fill_shared_row()
 	
 	for index in 2:
