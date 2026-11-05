@@ -1,7 +1,7 @@
 extends Control
 
-const DECK_PLAYER_1 := "deltarune_chaos"
-const DECK_PLAYER_2 := "deltarune_holy"
+## The decks each picker starts on, by decks.json id. Any deck in decks.json can be picked.
+const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
 const FONT_SIZE := 22
 
 var _engine := MatchEngine.new()
@@ -16,6 +16,9 @@ var _log_label: Label
 var _open_group: String = ""
 ## Whether each player's discard pile is shown. Public information, so either can be opened.
 var _discard_open: Array[bool] = [false, false]
+## One deck picker per player, and the decks.json ids in the order the pickers list them.
+var _deck_pickers: Array[OptionButton] = []
+var _deck_ids: Array[String] = []
 
 func _ready() -> void:
 	var ui_theme := Theme.new()
@@ -91,6 +94,19 @@ func _build_ui() -> void:
 	_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_scroll.add_child(_log_label)
 
+	var deck_row := HBoxContainer.new()
+	deck_row.add_theme_constant_override("separation", 12)
+	side_panel.add_child(deck_row)
+	for index in 2:
+		var deck_label := Label.new()
+		deck_label.text = "P%d deck" % (index + 1)
+		deck_row.add_child(deck_label)
+		var picker := OptionButton.new()
+		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		picker.clip_text = true
+		deck_row.add_child(picker)
+		_deck_pickers.append(picker)
+
 	var controls := WindowControls.new()
 	add_child(controls)
 
@@ -128,23 +144,40 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 		return
 
 	var deck_defs := decks as Dictionary
-	if not deck_defs.has(DECK_PLAYER_1) or not deck_defs.has(DECK_PLAYER_2):
-		_show_error("decks.json must define '%s' and '%s'." % [DECK_PLAYER_1, DECK_PLAYER_2])
+	if deck_defs.is_empty():
+		_show_error("decks.json defines no deck.")
 		return
-
+	if _deck_ids.is_empty():
+		_fill_deck_pickers(deck_defs)
+	var picked: Array[String] = []
+	for picker in _deck_pickers:
+		picked.append(_deck_ids[picker.selected])
 
 	_seed = randi()
 	_engine = MatchEngine.new()
 	_engine.effects = DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
 
-	var deck_1 := database.build_deck(deck_defs[DECK_PLAYER_1] as Dictionary)
-	var deck_2 := database.build_deck(deck_defs[DECK_PLAYER_2] as Dictionary)
+	var deck_1 := database.build_deck(deck_defs[picked[0]] as Dictionary)
+	var deck_2 := database.build_deck(deck_defs[picked[1]] as Dictionary)
 	# Test decks are smaller than the rules require on purpose: report, do not block.
-	for entry: Array in [[DECK_PLAYER_1, deck_1], [DECK_PLAYER_2, deck_2]]:
+	for entry: Array in [[picked[0], deck_1], [picked[1], deck_2]]:
 		for problem in DeckValidator.validate(entry[1] as Array[CardData], match_rules):
 			push_warning("Deck %s %s" % [entry[0], problem])
 	_engine.start(deck_1, deck_2, match_rules, Rng.new(_seed))
 	_refresh()
+
+
+## Lists every deck in decks.json in both pickers, in file order, each on its default deck.
+## A new pick applies from the next New match.
+func _fill_deck_pickers(deck_defs: Dictionary) -> void:
+	for id: Variant in deck_defs:
+		_deck_ids.append(str(id))
+	for index in _deck_pickers.size():
+		var picker := _deck_pickers[index]
+		for id in _deck_ids:
+			picker.add_item(str((deck_defs[id] as Dictionary).get("name", id)))
+		var default_index := _deck_ids.find(DEFAULT_DECKS[index])
+		picker.select(default_index if default_index != -1 else mini(index, _deck_ids.size() - 1))
 
 
 func _refresh() -> void:

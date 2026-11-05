@@ -2,78 +2,78 @@
 	"deltarune_chaos": {
 		"name": "Chaos Test",
 		"cards": {
-			"jevil": 4,
-			"old_man": 3,
-			"hammer_of_justice": 2,
-			"cold_place": 3,
-			"chaos_energy": 9,
-			"creative_energy": 9
+			"jevil": 4.0,
+			"old_man": 3.0,
+			"hammer_of_justice": 2.0,
+			"cold_place": 3.0,
+			"chaos_energy": 9.0,
+			"creative_energy": 9.0
 		}
 	},
 	"deltarune_holy": {
 		"name": "Holy Test",
 		"cards": {
-			"water_cooler": 4,
-			"miss_mizzle": 3,
-			"balthizard": 3,
-			"dark_zone": 3,
-			"holy_energy": 17
+			"water_cooler": 4.0,
+			"miss_mizzle": 3.0,
+			"balthizard": 3.0,
+			"dark_zone": 3.0,
+			"holy_energy": 17.0
 		}
 	},
 	"creative": {
 		"name": "Creative",
 		"cards": {
-			"old_man": 4,
-			"hammer_of_justice": 3,
-			"koody": 2,
-			"dummy": 2,
-			"balthizard": 3,
-			"creative_energy": 10,
-			"sans": 2,
-			"berdly": 2,
-			"kris": 3,
-			"susie": 2,
-			"revive_song": 4,
-			"petal_feather": 3,
-			"cd_bagel": 4,
-			"revive_mint": 2,
-			"recruit_manual": 4
+			"old_man": 4.0,
+			"hammer_of_justice": 3.0,
+			"koody": 2.0,
+			"dummy": 2.0,
+			"balthizard": 3.0,
+			"creative_energy": 10.0,
+			"sans": 2.0,
+			"berdly": 2.0,
+			"kris": 3.0,
+			"susie": 2.0,
+			"revive_song": 4.0,
+			"petal_feather": 3.0,
+			"cd_bagel": 4.0,
+			"revive_mint": 2.0,
+			"recruit_manual": 4.0
 		}
 	},
 	"holy": {
 		"name": "Holy",
 		"cards": {
-			"water_cooler": 2,
-			"miss_mizzle": 2,
-			"guei": 3,
-			"cuptain": 4,
-			"holy_energy": 14,
-			"dark_zone": 2,
-			"cd_bagel": 4,
-			"revive_song": 2,
-			"kris": 4,
-			"susie": 2,
-			"petal_feather": 3,
-			"recruit_manual": 4,
-			"napstablook": 4
+			"water_cooler": 2.0,
+			"miss_mizzle": 2.0,
+			"guei": 3.0,
+			"cuptain": 4.0,
+			"holy_energy": 14.0,
+			"dark_zone": 2.0,
+			"cd_bagel": 4.0,
+			"revive_song": 2.0,
+			"kris": 4.0,
+			"susie": 2.0,
+			"petal_feather": 3.0,
+			"recruit_manual": 4.0,
+			"napstablook": 4.0
 		}
 	},
 	"chaos": {
 		"name": "Chaos",
 		"cards": {
-			"jevil": 4,
-			"shuttah": 3,
-			"electro_dasher": 4,
-			"chaos_energy": 12,
-			"kris": 4,
-			"susie": 4,
-			"rude_buster": 2,
-			"revive_mint": 1,
-			"cold_place": 2,
-			"petal_feather": 4,
-			"recruit_manual": 3,
-			"revive_song": 4,
-			"glowshard": 3
+			"jevil": 4.0,
+			"shuttah": 3.0,
+			"electro_dasher": 4.0,
+			"chaos_energy": 12.0,
+			"kris": 4.0,
+			"susie": 4.0,
+			"rude_buster": 2.0,
+			"revive_mint": 1.0,
+			"cold_place": 2.0,
+			"petal_feather": 4.0,
+			"recruit_manual": 3.0,
+			"revive_song": 4.0,
+			"glowshard": 3.0
 		}
 	}
 }
