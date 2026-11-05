@@ -737,6 +737,44 @@ func _run() -> void:
 			expect(mercy == 4 and trigger_ko.players[1 - trigger_taker].active.card.name == "Tenna", "tails: Tenna survives at 90 damage and the turn passes")
 	expect(trigger_heads and trigger_tails, "both results were seen")
 
+	print("== BREAK evolution")
+	var growth := battle("jevil", [], "tenna")
+	var grower := growth.current_player()
+	grower.bench.append(in_play("old_man", ["creative_energy"]))
+	grower.bench[0].damage = 30
+	grower.hand.assign(cards(["hammer_of_justice", "old_man"]))
+	expect(not has_label(growth, "Evolve Old Man into Hammer of Justice (Field 1)"), "no evolving during the player's first turn")
+	growth.apply({"type": "end_turn", "label": "End turn"})
+	growth.apply({"type": "end_turn", "label": "End turn"})
+	play(growth, "Put Old Man on the Field")
+	if growth.is_waiting_for_choice():
+		play(growth, "Don't use Creative Liberties")
+	expect(has_label(growth, "Evolve Old Man into Hammer of Justice (Field 1)") and not has_label(growth, "Evolve Old Man into Hammer of Justice (Field 2)"), "a later turn: Old Man can evolve, but not the one put on the Field this turn")
+	play(growth, "Evolve Old Man into Hammer of Justice (Field 1)")
+	var hammer := grower.bench[0]
+	var hammer_attacks: Array = hammer.attacks().map(func(attack: AttackData) -> String: return attack.name)
+	var hammer_powers: Array = hammer.powers().map(func(power: PowerData) -> String: return power.name)
+	expect(hammer.card.name == "Hammer of Justice" and hammer.evolved_from.size() == 1 and hammer.damage == 30 and hammer.attached_energy.size() == 1, "Hammer of Justice goes on top; damage and Energy stay")
+	expect(hammer.remaining_hp() == 90, "its HP replaces Old Man's: 120 - 30 (%d)" % hammer.remaining_hp())
+	expect(hammer_attacks == ["Recruit", "Colourful Legacy"] and hammer_powers == ["Creative Liberties"], "it keeps Old Man's attacks and Abilities and adds its own: %s %s" % [hammer_attacks, hammer_powers])
+	expect(hammer.base_card().name == "Old Man" and growth.retreat_cost(hammer).size() == 1, "it keeps Old Man's Weakness, Resistance and Flee cost")
+	grower.hand.append_array(cards(["hammer_of_justice"]))
+	expect(not has_action(growth, "evolve"), "a BREAK evolution does not evolve again")
+
+	var inherited := battle("hammer_of_justice", ["creative_energy"], "tenna")
+	var inherited_player := inherited.current_player()
+	inherited_player.active.evolved_from.append(db.make("old_man"))
+	inherited_player.deck.assign(cards(["guei"]))
+	expect(has_label(inherited, "Attack: Recruit (0)"), "the kept attack can be used with its own cost")
+	attack(inherited, "Recruit")
+	expect(inherited.choice_prompt() == "Search your deck for Darkner", "and resolves with Old Man's effect")
+
+	var mizzle := battle("hammer_of_justice", ["creative_energy", "creative_energy", "creative_energy"], "miss_mizzle")
+	var mizzle_target := mizzle.opponent_player().active
+	mizzle_target.evolved_from.append(db.make("water_cooler"))
+	attack(mizzle, "Colourful Legacy")
+	expect(mizzle_target.damage == 30, "Miss Mizzle keeps Water Cooler's Weakness to Creative: 10 + 20 (%d)" % mizzle_target.damage)
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()
@@ -827,7 +865,7 @@ func _run() -> void:
 	var picker := RandomNumberGenerator.new()
 	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1,
 			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1,
-			"old_man": 2, "balthizard": 2, "koody": 2}
+			"old_man": 2, "balthizard": 2, "koody": 2, "hammer_of_justice": 2}
 	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0

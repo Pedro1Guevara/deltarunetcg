@@ -108,7 +108,7 @@ func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
 	if defender == null or base_damage <= 0:
 		return 0
-	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.card, base_damage), DAMAGE_ATTACK)
+	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.base_card(), base_damage), DAMAGE_ATTACK)
 
 
 ## Damage without Weakness or Resistance, such as an attacker damaging itself.

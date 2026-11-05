@@ -9,13 +9,13 @@ extends RefCounted
 static func attack_binding(engine: MatchEngine, attack: AttackData) -> Dictionary:
 	if engine.effects == null:
 		return {}
-	return engine.effects.binding_for(engine.current_player().active.card.id, EffectLibrary.SECTION_ATTACKS, attack.name)
+	return engine.effects.binding_for(engine.current_player().active.card_with_attack(attack).id, EffectLibrary.SECTION_ATTACKS, attack.name)
 
 
 static func power_binding(engine: MatchEngine, user: CardInPlay, power: PowerData) -> Dictionary:
 	if engine.effects == null:
 		return {}
-	return engine.effects.binding_for(user.card.id, EffectLibrary.SECTION_POWERS, power.name)
+	return engine.effects.binding_for(user.card_with_power(power).id, EffectLibrary.SECTION_POWERS, power.name)
 
 
 static func trainer_binding(engine: MatchEngine, card: CardData) -> Dictionary:
@@ -59,7 +59,7 @@ static func power_usable(engine: MatchEngine, user: CardInPlay, power: PowerData
 ## order (EffectLibrary.TIMING_ON_PLAY).
 static func on_play_powers(engine: MatchEngine, user: CardInPlay) -> Array[PowerData]:
 	var ready: Array[PowerData] = []
-	for power in user.card.powers:
+	for power in user.powers():
 		if _power_ready(engine, user, power, EffectLibrary.TIMING_ON_PLAY):
 			ready.append(power)
 	return ready

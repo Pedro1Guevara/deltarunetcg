@@ -22,6 +22,56 @@ func evolve(into: CardData, turn: int) -> void:
 	turn_played = turn
 
 
+## The card whose printed Weakness, Resistance and Flee cost apply. A BREAK evolution keeps
+## those of the card it evolved from (Design Document 3.2); any other card uses its own.
+func base_card() -> CardData:
+	return _cards_in_effect()[0]
+
+
+## The attacks this Darkner can use: a BREAK evolution keeps the attacks of the card it evolved
+## from, listed first, and adds its own.
+func attacks() -> Array[AttackData]:
+	var result: Array[AttackData] = []
+	for printed in _cards_in_effect():
+		result.append_array(printed.attacks)
+	return result
+
+
+## The Abilities this Darkner has, kept the same way as its attacks.
+func powers() -> Array[PowerData]:
+	var result: Array[PowerData] = []
+	for printed in _cards_in_effect():
+		result.append_array(printed.powers)
+	return result
+
+
+## The card that prints an attack this Darkner can use, whose effect binding it resolves with.
+func card_with_attack(attack: AttackData) -> CardData:
+	for printed in _cards_in_effect():
+		if printed.attacks.has(attack):
+			return printed
+	return card
+
+
+## The card that prints an Ability this Darkner has.
+func card_with_power(power: PowerData) -> CardData:
+	for printed in _cards_in_effect():
+		if printed.powers.has(power):
+			return printed
+	return card
+
+
+## The cards whose attacks and Abilities apply, the oldest first: the top card, and below it
+## every card a BREAK evolution was played on.
+func _cards_in_effect() -> Array[CardData]:
+	var cards: Array[CardData] = [card]
+	var index := evolved_from.size() - 1
+	while cards[0].stage == CardData.STAGE_BREAK and index >= 0:
+		cards.push_front(evolved_from[index])
+		index -= 1
+	return cards
+
+
 func remaining_hp() -> int:
 	return maxi(card.hp - damage, 0)
 
@@ -39,4 +89,3 @@ func energy_pool() -> Array[String]:
 
 func can_pay(cost: Array[String]) -> bool:
 	return EnergyPayment.can_pay(energy_pool(), cost)
-

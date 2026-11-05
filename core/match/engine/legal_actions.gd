@@ -62,7 +62,7 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 		var user := MatchEngine.in_play_at(player, slot)
 		if user == null:
 			continue
-		for power in user.card.powers:
+		for power in user.powers():
 			if EffectBindings.power_usable(engine, user, power):
 				actions.append({
 					"type": "use_power",
@@ -80,7 +80,7 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 			})
 
 	if player.active != null and opponent.active != null and _attacks_allowed(engine):
-		var attacks := player.active.card.attacks
+		var attacks := player.active.attacks()
 		for attack_index in attacks.size():
 			var attack := attacks[attack_index]
 			if player.active.can_pay(engine.attack_cost(player.active, attack)) and EffectBindings.attack_requirements_met(engine, attack):
@@ -94,14 +94,19 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 	return actions
 
 
-## Evolution rules (5.1): the card evolves from the target's name, one stage at a time;
-## the target has been in play since before this turn; and it is not the player's first turn.
+## Evolution rules (Design Document 3.2): the card evolves from the target's name; a BREAK
+## evolution goes on anything but another BREAK, a classic one goes one stage at a time; the
+## target has been in play since before this turn; and it is not the player's first turn.
 static func can_evolve(engine: MatchEngine, player: PlayerState, target: CardInPlay, evolution: CardData) -> bool:
 	if not is_evolution_card(evolution) or evolution.evolve_from != target.card.name:
 		return false
-	var expected_stage := "Stage1" if target.card.stage == CardData.STAGE_BASIC else "Stage2" if target.card.stage == "Stage1" else ""
-	if evolution.stage != expected_stage:
-		return false
+	if evolution.stage == CardData.STAGE_BREAK:
+		if target.card.stage == CardData.STAGE_BREAK:
+			return false
+	else:
+		var expected_stage := "Stage1" if target.card.stage == CardData.STAGE_BASIC else "Stage2" if target.card.stage == "Stage1" else ""
+		if evolution.stage != expected_stage:
+			return false
 	return player.turns_started > 1 and target.turn_played < engine.turn
 
 

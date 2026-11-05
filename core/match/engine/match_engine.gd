@@ -342,7 +342,7 @@ func _complete_retreat(slot: int, payment: Array) -> void:
 func _do_use_power(slot: int, power_name: String) -> void:
 	var user := in_play_at(current_player(), slot)
 	var binding := {}
-	for power in user.card.powers:
+	for power in user.powers():
 		if power.name == power_name:
 			binding = EffectBindings.power_binding(self, user, power)
 			_note_power_used(power)
@@ -365,7 +365,7 @@ func _finish_power() -> void:
 
 func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
-	var attack := attacker.active.card.attacks[attack_index]
+	var attack := attacker.active.attacks()[attack_index]
 	_log("%s uses %s" % [attacker.active.card.name, attack.name])
 	attacker.attack_used_this_turn = attack.name
 	operations.begin_attack()
@@ -455,7 +455,7 @@ func _attack_damage_triggers() -> Array[Dictionary]:
 	for darkner: CardInPlay in [player.active] + player.bench:
 		if darkner == null:
 			continue
-		for power in darkner.card.powers:
+		for power in darkner.powers():
 			if EffectBindings.power_binding(self, darkner, power).get(EffectLibrary.TIMING_KEY) == EffectLibrary.TIMING_ON_ATTACK_DAMAGE:
 				queue.append({"user": darkner, "power": power})
 	return queue
@@ -511,7 +511,7 @@ func attack_cost(_attacker: CardInPlay, attack: AttackData) -> Array[String]:
 ## The Energy fleeing costs this Darkner now, one Colorless per unit.
 func retreat_cost(pokemon: CardInPlay) -> Array[String]:
 	var cost: Array[String] = []
-	for _i in pokemon.card.retreat_cost:
+	for _i in pokemon.base_card().retreat_cost:
 		cost.append(CardTypes.COLORLESS)
 	return cost
 

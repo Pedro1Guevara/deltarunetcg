@@ -34,6 +34,7 @@ const DELTARUNE := {
 	"damage": "damage",
 	"attached_energy": "Energy",
 	"evolved_from": "Evolved from",
+	"kept_from": "Kept from",
 	"art": "Art",
 }
 
@@ -64,6 +65,7 @@ const POKEMON := {
 	"damage": "damage",
 	"attached_energy": "Energy",
 	"evolved_from": "Evolved from",
+	"kept_from": "Kept from",
 	"art": "Illustrator",
 }
 
@@ -103,6 +105,12 @@ static func describe_in_play(in_play: CardInPlay, terms: Dictionary = DELTARUNE)
 		for card in in_play.evolved_from:
 			below.append(card.name)
 		lines.append("%s: %s" % [_term(terms, "evolved_from"), ", ".join(below)])
+	var base := in_play.base_card()
+	if base != in_play.card:
+		lines.append("")
+		lines.append("[b]%s %s[/b]" % [_term(terms, "kept_from"), _escape(base.name)])
+		_describe_abilities_and_attacks(base, terms, lines)
+		_describe_weakness_resistance_retreat(base, terms, lines)
 	return "\n".join(lines)
 
 
@@ -111,7 +119,11 @@ static func _describe_pokemon(card: CardData, terms: Dictionary, lines: PackedSt
 	if not card.evolve_from.is_empty():
 		lines.append("%s %s" % [_term(terms, "evolves_from"), _escape(card.evolve_from)])
 	lines.append("%s %d · %s: %s" % [_term(terms, "hp"), card.hp, _term(terms, "type"), ", ".join(PackedStringArray(card.types))])
+	_describe_abilities_and_attacks(card, terms, lines)
+	_describe_weakness_resistance_retreat(card, terms, lines)
 
+
+static func _describe_abilities_and_attacks(card: CardData, terms: Dictionary, lines: PackedStringArray) -> void:
 	for power in card.powers:
 		lines.append("")
 		lines.append("[color=orange]%s[/color]  [b]%s[/b]" % [_escape(power.kind), _escape(power.name)])
@@ -129,6 +141,8 @@ static func _describe_pokemon(card: CardData, terms: Dictionary, lines: PackedSt
 		if not attack.effect_text.is_empty():
 			lines.append(_escape(attack.effect_text))
 
+
+static func _describe_weakness_resistance_retreat(card: CardData, terms: Dictionary, lines: PackedStringArray) -> void:
 	lines.append("")
 	lines.append("%s: %s · %s: %s · %s: %d" % [
 		_term(terms, "weakness"), _modifier(card.weakness_types, card.weakness_modifier, terms),
