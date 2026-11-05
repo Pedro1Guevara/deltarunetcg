@@ -31,7 +31,8 @@ var _rng: Rng
 var _pending: PendingChoice = null
 ## The setup in progress, or null once the first turn has begun.
 var _setup: MatchSetup = null
-var _promotion_queue: Array[int] = []
+## Knockouts, Mercy Cards and promotions. Set by start().
+var _knockouts: KnockoutResolver
 ## Triggered Abilities waiting to resolve after the attack: {"user": CardInPlay, "power": PowerData}.
 var _triggers: Array[Dictionary] = []
 var _turn_ends_after_promotions: bool = false
@@ -48,10 +49,10 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	stadium_owner = -1
 	resolving_trainer = null
 	_pending = null
-	_promotion_queue.clear()
 	_triggers.clear()
 	_turn_ends_after_promotions = false
 	operations = MatchOperations.new(players, _rng, events)
+	_knockouts = KnockoutResolver.new(players, events)
 	_setup = MatchSetup.new(players, rules, _rng, events)
 	_setup.deal(deck_a, deck_b)
 	_continue_setup(_setup.advance())
@@ -101,6 +102,7 @@ func choice_option_shows(index: int) -> Object:
 		return option["shows"] as Object
 	var value: Variant = option["value"]
 	return value as CardData if value is CardData else null
+
 
 func legal_actions() -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
@@ -155,6 +157,7 @@ func _continue_setup(choice: PendingChoice) -> void:
 	_setup = null
 	_begin_turn(first)
 
+
 ## The only way a turn ends: the player ends it without attacking (passing), or attacks and
 ## every knocked out Darkner has been replaced. What happens at the end of every turn goes
 ## here, such as refilling TP after a pass (Design Document 5). Then the opponent's turn begins.
@@ -190,7 +193,7 @@ func _begin_turn(player_index: int) -> void:
 			return
 		# Legacy roguelite rule: deck-out costs a prize instead of losing.
 		_log("Player %d cannot draw: the opponent takes a Mercy Card" % (current_index + 1))
-		_take_prize(_opponent_index(), 1)
+		_knockouts.take_prize(_opponent_index(), 1)
 		if players[_opponent_index()].prizes.is_empty():
 			winner = _opponent_index()
 			_log("Player %d took the last Mercy Card and wins" % (winner + 1))
@@ -199,12 +202,14 @@ func _begin_turn(player_index: int) -> void:
 		_set_tp(player, mini(player.tp + rules.tp_recovery, rules.tp_max))
 	player.draw_card()
 
+
 ## TP recovery (Design Document 5): 25% at the start of each turn, 100% when a player passes.
 func _set_tp(player: PlayerState, quarters: int) -> void:
 	if player.tp == quarters:
 		return
 	player.tp = quarters
 	_log("Player %d recovers TP: %d%%" % [players.find(player) + 1, quarters * 25])
+
 
 func _do_bench(hand_index: int) -> void:
 	var player := current_player()
@@ -256,6 +261,7 @@ func _do_play_trainer(hand_index: int) -> void:
 			_log("Player %d plays %s" % [current_index + 1, card.name])
 	_resolve_trainer(card)
 
+
 ## Resolves the effect bound to a Trainer card, then finishes the card. Resolution may stop for a
 ## choice; _finish_effect() finishes the card once it is answered.
 func _resolve_trainer(card: CardData) -> void:
@@ -300,6 +306,7 @@ func _complete_retreat(slot: int, payment: Array) -> void:
 	player.retreated_this_turn = true
 	_log("Player %d retreats %s for %s" % [current_index + 1, retreating.card.name, player.active.card.name])
 
+
 ## Uses an activated Ability of the Darkner at a slot (Battle Zone or Field).
 func _do_use_power(slot: int, power_name: String) -> void:
 	var user := in_play_at(current_player(), slot)
@@ -322,6 +329,7 @@ func _finish_power() -> void:
 		return
 	_advance_promotions()
 
+
 func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
 	var attack := attacker.active.card.attacks[attack_index]
@@ -343,6 +351,7 @@ func _do_attack(attack_index: int) -> void:
 	if _pending == null:
 		_finish_attack()
 
+
 ## Continues the turn once a suspended effect has finished resolving.
 func _finish_effect(context: EffectContext) -> void:
 	match context.kind:
@@ -354,6 +363,7 @@ func _finish_effect(context: EffectContext) -> void:
 			_continue_attack()
 		_:
 			_finish_attack()
+
 
 func _do_choose(option: int) -> void:
 	var choice := _pending
@@ -371,8 +381,7 @@ func _do_choose(option: int) -> void:
 		PendingChoice.RESUME_SETUP:
 			_continue_setup(_setup.answer(picked["value"]))
 		PendingChoice.RESUME_PROMOTE:
-			_promote(choice.chooser, int(picked["value"]))
-			_promotion_queue.pop_front()
+			_knockouts.promote(choice.chooser, int(picked["value"]))
 			if _advance_promotions() and _turn_ends_after_promotions:
 				_turn_ends_after_promotions = false
 				_end_turn(true)
@@ -430,33 +439,19 @@ func _continue_attack() -> void:
 		_turn_ends_after_promotions = true
 
 
-## Each player whose Active Pokemon was knocked out chooses a replacement from the bench,
-## the defending player first. A bench of one is promoted without asking.
+## Each player whose Battling Darkner was knocked out chooses a replacement, the defending
+## player first. Returns true once every promotion is done; otherwise their question is open.
 func _advance_promotions() -> bool:
-	while not _promotion_queue.is_empty():
-		var index := _promotion_queue[0]
-		var side := players[index]
-		if side.bench.size() == 1:
-			_promote(index, 0)
-			_promotion_queue.pop_front()
-			continue
-		var options: Array = []
-		for slot in side.bench.size():
-			var pokemon := side.bench[slot]
-			options.append({
-				"label": "Promote %s (%s, %d/%d HP)" % [pokemon.card.name, slot_name(slot), pokemon.remaining_hp(), pokemon.card.hp],
-				"value": slot,
-				"shows": pokemon,
-			})
-		_pending = PendingChoice.new(index, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
-		return false
-	return true
+	_pending = _knockouts.next_promotion()
+	return _pending == null
 
 
-func _promote(index: int, slot: int) -> void:
-	var side := players[index]
-	side.active = side.bench.pop_at(slot) as CardInPlay
-	_log("Player %d promotes %s" % [index + 1, side.active.card.name])
+## Resolves knockouts after an attack, ACT card or Ability (KnockoutResolver.resolve()).
+func _resolve_knockouts() -> void:
+	var result := _knockouts.resolve(_opponent_index(), rules)
+	if result != NO_WINNER:
+		winner = result
+
 
 # --- Effective costs --------------------------------------------------------------------
 # Legality reads these, never a printed cost (Design Document 5). Today each returns the
@@ -481,73 +476,6 @@ func spell_cost(spell: CardData) -> int:
 	return spell.tp_cost
 
 
-## Resolves every knocked out Darkner at once, as the rulebook does, in the Active Spot or on
-## the Bench: all are discarded, every Prize Card is taken, and only then are wins checked. A
-## player wins by taking their last Prize Card, or when the opponent's Active Pokémon was
-## knocked out and nothing on their Bench can replace it. If both win, the one who won in more
-## ways is the winner; otherwise it is Sudden Death.
-func _resolve_knockouts() -> void:
-	var knocked_out: Array[CardInPlay] = []
-	var owners: Array[int] = []
-	var lost_battling: Array[int] = []
-	for index: int in [_opponent_index(), current_index]:
-		var side := players[index]
-		for darkner: CardInPlay in [side.active] + side.bench:
-			if darkner != null and darkner.is_knocked_out():
-				knocked_out.append(darkner)
-				owners.append(index)
-				if darkner == side.active:
-					lost_battling.append(index)
-	if knocked_out.is_empty():
-		return
-
-	for position in knocked_out.size():
-		var side := players[owners[position]]
-		var darkner := knocked_out[position]
-		_log("%s is knocked out" % darkner.card.name)
-		side.discard_from_play(darkner)
-		if side.active == darkner:
-			side.active = null
-		else:
-			side.bench.erase(darkner)
-
-	var ways := [0, 0]
-	for position in knocked_out.size():
-		_take_prize(1 - owners[position], _prizes_for_knockout(knocked_out[position]))
-	for taker in 2:
-		if owners.has(1 - taker) and players[taker].prizes.is_empty():
-			ways[taker] = 1
-	for index in lost_battling:
-		if players[index].bench.is_empty():
-			ways[1 - index] = int(ways[1 - index]) + 1
-
-	if int(ways[0]) > 0 or int(ways[1]) > 0:
-		if int(ways[0]) == int(ways[1]):
-			winner = SUDDEN_DEATH
-			_log("Both players win at the same time: Sudden Death")
-		else:
-			winner = 0 if int(ways[0]) > int(ways[1]) else 1
-			_log("Player %d wins" % (winner + 1))
-		return
-
-	_promotion_queue.assign(lost_battling)
-
-
-## Moves count prizes from the taker's pile to their hand, stopping when the pile is empty.
-func _take_prize(taker_index: int, count: int) -> void:
-	var taker := players[taker_index]
-	for _i in count:
-		if taker.prizes.is_empty():
-			return
-		taker.hand.append(taker.prizes.pop_back() as CardData)
-		_log("Player %d takes a Mercy Card (%d left)" % [taker_index + 1, taker.prizes.size()])
-
-
-## Mercy Cards taken for knocking out this Darkner. Effects that
-## change it will be read here once the continuous-effects layer exists.
-func _prizes_for_knockout(_knocked_out: CardInPlay) -> int:
-	return rules.prizes_per_knockout
-
 ## The Darkner at a slot: -1 is the Battle Zone, 0 and up are Field positions.
 static func in_play_at(player: PlayerState, slot: int) -> CardInPlay:
 	return player.active if slot == -1 else player.bench[slot]
@@ -555,6 +483,7 @@ static func in_play_at(player: PlayerState, slot: int) -> CardInPlay:
 
 static func slot_name(slot: int) -> String:
 	return "Battle Zone" if slot == -1 else "Field %d" % (slot + 1)
+
 
 func _opponent_index() -> int:
 	return 1 - current_index
