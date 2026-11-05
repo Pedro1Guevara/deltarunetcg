@@ -89,6 +89,57 @@ func choice_chooser() -> int:
 	return -1 if _pending == null else _pending.chooser
 
 
+## What player_index can see of the round (PlayerView): never the other hand, the order of a
+## deck, the Mercy Cards, nor a question or legal actions that are not theirs.
+func view_for(player_index: int) -> PlayerView:
+	var view := PlayerView.new()
+	view.viewer = player_index
+	view.turn = turn
+	view.current = current_index
+	view.is_over = is_over()
+	view.winner = winner
+	view.stadium = stadium
+	view.stadium_owner = stadium_owner
+	for index in players.size():
+		var player := players[index]
+		var side := PlayerView.SideView.new()
+		side.index = index
+		if index == player_index:
+			side.hand = player.hand.duplicate()
+		side.hand_size = player.hand.size()
+		side.deck_size = player.deck.size()
+		side.prize_count = player.prizes.size()
+		side.discard = player.discard.duplicate()
+		side.active = null if player.active == null else player.active.snapshot()
+		for darkner in player.bench:
+			side.bench.append(darkner.snapshot())
+		side.tp = player.tp
+		side.mulligans = player.mulligans
+		side.energy_attached_this_turn = player.energy_attached_this_turn
+		side.retreated_this_turn = player.retreated_this_turn
+		side.supporter_played_this_turn = player.supporter_played_this_turn
+		side.stadium_played_this_turn = player.stadium_played_this_turn
+		side.attack_used_last_turn = player.attack_used_last_turn
+		side.powers_used_this_turn = player.powers_used_this_turn.duplicate()
+		view.sides.append(side)
+	if _pending != null:
+		view.chooser = _pending.chooser
+		view.choice_kind = _pending.kind
+		if _pending.chooser == player_index:
+			view.choice_details = _pending.details.duplicate(true)
+			view.choice_prompt = _pending.prompt
+			for index in _pending.options.size():
+				var option := _pending.option(index).duplicate(true)
+				if option.get("shows") is CardInPlay:
+					option["shows"] = (option["shows"] as CardInPlay).snapshot()
+				view.choice_options.append(option)
+			view.revealed.assign(_pending.revealed)
+	var actor := _pending.chooser if _pending != null else current_index
+	if actor == player_index:
+		view.legal_actions = legal_actions()
+	return view
+
+
 ## What the open question is about (a PendingChoice.KIND_ constant), or an empty string.
 func choice_kind() -> String:
 	return "" if _pending == null else _pending.kind

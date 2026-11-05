@@ -912,6 +912,57 @@ func _run() -> void:
 	attack(promote_kind, "Slash")
 	expect(promote_kind.choice_kind() == PendingChoice.KIND_PROMOTE, "a promotion says so (%s)" % promote_kind.choice_kind())
 
+	print("== player views")
+	var seen_round := battle("jevil", ["chaos_energy"], "tenna")
+	seen_round.current_player().hand.assign(cards(["kris", "glowshard"]))
+	seen_round.opponent_player().hand.assign(cards(["guei", "guei", "susie"]))
+	var me_index := seen_round.current_index
+	var my_view := seen_round.view_for(me_index)
+	var their_view := seen_round.view_for(1 - me_index)
+	expect(my_view.viewer == me_index and my_view.current == me_index and my_view.me().index == me_index and my_view.opponent().index == 1 - me_index, "a view knows whose it is and whose turn it is")
+	expect(my_view.me().hand.size() == 2 and my_view.me().hand[0].id == "kris", "the viewer sees their own hand")
+	expect(my_view.opponent().hand.is_empty() and my_view.opponent().hand_size == 3, "and only how many cards the opponent holds")
+	expect(their_view.me().hand.size() == 3 and their_view.opponent().hand.is_empty() and their_view.opponent().hand_size == 2, "the opponent's view is the mirror")
+	expect(my_view.me().deck_size == seen_round.current_player().deck.size() and my_view.me().prize_count == seen_round.current_player().prizes.size(), "decks and Mercy Cards are counts only")
+	expect(my_view.me().tp == seen_round.current_player().tp and my_view.opponent().active.card.id == "tenna", "both boards and TP are public")
+	expect(not my_view.legal_actions.is_empty() and their_view.legal_actions.is_empty(), "only the player taking the turn sees legal actions")
+	my_view.me().hand.clear()
+	my_view.me().active.damage = 50
+	my_view.me().active.attached_energy.clear()
+	my_view.opponent().discard.append(db.make("guei"))
+	expect(seen_round.current_player().hand.size() == 2 and seen_round.current_player().active.damage == 0 and seen_round.current_player().active.attached_energy.size() == 1
+			and seen_round.opponent_player().discard.is_empty(), "changing a view changes nothing in the round")
+
+	var search_view := battle("jevil", [], "tenna")
+	search_view.current_player().hand.assign(cards(["glowshard"]))
+	search_view.current_player().deck.assign(cards(["chaos_energy", "kris"]))
+	play(search_view, "Play Glowshard (Item)")
+	var view_chooser := search_view.view_for(search_view.current_index)
+	var view_watcher := search_view.view_for(1 - search_view.current_index)
+	expect(view_chooser.chooser == search_view.current_index and view_chooser.choice_kind == PendingChoice.KIND_PICK_CARDS and view_chooser.revealed.size() == 2
+			and view_chooser.choice_options.size() == search_view.legal_actions().size() and view_chooser.choice_prompt != "", "the chooser sees the question, its options and the cards it shows")
+	expect(view_watcher.chooser == search_view.current_index and view_watcher.choice_kind == PendingChoice.KIND_PICK_CARDS and view_watcher.choice_options.is_empty()
+			and view_watcher.choice_details.is_empty() and view_watcher.choice_prompt == "" and view_watcher.revealed.is_empty() and view_watcher.legal_actions.is_empty(),
+			"the other player sees only that a search is open")
+	view_chooser.choice_details["picked"].append(db.make("kris"))
+	expect((search_view.choice_details()["picked"] as Array).is_empty(), "changing the question in a view changes nothing")
+
+	var target_view := battle("jevil", [], "tenna")
+	target_view.current_player().bench.append_array([in_play("guei", []), in_play("koody", [])])
+	target_view.current_player().hand.assign(cards(["petal_feather"]))
+	play(target_view, "Play Petal Feather (Item)")
+	var shown_copy := target_view.view_for(target_view.current_index).choice_options[0]["shows"] as CardInPlay
+	expect(shown_copy != null and shown_copy.card.id == "guei" and shown_copy != target_view.current_player().bench[0], "a Darkner an option is about is shown as a copy")
+
+	var promote_view := battle("jevil", ["chaos_energy"], "koody")
+	promote_view.opponent_player().bench.append_array([in_play("guei", []), in_play("water_cooler", [])])
+	promote_view.opponent_player().active.damage = 30
+	var view_promoter := promote_view.current_index ^ 1
+	attack(promote_view, "Slash")
+	expect(promote_view.view_for(view_promoter).legal_actions.size() == 2 and promote_view.view_for(1 - view_promoter).legal_actions.is_empty(),
+			"the player who answers sees the legal actions, even when it is not their turn")
+	expect(promote_view.view_for(view_promoter).me().active == null, "an empty Battle Zone shows as empty")
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()

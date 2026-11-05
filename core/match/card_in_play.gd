@@ -14,6 +14,16 @@ func _init(played_card: CardData, played_on_turn: int) -> void:
 	turn_played = played_on_turn
 
 
+## A copy that shares the printed cards but none of the state: changing it changes nothing
+## here. For views of the round (PlayerView).
+func snapshot() -> CardInPlay:
+	var copy := CardInPlay.new(card, turn_played)
+	copy.damage = damage
+	copy.attached_energy = attached_energy.duplicate()
+	copy.evolved_from = evolved_from.duplicate()
+	return copy
+
+
 ## Places an evolution card on top. Damage and attached cards stay; the Pokemon counts as
 ## new in play, so it cannot evolve again this turn.
 func evolve(into: CardData, turn: int) -> void:
