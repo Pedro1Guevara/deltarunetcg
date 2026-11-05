@@ -25,12 +25,15 @@ const BINDING_KEYS := ["function", "args"]
 ## on_play_from_hand: when its owner plays this Darkner from their hand onto their Field, they
 ## are asked whether to use it ("you may use this ability"). Not when it is put there another
 ## way, nor during setup.
+## continuous: it applies while its function's requirements hold. Its function only names
+## modifiers, which the engine reads when it needs to (ContinuousEffects).
 ## Other timings are added when a card first needs one.
 const TIMING_KEY := "timing"
 const TIMING_ACTIVATED := "activated"
 const TIMING_ON_ATTACK_DAMAGE := "on_attack_damage"
 const TIMING_ON_PLAY := "on_play_from_hand"
-const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY]
+const TIMING_CONTINUOUS := "continuous"
+const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY, TIMING_CONTINUOUS]
 ## How many times its owner may use an Ability with this name during one turn, counting every
 ## copy in play together ("You can't use more than 1 Way of the Worm ability during your turn").
 ## Every Ability binding declares it; 0 means no limit.
@@ -131,6 +134,17 @@ func uses_self(function_name: String) -> bool:
 	return result
 
 
+## True for a function whose steps all name modifiers: the function of a continuous Ability.
+func is_modifier_function(function_name: String) -> bool:
+	var steps := _steps(functions.get(function_name, {}) as Dictionary)
+	if steps.is_empty():
+		return false
+	for step in steps:
+		if AtomicEffects.role_of(str(step.get("call", ""))) != AtomicEffects.ROLE_MODIFIER:
+			return false
+	return true
+
+
 func params_of(callee: String) -> Dictionary:
 	if functions.has(callee):
 		return (functions[callee] as Dictionary).get("params", {}) as Dictionary
@@ -212,9 +226,12 @@ func _validate_step(name: String, where: String, step: Dictionary, scope: Dictio
 
 	var callee := str(step.get("call", ""))
 	var is_function := functions.has(callee)
-	if not is_function and AtomicEffects.role_of(callee) != AtomicEffects.ROLE_EFFECT:
+	var role := AtomicEffects.role_of(callee)
+	if not is_function and role != AtomicEffects.ROLE_EFFECT and role != AtomicEffects.ROLE_MODIFIER:
 		_function_error(name, "%s calls '%s', which is neither a function nor an atomic effect" % [where, callee])
 		return
+	if role == AtomicEffects.ROLE_MODIFIER and (step.has("as") or step.has("when")):
+		_function_error(name, "%s names modifier '%s', which takes neither as nor when" % [where, callee])
 
 	var conditional := step.has("when")
 	var calls_requirements := is_function and has_requirements(callee)
@@ -399,6 +416,7 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 			errors.append("%s: unknown key '%s'" % [where, key])
 	if section == SECTION_POWERS and not TIMINGS.has(binding.get(TIMING_KEY)):
 		errors.append("%s: timing must be one of %s" % [where, TIMINGS])
+	var continuous: bool = section == SECTION_POWERS and binding.get(TIMING_KEY) == TIMING_CONTINUOUS
 	if section == SECTION_POWERS:
 		var per_turn: Variant = binding.get(PER_TURN_KEY)
 		if not EffectTypes.literal_matches(EffectTypes.INT, per_turn) or int(per_turn) < 0:
@@ -409,6 +427,8 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 		return
 	if _invalid_functions.has(function_name):
 		errors.append("%s: function '%s' has errors" % [where, function_name])
+	if continuous != is_modifier_function(function_name):
+		errors.append("%s: a continuous Ability needs a function that only names modifiers, and only it may use one" % where)
 
 	var kind := str(SECTION_KINDS[section])
 	if kind != EffectContext.KIND_ATTACK and is_attack_only(function_name):

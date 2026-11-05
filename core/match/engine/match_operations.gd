@@ -34,8 +34,8 @@ func begin_attack() -> void:
 
 
 ## Attack damage to a Darkner on the Field. Weakness and Resistance never apply on the Field.
-func deal_benched_attack_damage(_context: EffectContext, target: CardInPlay, amount: int) -> int:
-	if amount <= 0:
+func deal_benched_attack_damage(context: EffectContext, target: CardInPlay, amount: int) -> int:
+	if amount <= 0 or _attack_damage_prevented(context, target):
 		return 0
 	return _apply_damage(target, amount, DAMAGE_ATTACK)
 
@@ -106,9 +106,18 @@ func shuffle_energy_into_deck(target: CardInPlay) -> int:
 ## An attack with no printed damage deals none, so nothing is logged for it.
 func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
-	if defender == null or base_damage <= 0:
+	if defender == null or base_damage <= 0 or _attack_damage_prevented(context, defender):
 		return 0
 	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.base_card(), base_damage), DAMAGE_ATTACK)
+
+
+## Whether a continuous effect prevents attack damage to target, logging which one.
+func _attack_damage_prevented(context: EffectContext, target: CardInPlay) -> bool:
+	var preventer := ContinuousEffects.attack_damage_preventer(context.engine, target)
+	if preventer == null:
+		return false
+	_log("  %s prevents the damage to %s" % [preventer.name, target.card.name])
+	return true
 
 
 ## Damage without Weakness or Resistance, such as an attacker damaging itself.

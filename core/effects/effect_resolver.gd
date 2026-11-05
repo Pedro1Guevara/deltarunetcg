@@ -32,6 +32,21 @@ func requirements_met(function_name: String, args: Dictionary) -> bool:
 	return true
 
 
+## The modifiers a continuous Ability's function names, with their arguments bound, when its
+## requirements hold; none otherwise: [{"name": String, "args": Dictionary}].
+func modifiers(function_name: String, args: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if not requirements_met(function_name, args):
+		return result
+	var definition := _library.functions.get(function_name, {}) as Dictionary
+	for step: Variant in definition.get("steps", []) as Array:
+		var callee := str((step as Dictionary)["call"])
+		var bound: Variant = _bind(_library.params_of(callee), (step as Dictionary)["args"] as Dictionary, args, callee)
+		if bound != null:
+			result.append({"name": callee, "args": bound})
+	return result
+
+
 ## Starts resolving. Returns true when resolution finished, false when it is waiting for a
 ## choice; answer it by appending to the context's selection, then call resume().
 func run(function_name: String, args: Dictionary) -> bool:

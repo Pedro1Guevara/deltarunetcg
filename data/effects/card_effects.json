@@ -129,5 +129,15 @@
     "attacks": {
       "Quick Selfie": {"function": "discard_own_energy_then_counters_with_extra_turn_on_knockout", "args": {"counters": 2}}
     }
+  },
+  "miss_mizzle": {
+    "powers": {
+      "Vow of Majesty": {
+        "function": "prevent_attack_damage_to_own_bench",
+        "args": {},
+        "timing": "continuous",
+        "per_turn": 0
+      }
+    }
   }
 }

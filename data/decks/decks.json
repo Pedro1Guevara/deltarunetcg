@@ -1,11 +1,12 @@
 {
 	"deltarune_chaos": {
-		"name": "Creative Test",
+		"name": "Chaos Test",
 		"cards": {
-			"old_man": 4,
-			"hammer_of_justice": 3,
-			"koody": 2,
-			"creative_energy": 21
+			"jevil": 4,
+			"old_man": 3,
+			"hammer_of_justice": 2,
+			"chaos_energy": 11,
+			"creative_energy": 10
 		}
 	},
 	"deltarune_holy": {

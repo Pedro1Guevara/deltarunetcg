@@ -8,6 +8,10 @@ extends RefCounted
 
 const ROLE_EFFECT := "effect"
 const ROLE_CHECK := "check"
+## A modifier is never run as a step. It is a rule change that applies while the function that
+## names it has its requirements met, and the engine reads it when it needs to know
+## (ContinuousEffects).
+const ROLE_MODIFIER := "modifier"
 
 ## name -> {role, params: {name: type}, returns: type or "", attack_only: bool}
 const DECLARATIONS := {
@@ -150,6 +154,12 @@ const DECLARATIONS := {
 	},
 	"take_extra_turn": {
 		"role": ROLE_EFFECT, "params": {}, "returns": "int", "attack_only": false,
+	},
+	"prevent_attack_damage_to_bench": {
+		"role": ROLE_MODIFIER, "params": {"player": "player"}, "returns": "", "attack_only": false,
+	},
+	"in_battle_zone": {
+		"role": ROLE_CHECK, "params": {"target": "pokemon"}, "returns": "", "attack_only": false,
 	},
 	"attack_not_used_last_turn": {
 		"role": ROLE_CHECK, "params": {"player": "player"}, "returns": "", "attack_only": true,
@@ -309,6 +319,10 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 
 static func check(name: String, context: EffectContext, args: Dictionary) -> bool:
 	match name:
+		"in_battle_zone":
+			var target := args["target"] as CardInPlay
+			var owner := context.operations.owner_of(target)
+			return owner != null and owner.active == target
 		"attack_not_used_last_turn":
 			return context.attack == null or (args["player"] as PlayerState).attack_used_last_turn != context.attack.name
 		"has_cards_in_hand":

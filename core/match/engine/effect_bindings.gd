@@ -39,6 +39,17 @@ static func power_context(engine: MatchEngine, user: CardInPlay, kind: String) -
 	return context
 
 
+## The context of a continuous Ability: its player is the Darkner's owner, whoever is taking
+## the turn.
+static func continuous_context(engine: MatchEngine, user: CardInPlay, owner_index: int) -> EffectContext:
+	var context := _context(engine, EffectContext.KIND_CONTINUOUS)
+	context.source = user
+	context.player = engine.players[owner_index]
+	context.opponent = engine.players[1 - owner_index]
+	context.defender = context.opponent.active
+	return context
+
+
 static func trainer_context(engine: MatchEngine, card: CardData) -> EffectContext:
 	var context := _context(engine, EffectContext.KIND_TRAINER)
 	context.card = card

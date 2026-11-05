@@ -361,5 +361,14 @@
       {"call": "draw_cards", "args": {"player": "$player", "count": "$count"}},
       {"call": "draw_cards", "args": {"player": "$opponent", "count": "$count"}}
     ]
+  },
+  "prevent_attack_damage_to_own_bench": {
+    "params": {},
+    "requires": [
+      {"check": "in_battle_zone", "args": {"target": "$self"}}
+    ],
+    "steps": [
+      {"call": "prevent_attack_damage_to_bench", "args": {"player": "$player"}}
+    ]
   }
 }
