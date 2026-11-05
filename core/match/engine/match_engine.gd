@@ -117,90 +117,7 @@ func legal_actions() -> Array[Dictionary]:
 			})
 		return actions
 
-	var player := current_player()
-	var opponent := opponent_player()
-
-	# Copies of the same card are interchangeable: one set of actions per distinct card.
-	var offered := {}
-	for hand_index in player.hand.size():
-		var card := player.hand[hand_index]
-		if offered.has(card.id):
-			continue
-		offered[card.id] = true
-		if card.is_basic_pokemon() and player.bench.size() < rules.bench_limit:
-			actions.append({
-				"type": "bench",
-				"hand_index": hand_index,
-				"label": "Put %s on the Field" % card.name,
-			})
-		elif card.is_energy() and not player.energy_attached_this_turn:
-			for slot in range(-1, player.bench.size()):
-				var target := _in_play_at(player, slot)
-				if target == null:
-					continue
-				actions.append({
-					"type": "attach",
-					"hand_index": hand_index,
-					"slot": slot,
-					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, slot_name(slot)],
-				})
-		elif card.is_trainer() and _can_play_trainer(player, card):
-			actions.append({
-				"type": "play_trainer",
-				"hand_index": hand_index,
-				"label": _trainer_label(card),
-			})
-
-	var offered_evolutions := {}
-	for hand_index in player.hand.size():
-		var evolution := player.hand[hand_index]
-		if not _is_evolution_card(evolution) or offered_evolutions.has(evolution.id):
-			continue
-		offered_evolutions[evolution.id] = true
-		for slot in range(-1, player.bench.size()):
-			var target := _in_play_at(player, slot)
-			if target != null and can_evolve(player, target, evolution):
-				actions.append({
-					"type": "evolve",
-					"hand_index": hand_index,
-					"slot": slot,
-					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, slot_name(slot)],
-				})
-
-	for slot in range(-1, player.bench.size()):
-		var user := _in_play_at(player, slot)
-		if user == null:
-			continue
-		for power in user.card.powers:
-			if EffectBindings.power_usable(self, user, power):
-				actions.append({
-					"type": "use_power",
-					"slot": slot,
-					"power": power.name,
-					"label": "Use %s (%s, %s)" % [power.name, user.card.name, slot_name(slot)],
-				})
-
-	if player.active != null and not player.retreated_this_turn and player.active.can_pay(retreat_cost(player.active)):
-		for slot in player.bench.size():
-			actions.append({
-				"type": "retreat",
-				"slot": slot,
-				"label": "Flee %s for %s (%s)" % [player.active.card.name, player.bench[slot].card.name, slot_name(slot)],
-			})
-
-	if player.active != null and opponent.active != null and _attacks_allowed():
-		var attacks := player.active.card.attacks
-		for attack_index in attacks.size():
-			var attack := attacks[attack_index]
-			if player.active.can_pay(attack_cost(player.active, attack)) and EffectBindings.attack_requirements_met(self, attack):
-				actions.append({
-					"type": "attack",
-					"attack_index": attack_index,
-					"label": "Attack: %s (%d)" % [attack.name, attack.damage],
-				})
-
-	actions.append({"type": "end_turn", "label": "End turn"})
-	return actions
+	return LegalActions.for_turn(self)
 
 
 func apply(action: Dictionary) -> void:
@@ -296,25 +213,10 @@ func _do_bench(hand_index: int) -> void:
 	_log("Player %d puts %s on the Field" % [current_index + 1, card.name])
 
 
-## Evolution rules (5.1): the card evolves from the target's name, one stage at a time;
-## the target has been in play since before this turn; and it is not the player's first turn.
-func can_evolve(player: PlayerState, target: CardInPlay, evolution: CardData) -> bool:
-	if not _is_evolution_card(evolution) or evolution.evolve_from != target.card.name:
-		return false
-	var expected_stage := "Stage1" if target.card.stage == CardData.STAGE_BASIC else "Stage2" if target.card.stage == "Stage1" else ""
-	if evolution.stage != expected_stage:
-		return false
-	return player.turns_started > 1 and target.turn_played < turn
-
-
-func _is_evolution_card(card: CardData) -> bool:
-	return card.is_pokemon() and not card.is_basic_pokemon() and not card.evolve_from.is_empty()
-
-
 func _do_evolve(hand_index: int, slot: int) -> void:
 	var player := current_player()
 	var evolution := player.hand.pop_at(hand_index) as CardData
-	var target := _in_play_at(player, slot)
+	var target := in_play_at(player, slot)
 	var previous := target.card.name
 	target.evolve(evolution, turn)
 	_log("Player %d evolves %s into %s" % [current_index + 1, previous, evolution.name])
@@ -323,46 +225,10 @@ func _do_evolve(hand_index: int, slot: int) -> void:
 func _do_attach(hand_index: int, slot: int) -> void:
 	var player := current_player()
 	var energy := player.hand.pop_at(hand_index) as CardData
-	var target := _in_play_at(player, slot)
+	var target := in_play_at(player, slot)
 	target.attached_energy.append(energy)
 	player.energy_attached_this_turn = true
 	_log("Player %d attaches %s to %s" % [current_index + 1, energy.name, target.card.name])
-
-
-## Trainer cards are played freely; one Supporter per turn, never on the
-## first player's first turn; one Stadium per turn, never one with the name of the Stadium in play;
-## Spells while the player has the TP. A Trainer with no ACT subtype (legacy data) is not
-## playable.
-func _can_play_trainer(player: PlayerState, card: CardData) -> bool:
-	var allowed := false
-	match card.trainer_type:
-		CardData.TRAINER_ITEM:
-			allowed = true
-		CardData.TRAINER_SUPPORTER:
-			allowed = not player.supporter_played_this_turn and _supporters_allowed()
-		CardData.TRAINER_STADIUM:
-			allowed = not player.stadium_played_this_turn and (stadium == null or stadium.name != card.name)
-		CardData.TRAINER_SPELL:
-			allowed = operations.can_spend_tp(player, spell_cost(card))
-	# A card that is known to have no effect cannot be played.
-	return allowed and EffectBindings.trainer_requirements_met(self, card)
-
-
-## The player going first cannot play a Supporter
-## on their first turn, which is always turn 1.
-func _supporters_allowed() -> bool:
-	return rules.first_player_can_play_supporter or turn > 1
-
-
-func _trainer_label(card: CardData) -> String:
-	match card.trainer_type:
-		CardData.TRAINER_SUPPORTER:
-			return "Play %s (Lightner)" % card.name
-		CardData.TRAINER_STADIUM:
-			return "Play %s (Area)" % card.name
-		CardData.TRAINER_SPELL:
-			return "Cast %s (%d%% TP)" % [card.name, spell_cost(card) * 25]
-	return "Play %s (Item)" % card.name
 
 
 ## Plays a Trainer card from hand. An Stadium stays in the shared slot and sends the one it replaces
@@ -436,7 +302,7 @@ func _complete_retreat(slot: int, payment: Array) -> void:
 
 ## Uses an activated Ability of the Darkner at a slot (Battle Zone or Field).
 func _do_use_power(slot: int, power_name: String) -> void:
-	var user := _in_play_at(current_player(), slot)
+	var user := in_play_at(current_player(), slot)
 	var binding := {}
 	for power in user.card.powers:
 		if power.name == power_name:
@@ -615,12 +481,6 @@ func spell_cost(spell: CardData) -> int:
 	return spell.tp_cost
 
 
-## Current standard rule (Design Document 4.2): the player going first cannot attack on
-## their first turn. Turn 1 is always that turn, since start() resets the counter.
-func _attacks_allowed() -> bool:
-	return rules.first_player_can_attack or turn > 1
-
-
 ## Resolves every knocked out Darkner at once, as the rulebook does, in the Active Spot or on
 ## the Bench: all are discarded, every Prize Card is taken, and only then are wins checked. A
 ## player wins by taking their last Prize Card, or when the opponent's Active Pokémon was
@@ -689,7 +549,7 @@ func _prizes_for_knockout(_knocked_out: CardInPlay) -> int:
 	return rules.prizes_per_knockout
 
 ## The Darkner at a slot: -1 is the Battle Zone, 0 and up are Field positions.
-func _in_play_at(player: PlayerState, slot: int) -> CardInPlay:
+static func in_play_at(player: PlayerState, slot: int) -> CardInPlay:
 	return player.active if slot == -1 else player.bench[slot]
 
 
