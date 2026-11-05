@@ -35,6 +35,9 @@ var _setup: MatchSetup = null
 var _knockouts: KnockoutResolver
 ## Triggered Abilities waiting to resolve after the attack: {"user": CardInPlay, "power": PowerData}.
 var _triggers: Array[Dictionary] = []
+## The Darkner just played from the hand and its Abilities still to be offered (on play).
+var _on_play_user: CardInPlay = null
+var _on_play_queue: Array[PowerData] = []
 var _turn_ends_after_promotions: bool = false
 
 ## Every round rule comes from match_rules (MatchRules), never from constants.
@@ -50,6 +53,8 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	resolving_trainer = null
 	_pending = null
 	_triggers.clear()
+	_on_play_user = null
+	_on_play_queue.clear()
 	_turn_ends_after_promotions = false
 	operations = MatchOperations.new(players, _rng, events)
 	_knockouts = KnockoutResolver.new(players, events)
@@ -214,8 +219,34 @@ func _set_tp(player: PlayerState, quarters: int) -> void:
 func _do_bench(hand_index: int) -> void:
 	var player := current_player()
 	var card := player.hand.pop_at(hand_index) as CardData
-	player.bench.append(CardInPlay.new(card, turn))
+	var darkner := CardInPlay.new(card, turn)
+	player.bench.append(darkner)
 	_log("Player %d puts %s on the Field" % [current_index + 1, card.name])
+	_on_play_user = darkner
+	_on_play_queue = EffectBindings.on_play_powers(self, darkner)
+	_offer_on_play()
+
+
+## Asks whether to use the next Ability of the Darkner just played ("you may use this ability").
+## Each is checked again first: using one may have used up another's limit or requirements.
+func _offer_on_play() -> void:
+	while not _on_play_queue.is_empty():
+		var power := _on_play_queue[0]
+		if not EffectBindings.on_play_powers(self, _on_play_user).has(power):
+			_on_play_queue.pop_front()
+			continue
+		_pending = PendingChoice.new(current_index, "Use %s?" % power.name, [
+			{"label": "Use %s (%s)" % [power.name, _on_play_user.card.name], "value": true, "shows": _on_play_user},
+			{"label": "Don't use %s" % power.name, "value": false},
+		], PendingChoice.RESUME_ON_PLAY, {})
+		return
+	_on_play_user = null
+
+
+## Counts a use of an Ability toward its per-turn limit.
+func _note_power_used(power: PowerData) -> void:
+	var used := current_player().powers_used_this_turn
+	used[power.name] = int(used.get(power.name, 0)) + 1
 
 
 func _do_evolve(hand_index: int, slot: int) -> void:
@@ -314,6 +345,7 @@ func _do_use_power(slot: int, power_name: String) -> void:
 	for power in user.card.powers:
 		if power.name == power_name:
 			binding = EffectBindings.power_binding(self, user, power)
+			_note_power_used(power)
 	_log("%s uses %s" % [user.card.name, power_name])
 	_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_POWER))
 	if _pending == null:
@@ -327,7 +359,8 @@ func _finish_power() -> void:
 	_resolve_knockouts()
 	if is_over():
 		return
-	_advance_promotions()
+	if _advance_promotions():
+		_offer_on_play()
 
 
 func _do_attack(attack_index: int) -> void:
@@ -387,6 +420,17 @@ func _do_choose(option: int) -> void:
 				_end_turn(true)
 		PendingChoice.RESUME_RETREAT:
 			_complete_retreat(int(choice.data["slot"]), picked["value"] as Array)
+		PendingChoice.RESUME_ON_PLAY:
+			var power: PowerData = _on_play_queue.pop_front()
+			if not bool(picked["value"]):
+				_offer_on_play()
+				return
+			_note_power_used(power)
+			_log("%s uses %s" % [_on_play_user.card.name, power.name])
+			var binding := EffectBindings.power_binding(self, _on_play_user, power)
+			_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, _on_play_user, EffectContext.KIND_POWER))
+			if _pending == null:
+				_finish_power()
 
 
 ## After the attack's own effect: Abilities set off by its damage, then knockouts, then the end
@@ -425,6 +469,7 @@ func _continue_attack() -> void:
 		var user := trigger["user"] as CardInPlay
 		var power := trigger["power"] as PowerData
 		var binding := EffectBindings.power_binding(self, user, power)
+		_note_power_used(power)
 		_log("%s: %s" % [user.card.name, power.name])
 		_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_TRIGGER))
 		if _pending != null:

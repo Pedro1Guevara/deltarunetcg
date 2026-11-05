@@ -190,6 +190,19 @@ func take_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
 	return cards.size()
 
 
+## Puts the given Darkner cards from a player's deck onto their Field, as played on turn. They
+## were not played from the hand, so Abilities that apply on play do not.
+func put_on_bench_from_deck(player: PlayerState, cards: Array[CardData], turn: int) -> int:
+	var index := _players.find(player) + 1
+	if cards.is_empty():
+		_log("  Player %d finds nothing" % index)
+	for card in cards:
+		player.deck.erase(card)
+		player.bench.append(CardInPlay.new(card, turn))
+		_log("  Player %d puts %s from their deck onto the Field" % [index, card.name])
+	return cards.size()
+
+
 ## Moves the given cards from a player's deck to their discard pile. Returns how many moved.
 func discard_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
 	var index := _players.find(player) + 1

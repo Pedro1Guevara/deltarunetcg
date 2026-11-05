@@ -616,6 +616,73 @@ func _run() -> void:
 	play(devotion, "Promote Guei (Field 2, 80/80 HP)")
 	expect(devotion.turn == devotion_turn and devotion.current_player() == devotee and devotee.active.card.name == "Guei", "the turn goes on after the promotion")
 
+	var worm := battle("koody", [], "tenna")
+	var wormer := worm.current_player()
+	wormer.hand.assign(cards(["kris"]))
+	expect(not has_label(worm, "Use Way of the Worm (Koody, Battle Zone)"), "Way of the Worm needs a basic Energy in hand")
+	wormer.hand.append_array(cards(["fun_energy", "holy_energy"]))
+	var worm_deck := wormer.deck.size()
+	expect(play(worm, "Use Way of the Worm (Koody, Battle Zone)"), "it can be used with a basic Energy in hand")
+	var worm_labels: Array = []
+	for action in worm.legal_actions():
+		worm_labels.append(action["label"])
+	expect(worm.choice_prompt() == "Choose a basic Energy to discard from your hand" and worm_labels == ["Discard Fun Energy", "Discard Holy Energy"], "the player chooses a basic Energy, never another card: %s" % [worm_labels])
+	pick(worm, "Discard Holy Energy")
+	expect(wormer.discard.back().name == "Holy Energy" and wormer.hand.size() == 3 and wormer.deck.size() == worm_deck - 1, "the Energy is discarded, then 1 card is drawn")
+	wormer.bench.append(in_play("koody", []))
+	wormer.hand.append_array(cards(["fun_energy"]))
+	expect(not has_action(worm, "use_power"), "only 1 Way of the Worm per turn, counting every Koody in play")
+	worm.apply({"type": "end_turn", "label": "End turn"})
+	worm.apply({"type": "end_turn", "label": "End turn"})
+	wormer.hand.append_array(cards(["fun_energy"]))
+	expect(worm.current_player() == wormer and has_label(worm, "Use Way of the Worm (Koody, Field 1)"), "the limit resets on the player's next turn")
+
+	var lure := battle("jevil", [], "tenna")
+	var lurer := lure.current_player()
+	lurer.hand.assign(cards(["balthizard", "balthizard"]))
+	lurer.deck.assign(cards(["balthizard", "miss_mizzle", "guei", "kris"]))
+	expect(play(lure, "Put Balthizard on the Field"), "Balthizard is played from the hand")
+	var lure_labels: Array = []
+	for action in lure.legal_actions():
+		lure_labels.append(action["label"])
+	expect(lure.choice_prompt() == "Use Luring Incense?" and lure_labels == ["Use Luring Incense (Balthizard)", "Don't use Luring Incense"], "its owner may use Luring Incense: %s" % [lure_labels])
+	play(lure, "Use Luring Incense (Balthizard)")
+	lure_labels.clear()
+	for action in lure.legal_actions():
+		lure_labels.append(action["label"])
+	expect(lure.choice_prompt() == "Search your deck for non-Evolution Darkner to put onto your Field (not Balthizard)" and lure_labels == ["Put Guei", "Put nothing"], "the search offers non-Evolution Darkners other than Balthizard: %s" % [lure_labels])
+	pick(lure, "Put Guei")
+	expect(lurer.bench.size() == 2 and lurer.bench[1].card.name == "Guei" and lurer.deck.size() == 3 and not lure.is_waiting_for_choice(), "Guei goes from the deck onto the Field")
+	play(lure, "Put Balthizard on the Field")
+	expect(not lure.is_waiting_for_choice() and lurer.bench.size() == 3, "only 1 Luring Incense per turn: the second Balthizard offers nothing")
+	var declined := battle("jevil", [], "tenna")
+	declined.current_player().hand.assign(cards(["balthizard"]))
+	var declined_deck := declined.current_player().deck.size()
+	play(declined, "Put Balthizard on the Field")
+	play(declined, "Don't use Luring Incense")
+	expect(not declined.is_waiting_for_choice() and declined.current_player().deck.size() == declined_deck, "declining it does nothing")
+	var crowded := battle("jevil", [], "tenna")
+	crowded.current_player().bench.append_array([in_play("guei", []), in_play("guei", []), in_play("guei", [])])
+	crowded.current_player().hand.assign(cards(["balthizard"]))
+	play(crowded, "Put Balthizard on the Field")
+	expect(not crowded.is_waiting_for_choice(), "with the Field full, Luring Incense is not offered")
+
+	var liberty := battle("jevil", [], "tenna")
+	var liberal := liberty.current_player()
+	liberal.hand.assign(cards(["old_man"]))
+	play(liberty, "Put Old Man on the Field")
+	expect(not liberty.is_waiting_for_choice(), "Creative Liberties cannot be used on the player's first turn")
+	liberty.apply({"type": "end_turn", "label": "End turn"})
+	liberty.apply({"type": "end_turn", "label": "End turn"})
+	var liberty_opponent := liberty.opponent_player()
+	liberal.hand.assign(cards(["old_man", "kris", "glowshard", "chaos_energy"]))
+	liberty_opponent.hand.assign(cards(["guei"]))
+	var liberal_total := liberal.hand.size() + liberal.deck.size()
+	play(liberty, "Put Old Man on the Field")
+	expect(play(liberty, "Use Creative Liberties (Old Man)"), "on a later turn its owner may use it")
+	expect(liberal.hand.size() == 3 and liberty_opponent.hand.size() == 3, "both players shuffle their hands into their decks and draw 3")
+	expect(liberal.hand.size() + liberal.deck.size() == liberal_total - 1, "no card is lost (Old Man is on the Field)")
+
 	print("== triggered Abilities")
 	var stampede_heads := false
 	var stampede_tails := false
@@ -759,7 +826,8 @@ func _run() -> void:
 	# Darkner in four copies, which fills the Field with identical Darkners.
 	var picker := RandomNumberGenerator.new()
 	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1,
-			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1}
+			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1,
+			"old_man": 2, "balthizard": 2, "koody": 2}
 	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0

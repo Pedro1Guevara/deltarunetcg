@@ -278,11 +278,11 @@
   "discard_from_hand_then_search_deck": {
     "params": { "discard": "int", "filter": "card_filter", "count": "int" },
     "requires": [
-      {"check": "has_cards_in_hand", "args": {"player": "$player", "count": "$discard"}},
+      {"check": "has_cards_in_hand", "args": {"player": "$player", "filter": ["any"], "count": "$discard"}},
       {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}}
     ],
     "steps": [
-      {"call": "discard_from_hand", "args": {"player": "$player", "count": "$discard"}},
+      {"call": "discard_from_hand", "args": {"player": "$player", "filter": ["any"], "count": "$discard"}},
       {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
     ]
   },
@@ -328,6 +328,38 @@
       {"call": "place_damage_counters", "args": {"target": "$target", "count": "$counters"}},
       {"call": "is_knocked_out", "args": {"target": "$target"}, "as": "knocked_out"},
       {"call": "take_extra_turn", "args": {}, "when": {"value": "$knocked_out", "eq": 1}}
+    ]
+  },
+  "discard_from_hand_then_draw": {
+    "params": { "filter": "card_filter", "discard": "int", "draw": "int" },
+    "requires": [
+      {"check": "has_cards_in_hand", "args": {"player": "$player", "filter": "$filter", "count": "$discard"}}
+    ],
+    "steps": [
+      {"call": "discard_from_hand", "args": {"player": "$player", "filter": "$filter", "count": "$discard"}},
+      {"call": "draw_cards", "args": {"player": "$player", "count": "$draw"}}
+    ]
+  },
+  "search_deck_onto_field": {
+    "params": { "filter": "card_filter", "count": "int", "exclude_same_name": "int" },
+    "requires": [
+      {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}},
+      {"check": "has_room_on_field", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "search_deck_to_bench", "args": {"player": "$player", "filter": "$filter", "count": "$count", "exclude_same_name": "$exclude_same_name"}}
+    ]
+  },
+  "both_shuffle_hands_then_draw": {
+    "params": { "count": "int" },
+    "requires": [
+      {"check": "not_first_turn", "args": {"player": "$player"}}
+    ],
+    "steps": [
+      {"call": "shuffle_hand_into_deck", "args": {"player": "$player"}},
+      {"call": "shuffle_hand_into_deck", "args": {"player": "$opponent"}},
+      {"call": "draw_cards", "args": {"player": "$player", "count": "$count"}},
+      {"call": "draw_cards", "args": {"player": "$opponent", "count": "$count"}}
     ]
   }
 }

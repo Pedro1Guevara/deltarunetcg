@@ -6,15 +6,17 @@ extends RefCounted
 
 const BASIC_ENERGY := "basic_energy"
 const POKEMON := "pokemon"
+const BASIC_POKEMON := "basic_pokemon"
 const STADIUM := "stadium"
 const TRAINER := "trainer"
 const ANY := "any"
-const NAMES := [BASIC_ENERGY, POKEMON, STADIUM, TRAINER, ANY]
+const NAMES := [BASIC_ENERGY, POKEMON, BASIC_POKEMON, STADIUM, TRAINER, ANY]
 
 ## What the player reads for each name.
 const DESCRIPTIONS := {
 	BASIC_ENERGY: "basic Energy",
 	POKEMON: "Darkner",
+	BASIC_POKEMON: "non-Evolution Darkner",
 	STADIUM: "Area",
 	TRAINER: "ACT card",
 	ANY: "any card",
@@ -39,6 +41,9 @@ static func matches(card: CardData, filters: Array) -> bool:
 					return true
 			POKEMON:
 				if card.is_pokemon():
+					return true
+			BASIC_POKEMON:
+				if card.is_basic_pokemon():
 					return true
 			STADIUM:
 				if card.trainer_type == CardData.TRAINER_STADIUM:

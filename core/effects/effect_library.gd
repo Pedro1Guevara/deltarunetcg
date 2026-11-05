@@ -22,11 +22,19 @@ const BINDING_KEYS := ["function", "args"]
 ## activated: the player uses it during their turn, as often as its text allows.
 ## on_attack_damage: it resolves by itself after an attack from its owner's Battling Darkner
 ## damages at least one of the opponent's Darkners, before knockouts are resolved.
+## on_play_from_hand: when its owner plays this Darkner from their hand onto their Field, they
+## are asked whether to use it ("you may use this ability"). Not when it is put there another
+## way, nor during setup.
 ## Other timings are added when a card first needs one.
 const TIMING_KEY := "timing"
 const TIMING_ACTIVATED := "activated"
 const TIMING_ON_ATTACK_DAMAGE := "on_attack_damage"
-const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE]
+const TIMING_ON_PLAY := "on_play_from_hand"
+const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY]
+## How many times its owner may use an Ability with this name during one turn, counting every
+## copy in play together ("You can't use more than 1 Way of the Worm ability during your turn").
+## Every Ability binding declares it; 0 means no limit.
+const PER_TURN_KEY := "per_turn"
 
 const COMPARISONS := ["eq", "ne", "gt", "gte", "lt", "lte"]
 
@@ -387,10 +395,14 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 	var binding := value as Dictionary
 	var error_count := errors.size()
 	for key: Variant in binding:
-		if not BINDING_KEYS.has(key) and not (key == TIMING_KEY and section == SECTION_POWERS):
+		if not BINDING_KEYS.has(key) and not ((key == TIMING_KEY or key == PER_TURN_KEY) and section == SECTION_POWERS):
 			errors.append("%s: unknown key '%s'" % [where, key])
 	if section == SECTION_POWERS and not TIMINGS.has(binding.get(TIMING_KEY)):
 		errors.append("%s: timing must be one of %s" % [where, TIMINGS])
+	if section == SECTION_POWERS:
+		var per_turn: Variant = binding.get(PER_TURN_KEY)
+		if not EffectTypes.literal_matches(EffectTypes.INT, per_turn) or int(per_turn) < 0:
+			errors.append("%s: per_turn must be a whole number, 0 for no limit" % where)
 	var function_name := str(binding.get("function", ""))
 	if not functions.has(function_name):
 		errors.append("%s: no function '%s'" % [where, function_name])

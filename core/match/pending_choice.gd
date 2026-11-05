@@ -9,6 +9,7 @@ const RESUME_SETUP := "setup"
 const RESUME_PROMOTE := "promote"
 const RESUME_RETREAT := "retreat"
 const RESUME_EFFECT := "effect"
+const RESUME_ON_PLAY := "on_play"
 
 ## Index of the player who answers.
 var chooser: int

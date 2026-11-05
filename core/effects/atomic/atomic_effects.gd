@@ -71,7 +71,11 @@ const DECLARATIONS := {
 		"returns": "int", "attack_only": false,
 	},
 	"discard_from_hand": {
-		"role": ROLE_EFFECT, "params": {"player": "player", "count": "int"}, "returns": "int", "attack_only": false,
+		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "count": "int"}, "returns": "int", "attack_only": false,
+	},
+	"search_deck_to_bench": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "count": "int", "exclude_same_name": "int"},
+		"returns": "int", "attack_only": false,
 	},
 	"discard_hand": {
 		"role": ROLE_EFFECT, "params": {"player": "player"}, "returns": "int", "attack_only": false,
@@ -80,7 +84,13 @@ const DECLARATIONS := {
 		"role": ROLE_EFFECT, "params": {"player": "player"}, "returns": "int", "attack_only": false,
 	},
 	"has_cards_in_hand": {
+		"role": ROLE_CHECK, "params": {"player": "player", "filter": "card_filter", "count": "int"}, "returns": "", "attack_only": false,
+	},
+	"has_room_on_field": {
 		"role": ROLE_CHECK, "params": {"player": "player", "count": "int"}, "returns": "", "attack_only": false,
+	},
+	"not_first_turn": {
+		"role": ROLE_CHECK, "params": {"player": "player"}, "returns": "", "attack_only": false,
 	},
 	"take_from_discard": {
 		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "count": "int"},
@@ -272,11 +282,18 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 		"shuffle_hand_into_deck":
 			return operations.shuffle_hand_into_deck(args["player"] as PlayerState)
 		"search_deck":
-			return CardMoves.search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), false)
+			return CardMoves.search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), CardMoves.TO_HAND, [])
 		"search_deck_to_discard":
-			return CardMoves.search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), true)
+			return CardMoves.search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), CardMoves.TO_DISCARD, [])
+		"search_deck_to_bench":
+			var searcher := args["player"] as PlayerState
+			var room := context.engine.rules.bench_limit - searcher.bench.size()
+			var excluded: Array[String] = []
+			if int(args["exclude_same_name"]) == 1 and context.source != null:
+				excluded.append(context.source.card.name)
+			return CardMoves.search_deck(context, searcher, args["filter"] as Array, mini(int(args["count"]), room), CardMoves.TO_BENCH, excluded)
 		"discard_from_hand":
-			return CardMoves.discard_from_hand(context, args["player"] as PlayerState, int(args["count"]))
+			return CardMoves.discard_from_hand(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]))
 		"discard_hand":
 			return operations.discard_from_hand(args["player"] as PlayerState, (args["player"] as PlayerState).hand.duplicate())
 		"put_hand_on_bottom_of_deck":
@@ -295,7 +312,12 @@ static func check(name: String, context: EffectContext, args: Dictionary) -> boo
 		"attack_not_used_last_turn":
 			return context.attack == null or (args["player"] as PlayerState).attack_used_last_turn != context.attack.name
 		"has_cards_in_hand":
-			return CardMoves.hand_without_card_played(context, args["player"] as PlayerState).size() >= int(args["count"])
+			var in_hand := CardMoves.hand_without_card_played(context, args["player"] as PlayerState)
+			return CardFilter.select(in_hand, args["filter"] as Array, []).size() >= int(args["count"])
+		"has_room_on_field":
+			return (args["player"] as PlayerState).bench.size() + int(args["count"]) <= context.engine.rules.bench_limit
+		"not_first_turn":
+			return (args["player"] as PlayerState).turns_started > 1
 		"has_benched":
 			return (args["player"] as PlayerState).bench.size() >= int(args["count"])
 		"has_cards_in_deck":

@@ -52,8 +52,27 @@ static func attack_requirements_met(engine: MatchEngine, attack: AttackData) -> 
 ## An activated Ability can be used when it has a binding and its requirements hold, which
 ## includes "it would do something" (Design Document 3.3 applies to Abilities too).
 static func power_usable(engine: MatchEngine, user: CardInPlay, power: PowerData) -> bool:
+	return _power_ready(engine, user, power, EffectLibrary.TIMING_ACTIVATED)
+
+
+## The Abilities of a Darkner just played from the hand that its owner may use now, in printed
+## order (EffectLibrary.TIMING_ON_PLAY).
+static func on_play_powers(engine: MatchEngine, user: CardInPlay) -> Array[PowerData]:
+	var ready: Array[PowerData] = []
+	for power in user.card.powers:
+		if _power_ready(engine, user, power, EffectLibrary.TIMING_ON_PLAY):
+			ready.append(power)
+	return ready
+
+
+## Whether an Ability with this timing can be used now: it has a binding with that timing, its
+## per-turn limit is not reached, and its requirements hold.
+static func _power_ready(engine: MatchEngine, user: CardInPlay, power: PowerData, timing: String) -> bool:
 	var binding := power_binding(engine, user, power)
-	if binding.is_empty() or binding.get(EffectLibrary.TIMING_KEY) != EffectLibrary.TIMING_ACTIVATED:
+	if binding.is_empty() or binding.get(EffectLibrary.TIMING_KEY) != timing:
+		return false
+	var limit := int(binding.get(EffectLibrary.PER_TURN_KEY, 0))
+	if limit > 0 and int(engine.current_player().powers_used_this_turn.get(power.name, 0)) >= limit:
 		return false
 	return _requirements_met(engine, binding, power_context(engine, user, EffectContext.KIND_POWER))
 

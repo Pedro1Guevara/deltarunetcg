@@ -4,6 +4,11 @@ extends RefCounted
 ## discarding from the hand, attaching to the Field, switching a Darkner in. They choose through
 ## EffectChoices and change the round only through MatchOperations.
 
+## Where the cards found by search_deck() go.
+const TO_HAND := "hand"
+const TO_DISCARD := "discard"
+const TO_BENCH := "bench"
+
 
 ## chooser picks which Darkner on player's Field goes to the Battle Zone. A Field of one is
 ## switched in without asking. Returns 1 when a Darkner was switched in, 0 otherwise.
@@ -26,30 +31,45 @@ static func switch_in(context: EffectContext, player: PlayerState, chooser: Play
 	return 1
 
 
-## player looks through their deck for up to count cards that match filters, puts them into
-## their hand (their discard pile when to_discard) and shuffles the deck. The whole deck is
+## player looks through their deck for up to count cards that match filters, other than cards
+## named in excluded, puts them where destination says (their hand, their discard pile or their
+## Field) and shuffles the deck. The whole deck is
 ## shown while they choose, in its real order with the top card first, since the search ends
 ## in a shuffle anyway. They are asked even when nothing matches, so a search is also a look at
 ## the deck (Design Document 3.3). The deck is hidden, so a search may find nothing: the player
 ## may confirm with fewer cards than count, or none. Returns how many cards were found.
-static func search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int, to_discard: bool) -> Variant:
-	var verb := "Discard" if to_discard else "Take"
+static func search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int, destination: String,
+		excluded: Array[String]) -> Variant:
+	var verb := "Take"
 	var prompt := "Search your deck for %s" % CardFilter.describe(filters)
-	if to_discard:
-		prompt += " to discard"
+	match destination:
+		TO_DISCARD:
+			verb = "Discard"
+			prompt += " to discard"
+		TO_BENCH:
+			verb = "Put"
+			prompt += " to put onto your Field"
+	if not excluded.is_empty():
+		prompt += " (not %s)" % ", ".join(PackedStringArray(excluded))
 	var top_first := player.deck.duplicate()
 	top_first.reverse()
-	var matching := CardFilter.select(player.deck, filters, [])
+	var matching: Array[CardData] = []
+	for card in CardFilter.select(player.deck, filters, []):
+		if not excluded.has(card.name):
+			matching.append(card)
 	var picked: Variant = EffectChoices.choose_several(context, player, prompt, EffectChoices.each_card_options(matching, verb, ""), 0, count,
 			"%s nothing" % verb, top_first)
 	if picked is String:
 		return picked
 	var cards: Array[CardData] = []
 	cards.assign(picked as Array)
-	if to_discard:
-		context.operations.discard_from_deck(player, cards)
-	else:
-		context.operations.take_from_deck(player, cards)
+	match destination:
+		TO_DISCARD:
+			context.operations.discard_from_deck(player, cards)
+		TO_BENCH:
+			context.operations.put_on_bench_from_deck(player, cards, context.engine.turn)
+		_:
+			context.operations.take_from_deck(player, cards)
 	context.operations.shuffle_deck(player)
 	return cards.size()
 
@@ -64,11 +84,13 @@ static func take_from_discard(context: EffectContext, player: PlayerState, filte
 	return context.operations.take_from_discard(player, picked as Array[CardData])
 
 
-## player discards count cards from their hand, other than the ACT card being played, chosen
-## with EffectChoices.pick_cards(). Returns how many cards were discarded.
-static func discard_from_hand(context: EffectContext, player: PlayerState, count: int) -> Variant:
-	var prompt := "Choose %s to discard from your hand" % ["a card" if count == 1 else "%d cards" % count]
-	var picked: Variant = EffectChoices.pick_cards(context, player, hand_without_card_played(context, player), count, prompt, "Discard", "")
+## player discards count cards that match filters from their hand, other than the ACT card
+## being played, chosen with EffectChoices.pick_cards(). Returns how many cards were discarded.
+static func discard_from_hand(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
+	var noun := CardFilter.describe(filters) if not filters.has(CardFilter.ANY) else "card"
+	var prompt := "Choose %s to discard from your hand" % (("a %s" % noun) if count == 1 else "%d %ss" % [count, noun])
+	var candidates := CardFilter.select(hand_without_card_played(context, player), filters, [])
+	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, count, prompt, "Discard", "")
 	if picked is String:
 		return picked
 	return context.operations.discard_from_hand(player, picked as Array[CardData])
