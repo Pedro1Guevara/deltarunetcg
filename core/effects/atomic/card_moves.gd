@@ -70,7 +70,8 @@ static func search_deck(context: EffectContext, player: PlayerState, filters: Ar
 		TO_BENCH:
 			context.operations.put_on_bench_from_deck(player, cards, context.engine.turn)
 		_:
-			context.operations.take_from_deck(player, cards)
+			# A search for a kind of card shows the opponent what it took; one for any card does not.
+			context.operations.take_from_deck(player, cards, not filters.has(CardFilter.ANY))
 	context.operations.shuffle_deck(player)
 	return cards.size()
 

@@ -303,9 +303,19 @@ func _refresh() -> void:
 	_finish_refresh()
 
 
-## The log, then the CPU's next decision if it is to act.
+## The log (as the human sees it, against the CPU), then the CPU's next decision if it is to
+## act.
 func _finish_refresh() -> void:
-	var lines := PackedStringArray(_engine.events)
+	var lines := PackedStringArray()
+	var human := _cpu_seats.find(false)
+	if _cpu_seats.count(false) == 1:
+		# Against the CPU, the log is the human's: the CPU's draws, Mercy Cards and answers
+		# show as the human sees them (MatchEvent).
+		for event in _engine.events_for(human, 0):
+			if not event.text.is_empty():
+				lines.append(event.text)
+	else:
+		lines = PackedStringArray(_engine.events)
 	lines.reverse()
 	_log_label.text = "\n".join(lines)
 	_schedule_cpu()

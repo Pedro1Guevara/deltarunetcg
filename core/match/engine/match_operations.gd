@@ -17,17 +17,17 @@ var extra_turn: bool = false
 
 var _players: Array[PlayerState]
 var _rng: Rng
-var _events: Array[String]
+var _log: MatchLog
 ## The Darkners the resolving attack has damaged, in order. Cleared when an attack starts.
 var _attack_damaged: Array[CardInPlay] = []
 ## Darkners put onto a Field during a turn whose triggers have not resolved yet, in order.
 var _entered_field: Array[CardInPlay] = []
 
 
-func _init(players: Array[PlayerState], rng: Rng, events: Array[String]) -> void:
+func _init(players: Array[PlayerState], rng: Rng, match_log: MatchLog) -> void:
 	_players = players
 	_rng = rng
-	_events = events
+	_log = match_log
 
 
 ## Called by the engine when an attack starts.
@@ -55,7 +55,8 @@ func place_damage_counters(target: CardInPlay, count: int) -> int:
 func attach_from_discard(player: PlayerState, energy: CardData, target: CardInPlay) -> void:
 	player.discard.erase(energy)
 	target.attached_energy.append(energy)
-	_log("  Player %d attaches %s from their discard pile to %s" % [_players.find(player) + 1, energy.name, target.card.name])
+	_log.add(MatchEvent.ENERGY_ATTACHED, _players.find(player), {"card": energy.id, "darkner": _log.darkner(target), "from": MatchEvent.ZONE_DISCARD},
+			"  Player %d attaches %s from their discard pile to %s" % [_players.find(player) + 1, energy.name, target.card.name])
 
 
 ## Attaches an Energy card from a player's hand through an effect. It is not the player's
@@ -63,7 +64,8 @@ func attach_from_discard(player: PlayerState, energy: CardData, target: CardInPl
 func attach_from_hand(player: PlayerState, energy: CardData, target: CardInPlay) -> void:
 	player.hand.erase(energy)
 	target.attached_energy.append(energy)
-	_log("  Player %d attaches %s from their hand to %s" % [_players.find(player) + 1, energy.name, target.card.name])
+	_log.add(MatchEvent.ENERGY_ATTACHED, _players.find(player), {"card": energy.id, "darkner": _log.darkner(target), "from": MatchEvent.ZONE_HAND},
+			"  Player %d attaches %s from their hand to %s" % [_players.find(player) + 1, energy.name, target.card.name])
 
 
 ## The player taking the turn takes another turn after this one.
@@ -76,7 +78,9 @@ func heal(target: CardInPlay, amount: int) -> int:
 	var healed := mini(target.damage, maxi(amount, 0))
 	if healed > 0:
 		target.damage -= healed
-		_log("  %s heals %d damage (%d/%d HP)" % [target.card.name, healed, target.remaining_hp(), target.card.hp])
+		var healed_ref := _log.darkner(target)
+		_log.add(MatchEvent.HEALED, int(healed_ref["side"]), {"darkner": healed_ref, "amount": healed, "hp_left": target.remaining_hp()},
+				"  %s heals %d damage (%d/%d HP)" % [target.card.name, healed, target.remaining_hp(), target.card.hp])
 	return healed
 
 
@@ -89,7 +93,8 @@ func can_spend_tp(player: PlayerState, quarters: int) -> bool:
 ## has asked can_spend_tp() first.
 func spend_tp(player: PlayerState, quarters: int) -> void:
 	player.tp -= quarters
-	_log("  Player %d uses %d%% TP (%d%% left)" % [_players.find(player) + 1, quarters * 25, player.tp * 25])
+	_log.add(MatchEvent.TP_SPENT, _players.find(player), {"amount": quarters, "tp": player.tp},
+			"  Player %d uses %d%% TP (%d%% left)" % [_players.find(player) + 1, quarters * 25, player.tp * 25])
 
 
 ## Shuffles every Energy card attached to a Darkner into its owner's deck. Returns how many.
@@ -101,7 +106,9 @@ func shuffle_energy_into_deck(target: CardInPlay) -> int:
 	owner.deck.append_array(target.attached_energy)
 	target.attached_energy.clear()
 	_rng.shuffle(owner.deck)
-	_log("  %s shuffles %d Energy card%s into the deck" % [target.card.name, count, "" if count == 1 else "s"])
+	var shuffled_ref := _log.darkner(target)
+	_log.add(MatchEvent.ENERGY_SHUFFLED_INTO_DECK, int(shuffled_ref["side"]), {"darkner": shuffled_ref, "count": count},
+			"  %s shuffles %d Energy card%s into the deck" % [target.card.name, count, "" if count == 1 else "s"])
 	return count
 
 
@@ -118,7 +125,9 @@ func _attack_damage_prevented(context: EffectContext, target: CardInPlay) -> boo
 	var preventer := ContinuousEffects.attack_damage_preventer(context.engine, target)
 	if preventer == null:
 		return false
-	_log("  %s prevents the damage to %s" % [preventer.name, target.card.name])
+	var prevented_ref := _log.darkner(target)
+	_log.add(MatchEvent.DAMAGE_PREVENTED, int(prevented_ref["side"]), {"darkner": prevented_ref, "by": preventer.name},
+			"  %s prevents the damage to %s" % [preventer.name, target.card.name])
 	return true
 
 
@@ -141,14 +150,17 @@ func _apply_damage(target: CardInPlay, amount: int, kind: String) -> int:
 	if kind == DAMAGE_ATTACK and amount > 0 and not _attack_damaged.has(target):
 		_attack_damaged.append(target)
 	var hp := "(%d/%d HP)" % [target.remaining_hp(), target.card.hp]
+	var text := ""
 	match kind:
 		DAMAGE_ATTACK:
-			_log("  %d damage to %s %s" % [amount, target.card.name, hp])
+			text = "  %d damage to %s %s" % [amount, target.card.name, hp]
 		DAMAGE_COUNTERS:
 			var counters := amount / 10
-			_log("  %d damage counter%s on %s %s" % [counters, "" if counters == 1 else "s", target.card.name, hp])
+			text = "  %d damage counter%s on %s %s" % [counters, "" if counters == 1 else "s", target.card.name, hp]
 		_:
-			_log("  %s takes %d damage %s" % [target.card.name, amount, hp])
+			text = "  %s takes %d damage %s" % [target.card.name, amount, hp]
+	var ref := _log.darkner(target)
+	_log.add(MatchEvent.DAMAGE, int(ref["side"]), {"darkner": ref, "amount": amount, "kind": kind, "hp_left": target.remaining_hp()}, text)
 	return amount
 
 
@@ -164,7 +176,9 @@ func discard_energy_cards(target: CardInPlay, cards: Array[CardData]) -> int:
 		if owner != null:
 			owner.discard.append(energy)
 		discarded += 1
-		_log("  %s discards %s" % [target.card.name, energy.name])
+		var discarded_ref := _log.darkner(target)
+		_log.add(MatchEvent.ENERGY_DISCARDED, int(discarded_ref["side"]), {"darkner": discarded_ref, "card": energy.id},
+				"  %s discards %s" % [target.card.name, energy.name])
 	return discarded
 
 
@@ -174,9 +188,8 @@ func switch_in(player: PlayerState, slot: int) -> void:
 	var leaving := player.active
 	player.active = player.bench[slot]
 	player.bench[slot] = leaving
-	_log("  Player %d switches %s into the Battle Zone; %s goes to the Field" % [
-		_players.find(player) + 1, player.active.card.name, leaving.card.name,
-	])
+	_log.add(MatchEvent.SWITCHED, _players.find(player), {"in": _log.darkner(player.active), "out": _log.darkner(leaving)},
+			"  Player %d switches %s into the Battle Zone; %s goes to the Field" % [_players.find(player) + 1, player.active.card.name, leaving.card.name])
 
 
 ## Shuffles a player's hand into their deck. Returns how many cards the hand held.
@@ -185,19 +198,28 @@ func shuffle_hand_into_deck(player: PlayerState) -> int:
 	player.deck.append_array(player.hand)
 	player.hand.clear()
 	_rng.shuffle(player.deck)
-	_log("  Player %d shuffles %d card%s from their hand into their deck" % [_players.find(player) + 1, count, "" if count == 1 else "s"])
+	_log.add(MatchEvent.HAND_SHUFFLED_INTO_DECK, _players.find(player), {"count": count},
+			"  Player %d shuffles %d card%s from their hand into their deck" % [_players.find(player) + 1, count, "" if count == 1 else "s"])
 	return count
 
 
-## Moves the given cards from a player's deck into their hand. Returns how many moved.
-func take_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
+## Moves the given cards from a player's deck into their hand. Returns how many moved. revealed:
+## the opponent sees which cards, as when a search asks for a kind of card; otherwise they see
+## only that a card was taken.
+func take_from_deck(player: PlayerState, cards: Array[CardData], revealed: bool) -> int:
 	var index := _players.find(player) + 1
 	if cards.is_empty():
-		_log("  Player %d finds nothing" % index)
+		_log.add(MatchEvent.NOTHING_FOUND, index - 1, {}, "  Player %d finds nothing" % index)
 	for card in cards:
 		player.deck.erase(card)
 		player.hand.append(card)
-		_log("  Player %d puts %s from their deck into their hand" % [index, card.name])
+		var data := {"card": card.id, "from": MatchEvent.ZONE_DECK, "to": MatchEvent.ZONE_HAND}
+		var text := "  Player %d puts %s from their deck into their hand" % [index, card.name]
+		if revealed:
+			_log.add(MatchEvent.CARD_MOVED, index - 1, data, text)
+		else:
+			_log.add_private(MatchEvent.CARD_MOVED, index - 1, data, {"from": MatchEvent.ZONE_DECK, "to": MatchEvent.ZONE_HAND},
+					text, "  Player %d puts a card from their deck into their hand" % index)
 	return cards.size()
 
 
@@ -206,11 +228,12 @@ func take_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
 func put_on_bench_from_deck(player: PlayerState, cards: Array[CardData], turn: int) -> int:
 	var index := _players.find(player) + 1
 	if cards.is_empty():
-		_log("  Player %d finds nothing" % index)
+		_log.add(MatchEvent.NOTHING_FOUND, index - 1, {}, "  Player %d finds nothing" % index)
 	for card in cards:
 		player.deck.erase(card)
-		_put_on_bench(player, card, turn)
-		_log("  Player %d puts %s from their deck onto the Field" % [index, card.name])
+		var placed := _put_on_bench(player, card, turn)
+		_log.add(MatchEvent.PUT_ON_FIELD, index - 1, {"darkner": _log.darkner(placed), "from": MatchEvent.ZONE_DECK},
+				"  Player %d puts %s from their deck onto the Field" % [index, card.name])
 	return cards.size()
 
 
@@ -218,7 +241,8 @@ func put_on_bench_from_deck(player: PlayerState, cards: Array[CardData], turn: i
 func put_on_bench_from_hand(player: PlayerState, card: CardData, turn: int) -> CardInPlay:
 	player.hand.erase(card)
 	var darkner := _put_on_bench(player, card, turn)
-	_log("Player %d puts %s on the Field" % [_players.find(player) + 1, card.name])
+	_log.add(MatchEvent.PUT_ON_FIELD, _players.find(player), {"darkner": _log.darkner(darkner), "from": MatchEvent.ZONE_HAND},
+			"Player %d puts %s on the Field" % [_players.find(player) + 1, card.name])
 	return darkner
 
 
@@ -241,11 +265,12 @@ func _put_on_bench(player: PlayerState, card: CardData, turn: int) -> CardInPlay
 func discard_from_deck(player: PlayerState, cards: Array[CardData]) -> int:
 	var index := _players.find(player) + 1
 	if cards.is_empty():
-		_log("  Player %d discards nothing" % index)
+		_log.add(MatchEvent.NOTHING_DISCARDED, index - 1, {}, "  Player %d discards nothing" % index)
 	for card in cards:
 		player.deck.erase(card)
 		player.discard.append(card)
-		_log("  Player %d discards %s from their deck" % [index, card.name])
+		_log.add(MatchEvent.CARD_MOVED, index - 1, {"card": card.id, "from": MatchEvent.ZONE_DECK, "to": MatchEvent.ZONE_DISCARD},
+				"  Player %d discards %s from their deck" % [index, card.name])
 	return cards.size()
 
 
@@ -255,7 +280,8 @@ func discard_from_hand(player: PlayerState, cards: Array[CardData]) -> int:
 	for card in cards:
 		player.hand.erase(card)
 		player.discard.append(card)
-		_log("  Player %d discards %s from their hand" % [index, card.name])
+		_log.add(MatchEvent.CARD_MOVED, index - 1, {"card": card.id, "from": MatchEvent.ZONE_HAND, "to": MatchEvent.ZONE_DISCARD},
+				"  Player %d discards %s from their hand" % [index, card.name])
 	return cards.size()
 
 
@@ -268,7 +294,8 @@ func put_hand_on_bottom_of_deck(player: PlayerState) -> int:
 	for card: CardData in cards:
 		player.deck.insert(0, card)
 	var count := cards.size()
-	_log("  Player %d puts %d card%s from their hand on the bottom of their deck" % [_players.find(player) + 1, count, "" if count == 1 else "s"])
+	_log.add(MatchEvent.HAND_TO_BOTTOM_OF_DECK, _players.find(player), {"count": count},
+			"  Player %d puts %d card%s from their hand on the bottom of their deck" % [_players.find(player) + 1, count, "" if count == 1 else "s"])
 	return count
 
 
@@ -277,28 +304,30 @@ func take_from_discard(player: PlayerState, cards: Array[CardData]) -> int:
 	for card in cards:
 		player.discard.erase(card)
 		player.hand.append(card)
-		_log("  Player %d puts %s from their discard pile into their hand" % [_players.find(player) + 1, card.name])
+		_log.add(MatchEvent.CARD_MOVED, _players.find(player), {"card": card.id, "from": MatchEvent.ZONE_DISCARD, "to": MatchEvent.ZONE_HAND},
+				"  Player %d puts %s from their discard pile into their hand" % [_players.find(player) + 1, card.name])
 	return cards.size()
 
 
 func shuffle_deck(player: PlayerState) -> void:
 	_rng.shuffle(player.deck)
-	_log("  Player %d shuffles their deck" % (_players.find(player) + 1))
+	_log.add(MatchEvent.DECK_SHUFFLED, _players.find(player), {}, "  Player %d shuffles their deck" % (_players.find(player) + 1))
 
 
 func draw_cards(player: PlayerState, count: int) -> int:
-	var drawn := 0
+	var drawn: Array[CardData] = []
 	for _i in maxi(count, 0):
 		if not player.draw_card():
 			break
-		drawn += 1
-	_log("  Player %d draws %d card%s" % [_players.find(player) + 1, drawn, "" if drawn == 1 else "s"])
-	return drawn
+		drawn.append(player.hand.back())
+	var text := "  Player %d draws %d card%s" % [_players.find(player) + 1, drawn.size(), "" if drawn.size() == 1 else "s"]
+	_log.add_private(MatchEvent.DREW, _players.find(player), {"count": drawn.size(), "cards": MatchLog.ids(drawn)}, {"count": drawn.size()}, text, text)
+	return drawn.size()
 
 
 func flip_coin() -> bool:
 	var heads := _rng.coin_flip()
-	_log("  Coin flip: %s" % ("heads" if heads else "tails"))
+	_log.add(MatchEvent.COIN_FLIP, -1, {"heads": heads}, "  Coin flip: %s" % ("heads" if heads else "tails"))
 	return heads
 
 
@@ -309,9 +338,6 @@ func owner_of(pokemon: CardInPlay) -> PlayerState:
 	return null
 
 
-func log_event(text: String) -> void:
-	_log(text)
-
-
-func _log(text: String) -> void:
-	_events.append(text)
+## A problem with effect data met while resolving (EffectResolver), in the log.
+func log_effect_warning(message: String) -> void:
+	_log.add(MatchEvent.EFFECT_WARNING, -1, {"message": message}, message)

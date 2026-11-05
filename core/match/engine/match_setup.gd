@@ -14,16 +14,16 @@ var first_player: int = 0
 var _players: Array[PlayerState]
 var _rules: MatchRules
 var _rng: Rng
-var _events: Array[String]
+var _log: MatchLog
 ## Remaining steps, in order: {"player": int, "step": "coin_call" | "active" | "bench" | "compensation", ...}
 var _steps: Array[Dictionary] = []
 
 
-func _init(players: Array[PlayerState], rules: MatchRules, rng: Rng, events: Array[String]) -> void:
+func _init(players: Array[PlayerState], rules: MatchRules, rng: Rng, match_log: MatchLog) -> void:
 	_players = players
 	_rules = rules
 	_rng = rng
-	_events = events
+	_log = match_log
 
 
 ## Deals both players from their decks and lays out the steps that will need answers.
@@ -100,9 +100,10 @@ func answer(value: Variant) -> PendingChoice:
 			var heads := _rng.coin_flip()
 			var called_heads := bool(value)
 			first_player = index if called_heads == heads else 1 - index
-			_log("Player %d calls %s. Coin flip: %s. Player %d goes first" % [
-				index + 1, "heads" if called_heads else "tails", "heads" if heads else "tails", first_player + 1,
-			])
+			_log.add(MatchEvent.FIRST_PLAYER, index, {"caller": index, "called_heads": called_heads, "heads": heads, "first": first_player},
+					"Player %d calls %s. Coin flip: %s. Player %d goes first" % [
+						index + 1, "heads" if called_heads else "tails", "heads" if heads else "tails", first_player + 1,
+					])
 		"active":
 			_place_active(index, value as CardData)
 			_steps.pop_front()
@@ -112,8 +113,9 @@ func answer(value: Variant) -> PendingChoice:
 			else:
 				var card := value as CardData
 				player.hand.erase(card)
-				player.bench.append(CardInPlay.new(card, 0))
-				_log("Player %d puts %s on the Field during setup" % [index + 1, card.name])
+				var placed := CardInPlay.new(card, 0)
+				player.bench.append(placed)
+				_log.add(MatchEvent.SETUP_BENCH_PLACED, index, {"darkner": _log.darkner(placed)}, "Player %d puts %s on the Field during setup" % [index + 1, card.name])
 		"compensation":
 			_steps.pop_front()
 			var drawn: Array[CardData] = []
@@ -121,7 +123,8 @@ func answer(value: Variant) -> PendingChoice:
 				if not player.draw_card():
 					break
 				drawn.append(player.hand.back())
-			_log("Player %d draws %d card%s for mulligans" % [index + 1, drawn.size(), "" if drawn.size() == 1 else "s"])
+			var text := "Player %d draws %d card%s for mulligans" % [index + 1, drawn.size(), "" if drawn.size() == 1 else "s"]
+			_log.add_private(MatchEvent.MULLIGAN_DRAWS, index, {"count": drawn.size(), "cards": MatchLog.ids(drawn)}, {"count": drawn.size()}, text, text)
 			if not drawn.is_empty():
 				_steps.push_front({"player": index, "step": "bench", "cards": drawn})
 	return advance()
@@ -139,7 +142,7 @@ func _deal_player(index: int, deck: Array[CardData]) -> PlayerState:
 		if player.first_basic_pokemon_in_hand() != -1:
 			break
 		player.mulligans += 1
-		_log("Player %d mulligan (attempt %d)" % [index + 1, attempt + 1])
+		_log.add(MatchEvent.MULLIGAN, index, {"attempt": attempt + 1}, "Player %d mulligan (attempt %d)" % [index + 1, attempt + 1])
 		player.deck.append_array(player.hand)
 		player.hand.clear()
 
@@ -174,8 +177,4 @@ func _place_active(index: int, card: CardData) -> void:
 	var player := _players[index]
 	player.hand.erase(card)
 	player.active = CardInPlay.new(card, 0)
-	_log("Player %d starts with %s" % [index + 1, card.name])
-
-
-func _log(text: String) -> void:
-	_events.append(text)
+	_log.add(MatchEvent.BATTLING_DARKNER_PLACED, index, {"darkner": _log.darkner(player.active)}, "Player %d starts with %s" % [index + 1, card.name])

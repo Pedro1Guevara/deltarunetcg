@@ -5,14 +5,14 @@ extends RefCounted
 ## it may change. It never holds the engine.
 
 var _players: Array[PlayerState]
-var _events: Array[String]
+var _log: MatchLog
 ## The players whose Battling Darkner was knocked out and still has to be replaced, in order.
 var _promotion_queue: Array[int] = []
 
 
-func _init(players: Array[PlayerState], events: Array[String]) -> void:
+func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
 	_players = players
-	_events = events
+	_log = match_log
 
 
 ## Resolves every knocked out Darkner at once, as the rulebook does, in the Battle Zone or on
@@ -41,7 +41,7 @@ func resolve(defender_index: int, rules: MatchRules) -> int:
 	for position in knocked_out.size():
 		var side := _players[owners[position]]
 		var darkner := knocked_out[position]
-		_log("%s is knocked out" % darkner.card.name)
+		_log.add(MatchEvent.KNOCKED_OUT, owners[position], {"darkner": _log.darkner(darkner)}, "%s is knocked out" % darkner.card.name)
 		side.discard_from_play(darkner)
 		if side.active == darkner:
 			side.active = null
@@ -60,10 +60,10 @@ func resolve(defender_index: int, rules: MatchRules) -> int:
 
 	if int(ways[0]) > 0 or int(ways[1]) > 0:
 		if int(ways[0]) == int(ways[1]):
-			_log("Both players win at the same time: Sudden Death")
+			_log.add(MatchEvent.SUDDEN_DEATH, -1, {}, "Both players win at the same time: Sudden Death")
 			return MatchEngine.SUDDEN_DEATH
 		var winner := 0 if int(ways[0]) > int(ways[1]) else 1
-		_log("Player %d wins" % (winner + 1))
+		_log.add(MatchEvent.WON, winner, {"winner": winner}, "Player %d wins" % (winner + 1))
 		return winner
 
 	_promotion_queue.assign(lost_battling)
@@ -76,8 +76,10 @@ func take_prize(taker_index: int, count: int) -> void:
 	for _i in count:
 		if taker.prizes.is_empty():
 			return
-		taker.hand.append(taker.prizes.pop_back() as CardData)
-		_log("Player %d takes a Mercy Card (%d left)" % [taker_index + 1, taker.prizes.size()])
+		var prize := taker.prizes.pop_back() as CardData
+		taker.hand.append(prize)
+		var text := "Player %d takes a Mercy Card (%d left)" % [taker_index + 1, taker.prizes.size()]
+		_log.add_private(MatchEvent.PRIZE_TAKEN, taker_index, {"left": taker.prizes.size(), "card": prize.id}, {"left": taker.prizes.size()}, text, text)
 
 
 ## Each player whose Battling Darkner was knocked out chooses a replacement from the Field,
@@ -107,14 +109,10 @@ func promote(index: int, slot: int) -> void:
 	var side := _players[index]
 	side.active = side.bench.pop_at(slot) as CardInPlay
 	_promotion_queue.erase(index)
-	_log("Player %d promotes %s" % [index + 1, side.active.card.name])
+	_log.add(MatchEvent.PROMOTED, index, {"darkner": _log.darkner(side.active)}, "Player %d promotes %s" % [index + 1, side.active.card.name])
 
 
 ## Mercy Cards taken for knocking out this Darkner. Effects that change it will be read here
 ## once the continuous-effects layer exists.
 func _prizes_for_knockout(rules: MatchRules, _knocked_out: CardInPlay) -> int:
 	return rules.prizes_per_knockout
-
-
-func _log(text: String) -> void:
-	_events.append(text)

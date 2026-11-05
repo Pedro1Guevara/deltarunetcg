@@ -41,6 +41,9 @@ var rules: MatchRules
 ## The Area in play and who played it, or null and -1.
 var stadium: CardData = null
 var stadium_owner: int = -1
+## How many events the round has had so far. The events themselves, as this player sees them,
+## come from MatchEngine.events_for(), from any index on, so a client asks only for new ones.
+var event_count: int = 0
 ## The ACT card the player taking the turn is playing, while it resolves, or null.
 var resolving_trainer: CardData = null
 ## Both sides, by player index.

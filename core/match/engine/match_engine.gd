@@ -9,7 +9,10 @@ var players: Array[PlayerState] = []
 var current_index: int = 0
 var turn: int = 0
 var winner: int = NO_WINNER
+## The log's lines of text, in order (MatchLog.lines).
 var events: Array[String] = []
+## The round's events as data (MatchEvent); each player reads theirs through view_for().
+var match_log: MatchLog = null
 ## The rules of the round being played. Set by start().
 var rules: MatchRules
 ## Null means every attack resolves as its printed damage.
@@ -67,9 +70,10 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	_on_play_user = null
 	_on_play_queue.clear()
 	_turn_ends_after_promotions = false
-	operations = MatchOperations.new(players, _rng, events)
-	_knockouts = KnockoutResolver.new(players, events)
-	_setup = MatchSetup.new(players, rules, _rng, events)
+	match_log = MatchLog.new(players, events)
+	operations = MatchOperations.new(players, _rng, match_log)
+	_knockouts = KnockoutResolver.new(players, match_log)
+	_setup = MatchSetup.new(players, rules, _rng, match_log)
 	_setup.deal(deck_a, deck_b)
 	_continue_setup(_setup.advance())
 
@@ -100,6 +104,12 @@ func choice_chooser() -> int:
 	return -1 if _pending == null else _pending.chooser
 
 
+## The round's events from the from-th on, as player_index sees them (MatchEvent.for_viewer()):
+## another player's private events in their hidden version, their secret ones not at all.
+func events_for(player_index: int, from: int) -> Array[MatchEvent]:
+	return match_log.entries_for(player_index, from)
+
+
 ## What player_index can see of the round (PlayerView): never the other hand, the order of a
 ## deck, the Mercy Cards, nor a question or legal actions that are not theirs.
 func view_for(player_index: int) -> PlayerView:
@@ -113,6 +123,7 @@ func view_for(player_index: int) -> PlayerView:
 	view.stadium = stadium
 	view.stadium_owner = stadium_owner
 	view.resolving_trainer = resolving_trainer
+	view.event_count = match_log.entries.size()
 	for index in players.size():
 		var player := players[index]
 		var side := PlayerView.SideView.new()
@@ -294,12 +305,12 @@ func _continue_setup(choice: PendingChoice) -> void:
 func _end_turn(attacked: bool) -> void:
 	var player := current_player()
 	if not attacked:
-		_log("Player %d ends the turn" % (current_index + 1))
+		match_log.add(MatchEvent.TURN_ENDED, current_index, {}, "Player %d ends the turn" % (current_index + 1))
 	if rules.tp_max > 0 and not attacked:
 		_set_tp(player, rules.tp_max)
 	if operations.extra_turn:
 		operations.extra_turn = false
-		_log("Player %d takes another turn" % (current_index + 1))
+		match_log.add(MatchEvent.EXTRA_TURN, current_index, {}, "Player %d takes another turn" % (current_index + 1))
 		_begin_turn(current_index)
 		return
 	_begin_turn(_opponent_index())
@@ -313,24 +324,26 @@ func _begin_turn(player_index: int) -> void:
 	var player := current_player()
 	player.reset_turn_flags()
 	player.turns_started += 1
-	_log("--- Turn %d: Player %d ---" % [turn, current_index + 1])
+	match_log.add(MatchEvent.TURN_STARTED, current_index, {"turn": turn}, "--- Turn %d: Player %d ---" % [turn, current_index + 1])
 
 	if player.deck.is_empty():
 		if rules.deck_out_loses:
 			# Deltarune (Design Document 4.5): a player who cannot draw loses the round.
 			winner = _opponent_index()
-			_log("Player %d cannot draw and loses the round" % (current_index + 1))
+			match_log.add(MatchEvent.DECK_OUT, current_index, {"loses": true}, "Player %d cannot draw and loses the round" % (current_index + 1))
 			return
 		# Legacy roguelite rule: deck-out costs a prize instead of losing.
-		_log("Player %d cannot draw: the opponent takes a Mercy Card" % (current_index + 1))
+		match_log.add(MatchEvent.DECK_OUT, current_index, {"loses": false}, "Player %d cannot draw: the opponent takes a Mercy Card" % (current_index + 1))
 		_knockouts.take_prize(_opponent_index(), 1)
 		if players[_opponent_index()].prizes.is_empty():
 			winner = _opponent_index()
-			_log("Player %d took the last Mercy Card and wins" % (winner + 1))
+			match_log.add(MatchEvent.WON, winner, {"winner": winner}, "Player %d took the last Mercy Card and wins" % (winner + 1))
 		return
 	if rules.tp_max > 0:
 		_set_tp(player, mini(player.tp + rules.tp_recovery, rules.tp_max))
 	player.draw_card()
+	# The turn's draw is not a line of the log, but the board shows it: the player sees the card.
+	match_log.add_private(MatchEvent.DREW, current_index, {"count": 1, "cards": [player.hand.back().id]}, {"count": 1}, "", "")
 
 
 ## TP recovery (Design Document 5): 25% at the start of each turn, 100% when a player passes.
@@ -338,7 +351,7 @@ func _set_tp(player: PlayerState, quarters: int) -> void:
 	if player.tp == quarters:
 		return
 	player.tp = quarters
-	_log("Player %d recovers TP: %d%%" % [players.find(player) + 1, quarters * 25])
+	match_log.add(MatchEvent.TP_RECOVERED, players.find(player), {"tp": quarters}, "Player %d recovers TP: %d%%" % [players.find(player) + 1, quarters * 25])
 
 
 func _do_bench(hand_index: int) -> void:
@@ -379,8 +392,10 @@ func _do_evolve(hand_index: int, slot: int) -> void:
 	var evolution := player.hand.pop_at(hand_index) as CardData
 	var target := in_play_at(player, slot)
 	var previous := target.card.name
+	var previous_id := target.card.id
 	target.evolve(evolution, turn)
-	_log("Player %d evolves %s into %s" % [current_index + 1, previous, evolution.name])
+	match_log.add(MatchEvent.EVOLVED, current_index, {"darkner": match_log.darkner(target), "from": previous_id, "into": evolution.id},
+			"Player %d evolves %s into %s" % [current_index + 1, previous, evolution.name])
 
 
 func _do_attach(hand_index: int, slot: int) -> void:
@@ -389,7 +404,8 @@ func _do_attach(hand_index: int, slot: int) -> void:
 	var target := in_play_at(player, slot)
 	target.attached_energy.append(energy)
 	player.energy_attached_this_turn = true
-	_log("Player %d attaches %s to %s" % [current_index + 1, energy.name, target.card.name])
+	match_log.add(MatchEvent.ENERGY_ATTACHED, current_index, {"card": energy.id, "darkner": match_log.darkner(target), "from": MatchEvent.ZONE_HAND},
+			"Player %d attaches %s to %s" % [current_index + 1, energy.name, target.card.name])
 
 
 ## Plays a Trainer card from hand. An Stadium stays in the shared slot and sends the one it replaces
@@ -400,22 +416,26 @@ func _do_play_trainer(hand_index: int) -> void:
 	var card := player.hand.pop_at(hand_index) as CardData
 	match card.trainer_type:
 		CardData.TRAINER_SPELL:
-			_log("Player %d casts %s" % [current_index + 1, card.name])
+			_log_trainer(card, "Player %d casts %s" % [current_index + 1, card.name])
 			operations.spend_tp(player, spell_cost(card))
 		CardData.TRAINER_SUPPORTER:
 			player.supporter_played_this_turn = true
-			_log("Player %d plays %s" % [current_index + 1, card.name])
+			_log_trainer(card, "Player %d plays %s" % [current_index + 1, card.name])
 		CardData.TRAINER_STADIUM:
 			player.stadium_played_this_turn = true
 			if stadium != null:
 				players[stadium_owner].discard.append(stadium)
-				_log("%s is discarded" % stadium.name)
+				match_log.add(MatchEvent.AREA_REPLACED, stadium_owner, {"card": stadium.id, "owner": stadium_owner}, "%s is discarded" % stadium.name)
 			stadium = card
 			stadium_owner = current_index
-			_log("Player %d puts %s into play" % [current_index + 1, card.name])
+			_log_trainer(card, "Player %d puts %s into play" % [current_index + 1, card.name])
 		_:
-			_log("Player %d plays %s" % [current_index + 1, card.name])
+			_log_trainer(card, "Player %d plays %s" % [current_index + 1, card.name])
 	_resolve_trainer(card)
+
+
+func _log_trainer(card: CardData, text: String) -> void:
+	match_log.add(MatchEvent.TRAINER_PLAYED, current_index, {"card": card.id, "trainer_type": card.trainer_type}, text)
 
 
 ## Resolves the effect bound to a Trainer card, then finishes the card. Resolution may stop for a
@@ -428,7 +448,7 @@ func _resolve_trainer(card: CardData) -> void:
 		_finish_trainer(card)
 		return
 	if binding.is_empty():
-		_log("  [effect not implemented]")
+		match_log.add(MatchEvent.EFFECT_MISSING, current_index, {}, "  [effect not implemented]")
 		_finish_trainer(card)
 		return
 	_pending = EffectBindings.run(self, binding, EffectBindings.trainer_context(self, card))
@@ -458,13 +478,16 @@ func _do_retreat(slot: int) -> void:
 func _complete_retreat(slot: int, payment: Array) -> void:
 	var player := current_player()
 	var retreating := player.active
+	var from := match_log.darkner(retreating)
+	var to := match_log.darkner(player.bench[slot])
 	for energy: Variant in payment:
 		retreating.attached_energy.erase(energy)
 		player.discard.append(energy as CardData)
 	player.active = player.bench[slot]
 	player.bench[slot] = retreating
 	player.retreated_this_turn = true
-	_log("Player %d retreats %s for %s" % [current_index + 1, retreating.card.name, player.active.card.name])
+	match_log.add(MatchEvent.RETREATED, current_index, {"from": from, "to": to, "discarded": MatchLog.ids(payment)},
+			"Player %d retreats %s for %s" % [current_index + 1, retreating.card.name, player.active.card.name])
 
 
 ## Uses an activated Ability of the Darkner at a slot (Battle Zone or Field).
@@ -475,7 +498,8 @@ func _do_use_power(slot: int, power_name: String) -> void:
 		if power.name == power_name:
 			binding = EffectBindings.power_binding(self, user, power)
 			_note_power_used(power)
-	_log("%s uses %s" % [user.card.name, power_name])
+	match_log.add(MatchEvent.POWER_USED, current_index, {"darkner": match_log.darkner(user), "power": power_name, "timing": EffectLibrary.TIMING_ACTIVATED},
+			"%s uses %s" % [user.card.name, power_name])
 	_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_POWER))
 	if _pending == null:
 		_finish_power()
@@ -495,7 +519,8 @@ func _finish_power() -> void:
 func _do_attack(attack_index: int) -> void:
 	var attacker := current_player()
 	var attack := attacker.active.attacks()[attack_index]
-	_log("%s uses %s" % [attacker.active.card.name, attack.name])
+	match_log.add(MatchEvent.ATTACK_USED, current_index, {"darkner": match_log.darkner(attacker.active), "attack": attack.name},
+			"%s uses %s" % [attacker.active.card.name, attack.name])
 	attacker.attack_used_this_turn = attack.name
 	operations.begin_attack()
 
@@ -504,7 +529,7 @@ func _do_attack(attack_index: int) -> void:
 	if binding.is_empty():
 		if attack.has_effect():
 			# Known divergence (4.8): without a card effect entry only the printed number is dealt.
-			_log("  [effect not implemented]")
+			match_log.add(MatchEvent.EFFECT_MISSING, current_index, {}, "  [effect not implemented]")
 		operations.deal_attack_damage(context, attack.damage)
 		_finish_attack()
 		return
@@ -531,7 +556,9 @@ func _do_choose(option: int) -> void:
 	var choice := _pending
 	_pending = null
 	var picked := choice.option(option)
-	_log("  Player %d chooses: %s" % [choice.chooser + 1, picked["label"]])
+	# Only the chooser sees the answer; what it leads to has events of its own.
+	match_log.add_secret(MatchEvent.CHOICE_ANSWERED, choice.chooser, {"kind": choice.kind, "option": option, "label": str(picked["label"])},
+			"  Player %d chooses: %s" % [choice.chooser + 1, picked["label"]])
 
 	match choice.resume:
 		PendingChoice.RESUME_EFFECT:
@@ -555,7 +582,8 @@ func _do_choose(option: int) -> void:
 				_offer_on_play()
 				return
 			_note_power_used(power)
-			_log("%s uses %s" % [_on_play_user.card.name, power.name])
+			match_log.add(MatchEvent.POWER_USED, current_index, {"darkner": match_log.darkner(_on_play_user), "power": power.name, "timing": EffectLibrary.TIMING_ON_PLAY},
+					"%s uses %s" % [_on_play_user.card.name, power.name])
 			var binding := EffectBindings.power_binding(self, _on_play_user, power)
 			_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, _on_play_user, EffectContext.KIND_POWER))
 			if _pending == null:
@@ -599,7 +627,8 @@ func _continue_attack() -> void:
 		var power := trigger["power"] as PowerData
 		var binding := EffectBindings.power_binding(self, user, power)
 		_note_power_used(power)
-		_log("%s: %s" % [user.card.name, power.name])
+		match_log.add(MatchEvent.POWER_USED, current_index, {"darkner": match_log.darkner(user), "power": power.name, "timing": EffectLibrary.TIMING_ON_ATTACK_DAMAGE},
+				"%s: %s" % [user.card.name, power.name])
 		_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_TRIGGER))
 		if _pending != null:
 			return
@@ -626,7 +655,7 @@ func _do_use_area() -> void:
 	var player := current_player()
 	var used := player.powers_used_this_turn
 	used[stadium.name] = int(used.get(stadium.name, 0)) + 1
-	_log("Player %d uses %s" % [current_index + 1, stadium.name])
+	match_log.add(MatchEvent.AREA_USED, current_index, {"card": stadium.id}, "Player %d uses %s" % [current_index + 1, stadium.name])
 	var binding := EffectBindings.area_binding(self, EffectLibrary.TIMING_AREA_ACTION)
 	_pending = EffectBindings.run(self, binding, EffectBindings.area_context(self, null))
 	if _pending == null:
@@ -640,7 +669,8 @@ func _resolve_field_entries() -> void:
 		var binding := EffectBindings.area_binding(self, EffectLibrary.TIMING_ON_PUT_ONTO_FIELD)
 		if binding.is_empty():
 			continue
-		_log("%s: %s" % [stadium.name, darkner.card.name])
+		var entered := match_log.darkner(darkner)
+		match_log.add(MatchEvent.AREA_TRIGGERED, int(entered["side"]), {"card": stadium.id, "darkner": entered}, "%s: %s" % [stadium.name, darkner.card.name])
 		if EffectBindings.run(self, binding, EffectBindings.area_context(self, darkner)) != null:
 			push_error("MatchEngine: %s asked a question while resolving on_put_onto_field" % stadium.name)
 
@@ -688,7 +718,3 @@ static func slot_name(slot: int) -> String:
 
 func _opponent_index() -> int:
 	return 1 - current_index
-
-
-func _log(text: String) -> void:
-	events.append(text)

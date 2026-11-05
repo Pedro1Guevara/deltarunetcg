@@ -967,6 +967,83 @@ func _run() -> void:
 			"the player who answers sees the legal actions, even when it is not their turn")
 	expect(promote_view.view_for(view_promoter).me().active == null, "an empty Battle Zone shows as empty")
 
+	print("== events")
+	var watched := battle("jevil", ["chaos_energy"], "koody")
+	var actor_index := watched.current_index
+	var opponent_index := 1 - actor_index
+	var lines_match := func(engine: MatchEngine) -> bool:
+		var texts: Array[String] = []
+		for event in engine.match_log.entries:
+			if not event.text.is_empty():
+				texts.append(event.text)
+		return texts == engine.events
+	expect(lines_match.call(watched), "every line of the log is the text of an event, in order")
+	var turn_draws := watched.events_for(actor_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and event.text.is_empty())
+	var opponent_draws := watched.events_for(opponent_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and event.text.is_empty())
+	expect(not turn_draws.is_empty() and (turn_draws.back() as MatchEvent).data["cards"].size() == 1 and (opponent_draws.back() as MatchEvent).data == {"count": 1},
+			"a turn's draw is an event without a line: the player sees the card, the opponent only that one was drawn")
+	watched.opponent_player().active.damage = 20
+	var before_attack := watched.match_log.entries.size()
+	watched.apply({"type": "attack", "attack_index": 0})
+	var attack_events := watched.events_for(opponent_index, before_attack)
+	var damage := attack_events.filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DAMAGE)[0] as MatchEvent
+	expect(attack_events[0].type == MatchEvent.ATTACK_USED and attack_events[0].data["attack"] == "Slash"
+			and damage.data == {"darkner": {"side": opponent_index, "slot": -1, "card": "koody"}, "amount": 20, "kind": MatchOperations.DAMAGE_ATTACK, "hp_left": 0},
+			"an attack is events with data: who attacked with what, and 20 damage to Koody in the Battle Zone, 0 HP left (%s)" % damage.data)
+	var knockout := attack_events.filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.KNOCKED_OUT)
+	var prize_seen := watched.events_for(actor_index, before_attack).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.PRIZE_TAKEN)
+	var prize_hidden := attack_events.filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.PRIZE_TAKEN)
+	expect(knockout.size() == 1 and prize_seen.size() == 1 and (prize_seen[0] as MatchEvent).data.has("card") and not (prize_hidden[0] as MatchEvent).data.has("card"),
+			"the Mercy Card taken is shown to its taker only")
+
+	var revealing := battle("jevil", [], "tenna")
+	revealing.current_player().hand.assign(cards(["glowshard"]))
+	revealing.current_player().deck.assign(cards(["chaos_energy", "kris"]))
+	var searcher_index := revealing.current_index
+	var before_search := revealing.match_log.entries.size()
+	play(revealing, "Play Glowshard (Item)")
+	var chooser_sees := revealing.events_for(searcher_index, before_search)
+	var watcher_sees := revealing.events_for(1 - searcher_index, before_search)
+	pick(revealing, "Take Chaos Energy")
+	var taken := revealing.events_for(1 - searcher_index, before_search).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.CARD_MOVED)
+	expect(taken.size() == 1 and (taken[0] as MatchEvent).data == {"card": "chaos_energy", "from": MatchEvent.ZONE_DECK, "to": MatchEvent.ZONE_HAND},
+			"a search for a kind of card shows the opponent the card taken, as in the Pokémon TCG")
+	var answers_seen := revealing.events_for(searcher_index, before_search).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.CHOICE_ANSWERED)
+	var answers_hidden := revealing.events_for(1 - searcher_index, before_search).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.CHOICE_ANSWERED)
+	expect(answers_seen.size() == 2 and answers_hidden.is_empty() and chooser_sees.size() == watcher_sees.size(),
+			"the answers to a question are the chooser's alone: the opponent sees what they lead to")
+	var unrevealed := battle("jevil", [], "tenna")
+	var holder := unrevealed.current_player()
+	holder.deck.assign(cards(["kris", "guei"]))
+	var before_take := unrevealed.match_log.entries.size()
+	unrevealed.operations.take_from_deck(holder, [holder.deck[0]] as Array[CardData], false)
+	var owner_view := unrevealed.events_for(unrevealed.current_index, before_take)[0]
+	var other_view := unrevealed.events_for(1 - unrevealed.current_index, before_take)[0]
+	expect(owner_view.data["card"] == "kris" and not other_view.data.has("card") and other_view.text.contains("a card") and not other_view.text.contains("Kris"),
+			"a card taken by a search for any card is hidden from the opponent, in data and in text")
+
+	var leaks := ""
+	for seed in 6:
+		var leaky := MatchEngine.new()
+		leaky.effects = library
+		leaky.start(deck({"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "kris": 2, "cd_bagel": 2, "recruit_manual": 2, "sans": 1, "berdly": 1}),
+				deck({"jevil": 4, "tenna": 4, "guei": 4, "chaos_energy": 18}), rules, Rng.new(seed))
+		var event_picker := RandomNumberGenerator.new()
+		event_picker.seed = seed
+		for _step in 300:
+			if leaky.is_over():
+				break
+			var options := leaky.legal_actions()
+			leaky.apply(options[event_picker.randi_range(0, options.size() - 1)])
+		for viewer in 2:
+			for event in leaky.events_for(viewer, 0):
+				var private_type := [MatchEvent.DREW, MatchEvent.PRIZE_TAKEN, MatchEvent.MULLIGAN_DRAWS].has(event.type)
+				if event.player != viewer and ((private_type and (event.data.has("cards") or event.data.has("card"))) or event.type == MatchEvent.CHOICE_ANSWERED):
+					leaks = "seed %d viewer %d: %s %s" % [seed, viewer, event.type, event.data]
+		if not lines_match.call(leaky):
+			leaks = "seed %d: the log lines and the events differ" % seed
+	expect(leaks.is_empty(), "in random rounds no player's view of the events holds the other's draws, Mercy Cards or answers: %s" % leaks)
+
 	print("== replays")
 	var recorded := start_round(MatchRules.deltarune().with_prize_count(1), 12)
 	finish_setup(recorded)
