@@ -8,8 +8,6 @@ extends RefCounted
 
 const ROLE_EFFECT := "effect"
 const ROLE_CHECK := "check"
-## The answer that ends a choice of several cards (_choose_several).
-const CONFIRM := "__confirm__"
 
 ## name -> {role, params: {name: type}, returns: type or "", attack_only: bool}
 const DECLARATIONS := {
@@ -196,19 +194,19 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 		"direct_damage":
 			return operations.deal_direct_damage(args["target"] as CardInPlay, int(args["amount"]))
 		"discard_attached_energy_cards":
-			return _discard_energy_cards(context, args["target"] as CardInPlay, str(args["energy_type"]), int(args["count"]))
+			return EnergyEffects.discard_energy_cards(context, args["target"] as CardInPlay, str(args["energy_type"]), int(args["count"]))
 		"discard_all_attached_energy_cards":
-			return _discard_energy_cards(context, args["target"] as CardInPlay, EffectTypes.ANY_ENERGY, -1)
+			return EnergyEffects.discard_energy_cards(context, args["target"] as CardInPlay, EffectTypes.ANY_ENERGY, -1)
 		"draw_cards":
 			return operations.draw_cards(args["player"] as PlayerState, int(args["count"]))
 		"count_damage_counters":
 			return floori((args["target"] as CardInPlay).damage / 10.0)
 		"count_attached_energy_cards":
-			return _matching_cards(args["target"] as CardInPlay, str(args["energy_type"])).size()
+			return EnergyEffects.matching_cards(args["target"] as CardInPlay, str(args["energy_type"])).size()
 		"count_attached_energy_units":
-			return _count_units((args["target"] as CardInPlay).energy_pool(), str(args["energy_type"]))
+			return EnergyEffects.count_units((args["target"] as CardInPlay).energy_pool(), str(args["energy_type"]))
 		"count_unpaid_energy_units":
-			return _count_unpaid_units(context, str(args["energy_type"]))
+			return EnergyEffects.count_unpaid_units(context, str(args["energy_type"]))
 		"count_benched":
 			return (args["player"] as PlayerState).bench.size()
 		"multiply":
@@ -228,10 +226,10 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 			return placed
 		"attach_from_discard_to_benched":
 			var owner := args["player"] as PlayerState
-			return _attach_to_benched(context, owner, owner.discard, args["filter"] as Array, false)
+			return CardMoves.attach_to_benched(context, owner, owner.discard, args["filter"] as Array, false)
 		"attach_from_hand_to_benched":
 			var holder := args["player"] as PlayerState
-			return _attach_to_benched(context, holder, holder.hand, args["filter"] as Array, true)
+			return CardMoves.attach_to_benched(context, holder, holder.hand, args["filter"] as Array, true)
 		"count_types_on_bench":
 			var types: Array[String] = []
 			for darkner in (args["player"] as PlayerState).bench:
@@ -240,7 +238,7 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 						types.append(type)
 			return types.size()
 		"choose_darkner":
-			return _choose_darkner(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
+			return EffectChoices.choose_darkner(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
 		"is_knocked_out":
 			return 1 if (args["target"] as CardInPlay).remaining_hp() <= 0 else 0
 		"take_extra_turn":
@@ -270,23 +268,23 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 						copies += 1
 			return copies
 		"switch_in":
-			return _switch_in(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
+			return CardMoves.switch_in(context, args["player"] as PlayerState, args["chooser"] as PlayerState)
 		"shuffle_hand_into_deck":
 			return operations.shuffle_hand_into_deck(args["player"] as PlayerState)
 		"search_deck":
-			return _search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), false)
+			return CardMoves.search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), false)
 		"search_deck_to_discard":
-			return _search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), true)
+			return CardMoves.search_deck(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]), true)
 		"discard_from_hand":
-			return _discard_from_hand(context, args["player"] as PlayerState, int(args["count"]))
+			return CardMoves.discard_from_hand(context, args["player"] as PlayerState, int(args["count"]))
 		"discard_hand":
 			return operations.discard_from_hand(args["player"] as PlayerState, (args["player"] as PlayerState).hand.duplicate())
 		"put_hand_on_bottom_of_deck":
 			return operations.put_hand_on_bottom_of_deck(args["player"] as PlayerState)
 		"take_from_discard":
-			return _take_from_discard(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]))
+			return CardMoves.take_from_discard(context, args["player"] as PlayerState, args["filter"] as Array, int(args["count"]))
 		"discard_energy_in_play":
-			return _discard_energy_in_play(context, args["player"] as PlayerState, args["chooser"] as PlayerState,
+			return EnergyEffects.discard_energy_in_play(context, args["player"] as PlayerState, args["chooser"] as PlayerState,
 					args["filter"] as Array, int(args["count"]))
 	push_error("AtomicEffects: '%s' is not an effect" % name)
 	return null
@@ -297,7 +295,7 @@ static func check(name: String, context: EffectContext, args: Dictionary) -> boo
 		"attack_not_used_last_turn":
 			return context.attack == null or (args["player"] as PlayerState).attack_used_last_turn != context.attack.name
 		"has_cards_in_hand":
-			return _hand_without_card_played(context, args["player"] as PlayerState).size() >= int(args["count"])
+			return CardMoves.hand_without_card_played(context, args["player"] as PlayerState).size() >= int(args["count"])
 		"has_benched":
 			return (args["player"] as PlayerState).bench.size() >= int(args["count"])
 		"has_cards_in_deck":
@@ -314,286 +312,9 @@ static func check(name: String, context: EffectContext, args: Dictionary) -> boo
 			return found >= int(args["count"])
 		"has_attached_energy_cards":
 			var target := args["target"] as CardInPlay
-			return _matching_cards(target, str(args["energy_type"])).size() >= int(args["count"])
+			return EnergyEffects.matching_cards(target, str(args["energy_type"])).size() >= int(args["count"])
 	push_error("AtomicEffects: '%s' is not a check" % name)
 	return false
-
-
-## Discards count matching Energy cards (-1 for all), chosen with _pick_cards().
-static func _discard_energy_cards(context: EffectContext, target: CardInPlay, energy_type: String, count: int) -> Variant:
-	var prompt := "Choose %s to discard from %s" % ["an Energy card" if count == 1 else "%d Energy cards" % count, target.card.name]
-	var picked: Variant = _pick_cards(context, context.player, _matching_cards(target, energy_type), count, prompt,
-			"Discard", " from %s" % target.card.name)
-	if picked is String:
-		return picked
-	return context.operations.discard_energy_cards(target, picked as Array[CardData])
-
-## chooser picks which Darkner on player's Field goes to the Battle Zone. A Field of one is
-## switched in without asking. Returns 1 when a Darkner was switched in, 0 otherwise.
-static func _switch_in(context: EffectContext, player: PlayerState, chooser: PlayerState) -> Variant:
-	if player.bench.is_empty() or player.active == null:
-		return 0
-	var slot := 0
-	if not context.selection.is_empty():
-		slot = int(context.selection[0])
-	elif player.bench.size() > 1:
-		var options: Array = []
-		for index in player.bench.size():
-			options.append({
-				"label": "Switch in %s (%s)" % [player.bench[index].card.name, MatchEngine.slot_name(index)],
-				"value": index,
-				"shows": player.bench[index],
-			})
-		return context.ask(chooser, "Choose the Darkner to switch into the Battle Zone", options)
-	context.operations.switch_in(player, slot)
-	return 1
-
-## player looks through their deck for up to count cards that match filters, puts them into
-## their hand (their discard pile when to_discard) and shuffles the deck. The whole deck is
-## shown while they choose, in its real order with the top card first, since the search ends
-## in a shuffle anyway. They are asked even when nothing matches, so a search is also a look at
-## the deck (Design Document 3.3). The deck is hidden, so a search may find nothing: the player
-## may confirm with fewer cards than count, or none. Returns how many cards were found.
-static func _search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int, to_discard: bool) -> Variant:
-	var verb := "Discard" if to_discard else "Take"
-	var prompt := "Search your deck for %s" % CardFilter.describe(filters)
-	if to_discard:
-		prompt += " to discard"
-	var top_first := player.deck.duplicate()
-	top_first.reverse()
-	var matching := CardFilter.select(player.deck, filters, [])
-	var picked: Variant = _choose_several(context, player, prompt, _each_card_options(matching, verb, ""), 0, count,
-			"%s nothing" % verb, top_first)
-	if picked is String:
-		return picked
-	var cards: Array[CardData] = []
-	cards.assign(picked as Array)
-	if to_discard:
-		context.operations.discard_from_deck(player, cards)
-	else:
-		context.operations.take_from_deck(player, cards)
-	context.operations.shuffle_deck(player)
-	return cards.size()
-
-
-## player puts up to count cards that match filters from their discard pile into their hand,
-## chosen with _pick_cards(). Returns how many cards were taken.
-static func _take_from_discard(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
-	var prompt := "Choose %s to put into your hand from your discard pile" % ["a card" if count == 1 else "%d cards" % count]
-	var picked: Variant = _pick_cards(context, player, CardFilter.select(player.discard, filters, []), count, prompt, "Take", "")
-	if picked is String:
-		return picked
-	return context.operations.take_from_discard(player, picked as Array[CardData])
-
-
-## chooser discards up to count Energy cards that match filters from among every Darkner player
-## has in play, chosen with _choose_several(). Nothing is asked when the choice does not
-## matter. Returns how many cards were discarded.
-static func _discard_energy_in_play(context: EffectContext, player: PlayerState, chooser: PlayerState, filters: Array, count: int) -> Variant:
-	var holders := {}
-	var items: Array = []
-	var labels: Array[String] = []
-	for slot in range(-1, player.bench.size()):
-		var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
-		if target == null:
-			continue
-		for energy in CardFilter.select(target.attached_energy, filters, []):
-			holders[energy] = target
-			var label := "Discard %s from %s (%s)" % [energy.name, target.card.name, MatchEngine.slot_name(slot)]
-			items.append({"label": label, "value": energy, "shows": energy})
-			if not labels.has(label):
-				labels.append(label)
-	var picked: Array = []
-	if items.size() <= count or labels.size() == 1:
-		for index in mini(count, items.size()):
-			picked.append(items[index]["value"])
-	else:
-		var noun := "%s attached to a Darkner" % CardFilter.describe(filters) if count == 1 \
-				else "%d %s attached to Darkners" % [count, CardFilter.describe(filters)]
-		var several: Variant = _choose_several(context, chooser, "Choose %s to discard" % noun, items, count, count, "", [])
-		if several is String:
-			return several
-		picked = several as Array
-
-	var discarded := 0
-	for energy: Variant in picked:
-		var cards: Array[CardData] = [energy as CardData]
-		discarded += context.operations.discard_energy_cards(holders[energy] as CardInPlay, cards)
-	return discarded
-
-
-## player discards count cards from their hand, other than the ACT card being played, chosen
-## with _pick_cards(). Returns how many cards were discarded.
-static func _discard_from_hand(context: EffectContext, player: PlayerState, count: int) -> Variant:
-	var prompt := "Choose %s to discard from your hand" % ["a card" if count == 1 else "%d cards" % count]
-	var picked: Variant = _pick_cards(context, player, _hand_without_card_played(context, player), count, prompt, "Discard", "")
-	if picked is String:
-		return picked
-	return context.operations.discard_from_hand(player, picked as Array[CardData])
-
-
-## chooser picks count of candidates (all of them when count is -1 or there are no more). When
-## the choice does not matter, because there are no more candidates than needed or they are all
-## the same card, they are picked without asking. Otherwise they pick with _choose_several().
-## Returns Array[CardData], or PENDING while waiting for an answer.
-static func _pick_cards(context: EffectContext, chooser: PlayerState, candidates: Array[CardData], count: int,
-		prompt: String, verb: String, suffix: String) -> Variant:
-	if count < 0 or candidates.size() <= count or _all_same_card(candidates):
-		var taken := candidates.size() if count < 0 else mini(count, candidates.size())
-		return candidates.slice(candidates.size() - taken)
-	var several: Variant = _choose_several(context, chooser, prompt, _each_card_options(candidates, verb, suffix), count, count, "", [])
-	if several is String:
-		return several
-	var picked: Array[CardData] = []
-	picked.assign(several as Array)
-	return picked
-
-
-## Asks chooser to pick between minimum and maximum of items ({label, value, shows}, each value
-## a distinct object), one at a time. A picked item is offered again as "Undo: ..." until the
-## chooser confirms, which they can do once at least minimum are picked (Design Document 4.1).
-## When several can be picked, every item is its own option, copies numbered; when one can,
-## items with the same label are the same choice and offered once. Answers accumulate in
-## context.selection up to the confirmation (see _answers_after_choice()). Returns the picked
-## values in the order they were picked, or PENDING while waiting for an answer.
-static func _choose_several(context: EffectContext, chooser: PlayerState, prompt: String, items: Array,
-		minimum: int, maximum: int, nothing_label: String, shown: Array[CardData]) -> Variant:
-	var picked: Array = []
-	for answer: Variant in context.selection:
-		if answer is String and answer == CONFIRM:
-			return picked
-		if picked.has(answer):
-			picked.erase(answer)
-		else:
-			picked.append(answer)
-	if maximum == 1:
-		var distinct: Array = []
-		var seen: Array[String] = []
-		for item: Variant in items:
-			var label := str((item as Dictionary)["label"])
-			if picked.has((item as Dictionary)["value"]) or not seen.has(label):
-				seen.append(label)
-				distinct.append(item)
-		items = distinct
-	var labels := _numbered_labels(items)
-	var options: Array = []
-	for index in items.size():
-		var item := items[index] as Dictionary
-		var chosen := picked.has(item["value"])
-		if not chosen and picked.size() >= maximum:
-			continue
-		options.append({"label": ("Undo: %s" % labels[index]) if chosen else labels[index], "value": item["value"], "shows": item["shows"]})
-	if picked.size() >= minimum:
-		options.append({"label": nothing_label if picked.is_empty() else "Confirm", "value": CONFIRM})
-	if maximum >= 2:
-		prompt = "%s (%d/%d chosen)" % [prompt, picked.size(), maximum]
-	return context.ask_showing(chooser, prompt, options, shown)
-
-
-## The answers given after a choice made with _choose_several() was confirmed, for the next
-## question of the same effect. All of them when no confirmation was needed.
-static func _answers_after_choice(context: EffectContext) -> Array:
-	var index := -1
-	for position in context.selection.size():
-		var answer: Variant = context.selection[position]
-		if answer is String and answer == CONFIRM:
-			index = position
-			break
-	return context.selection.slice(index + 1)
-
-
-## One option per card, copies included, labelled "<verb> <name><suffix>".
-static func _each_card_options(cards: Array[CardData], verb: String, suffix: String) -> Array:
-	var items: Array = []
-	for card in cards:
-		items.append({"label": "%s %s%s" % [verb, card.name, suffix], "value": card, "shows": card})
-	return items
-
-
-## The items' labels, with " #1", " #2"... added to labels that repeat.
-static func _numbered_labels(items: Array) -> Array[String]:
-	var totals := {}
-	for item: Variant in items:
-		var label := str((item as Dictionary)["label"])
-		totals[label] = int(totals.get(label, 0)) + 1
-	var seen := {}
-	var labels: Array[String] = []
-	for item: Variant in items:
-		var label := str((item as Dictionary)["label"])
-		if int(totals[label]) == 1:
-			labels.append(label)
-			continue
-		seen[label] = int(seen.get(label, 0)) + 1
-		labels.append("%s #%d" % [label, int(seen[label])])
-	return labels
-
-
-## A player's hand without the ACT card being played: requirements are checked while it is
-## still in the hand, and "other cards" never counts it.
-static func _hand_without_card_played(context: EffectContext, player: PlayerState) -> Array[CardData]:
-	var cards: Array[CardData] = []
-	for card in player.hand:
-		if card != context.card:
-			cards.append(card)
-	return cards
-
-## player attaches 1 card that matches filters from pile (their discard pile, or their hand
-## when from_hand) to 1 Darkner on their Field. They choose the card with _pick_cards(), then
-## the Darkner, each only when the choice matters. Returns 1 when a card was attached, 0 when
-## there was nothing to attach or nowhere to attach it.
-static func _attach_to_benched(context: EffectContext, player: PlayerState, pile: Array[CardData], filters: Array, from_hand: bool) -> Variant:
-	var candidates := CardFilter.select(pile, filters, [])
-	if candidates.is_empty() or player.bench.is_empty():
-		return 0
-	var prompt := "Choose a card from your %s to attach" % ["hand" if from_hand else "discard pile"]
-	var picked: Variant = _pick_cards(context, player, candidates, 1, prompt, "Attach", "")
-	if picked is String:
-		return picked
-	var energy := (picked as Array[CardData])[0]
-	var answers := _answers_after_choice(context)
-	var slot := 0
-	if not answers.is_empty():
-		slot = int(answers[0])
-	elif player.bench.size() > 1:
-		var targets: Array = []
-		for index in player.bench.size():
-			targets.append({
-				"label": "Attach %s to %s (%s)" % [energy.name, player.bench[index].card.name, MatchEngine.slot_name(index)],
-				"value": index,
-				"shows": player.bench[index],
-			})
-		return context.ask(player, "Choose a Darkner on your Field to attach %s to" % energy.name, targets)
-	if from_hand:
-		context.operations.attach_from_hand(player, energy, player.bench[slot])
-	else:
-		context.operations.attach_from_discard(player, energy, player.bench[slot])
-	return 1
-
-
-## chooser picks one of player's Darkners in play, in the Battle Zone or on the Field. Only one
-## Darkner is picked without asking. Returns it, or null when player has none.
-static func _choose_darkner(context: EffectContext, player: PlayerState, chooser: PlayerState) -> Variant:
-	var slots: Array[int] = []
-	for slot in range(-1, player.bench.size()):
-		if (player.active if slot == -1 else player.bench[slot]) != null:
-			slots.append(slot)
-	if slots.is_empty():
-		return null
-	var slot := slots[0]
-	if not context.selection.is_empty():
-		slot = int(context.selection[0])
-	elif slots.size() > 1:
-		var options: Array = []
-		for index in slots:
-			var darkner: CardInPlay = player.active if index == -1 else player.bench[index]
-			options.append({
-				"label": "Choose %s (%s, %d/%d HP)" % [darkner.card.name, MatchEngine.slot_name(index), darkner.remaining_hp(), darkner.card.hp],
-				"value": index,
-				"shows": darkner,
-			})
-		var whose := "your" if player == chooser else "your opponent's"
-		return context.ask(chooser, "Choose one of %s Darkners" % whose, options)
-	return player.active if slot == -1 else player.bench[slot]
 
 
 ## player chooses whether to spend amount TP, in quarters. Without enough TP nothing is asked
@@ -610,45 +331,3 @@ static func _pay_tp(context: EffectContext, player: PlayerState, amount: int) ->
 		return 0
 	context.operations.spend_tp(player, amount)
 	return 1
-
-static func _matching_cards(target: CardInPlay, energy_type: String) -> Array[CardData]:
-	var result: Array[CardData] = []
-	for energy in target.attached_energy:
-		if energy_type == EffectTypes.ANY_ENERGY or energy.provides.has(energy_type):
-			result.append(energy)
-	return result
-
-
-static func _all_same_card(cards: Array[CardData]) -> bool:
-	for card in cards:
-		if card.id != cards[0].id:
-			return false
-	return true
-
-
-static func _count_units(pool: Array[String], energy_type: String) -> int:
-	if energy_type == EffectTypes.ANY_ENERGY:
-		return pool.size()
-	return pool.count(energy_type)
-
-
-## Energy units of the given type left over after paying the resolving attack's cost, paying
-## Colorless with other types first so as much of the given type as possible is left.
-static func _count_unpaid_units(context: EffectContext, energy_type: String) -> int:
-	var pool := context.source.energy_pool()
-	var colorless_needed := EnergyPayment.pay_typed(pool, context.engine.attack_cost(context.source, context.attack))
-	if colorless_needed == -1:
-		return 0
-
-	if energy_type != EffectTypes.ANY_ENERGY:
-		var others := 0
-		var matching := 0
-		for energy in pool:
-			if energy == energy_type:
-				matching += 1
-			else:
-				others += 1
-		colorless_needed -= mini(colorless_needed, others)
-		return maxi(matching - colorless_needed, 0)
-
-	return maxi(pool.size() - colorless_needed, 0)
