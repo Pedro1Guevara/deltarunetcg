@@ -98,7 +98,7 @@ func next_promotion() -> PendingChoice:
 				"value": slot,
 				"shows": darkner,
 			})
-		return PendingChoice.new(index, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
+		return PendingChoice.new(index, PendingChoice.KIND_PROMOTE, {}, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
 	return null
 
 

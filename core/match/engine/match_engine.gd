@@ -89,6 +89,23 @@ func choice_chooser() -> int:
 	return -1 if _pending == null else _pending.chooser
 
 
+## What the open question is about (a PendingChoice.KIND_ constant), or an empty string.
+func choice_kind() -> String:
+	return "" if _pending == null else _pending.kind
+
+
+## What the open question's kind needs to know (see PendingChoice), or an empty Dictionary.
+func choice_details() -> Dictionary:
+	return {} if _pending == null else _pending.details.duplicate()
+
+
+## An option of the open question: {"label", "value"} and, for some kinds, "pick" or "shows".
+func choice_option(index: int) -> Dictionary:
+	if _pending == null or index < 0 or index >= _pending.options.size():
+		return {}
+	return _pending.option(index).duplicate()
+
+
 ## Cards shown to the chooser while they answer, such as their deck during a search.
 func choice_revealed() -> Array[CardData]:
 	var shown: Array[CardData] = []
@@ -127,9 +144,12 @@ func legal_actions() -> Array[Dictionary]:
 	return LegalActions.for_turn(self)
 
 
-func apply(action: Dictionary) -> void:
-	if not legal_actions().has(action):
-		push_error("MatchEngine: illegal action %s" % action)
+## Applies a legal action. An action is identified by its fields, never by its label, which
+## is only the words shown for it: {"type": "end_turn"} is the same action as the one listed.
+func apply(requested: Dictionary) -> void:
+	var action := _legal_action_like(requested)
+	if action.is_empty():
+		push_error("MatchEngine: illegal action %s" % requested)
 		return
 
 	match str(action["type"]):
@@ -153,6 +173,32 @@ func apply(action: Dictionary) -> void:
 			_end_turn(false)
 		"choose":
 			_do_choose(int(action["option"]))
+
+
+## The legal action with the same fields as requested, label aside, or an empty Dictionary.
+## Numbers match by value, so an index that came back from JSON as a float still matches.
+func _legal_action_like(requested: Dictionary) -> Dictionary:
+	for action in legal_actions():
+		if _same_action(action, requested):
+			return action
+	return {}
+
+
+static func _same_action(listed: Dictionary, requested: Dictionary) -> bool:
+	for key: Variant in listed:
+		if key == "label":
+			continue
+		if not requested.has(key):
+			return false
+		var a: Variant = listed[key]
+		var b: Variant = requested[key]
+		var numbers := (a is int or a is float) and (b is int or b is float)
+		if (numbers and not is_equal_approx(float(a), float(b))) or (not numbers and a != b):
+			return false
+	for key: Variant in requested:
+		if key != "label" and not listed.has(key):
+			return false
+	return true
 
 
 ## Opens the setup's next question, or starts the first turn when there is none left.
@@ -237,7 +283,7 @@ func _offer_on_play() -> void:
 		if not EffectBindings.on_play_powers(self, _on_play_user).has(power):
 			_on_play_queue.pop_front()
 			continue
-		_pending = PendingChoice.new(current_index, "Use %s?" % power.name, [
+		_pending = PendingChoice.new(current_index, PendingChoice.KIND_USE_ABILITY, {"power": power.name}, "Use %s?" % power.name, [
 			{"label": "Use %s (%s)" % [power.name, _on_play_user.card.name], "value": true, "shows": _on_play_user},
 			{"label": "Don't use %s" % power.name, "value": false},
 		], PendingChoice.RESUME_ON_PLAY, {})
@@ -328,7 +374,7 @@ func _do_retreat(slot: int) -> void:
 		var payment: Array = [] if options.is_empty() else (options[0] as Dictionary)["value"] as Array
 		_complete_retreat(slot, payment)
 		return
-	_pending = PendingChoice.new(current_index, "Choose the Energy to discard to flee %s" % retreating.card.name,
+	_pending = PendingChoice.new(current_index, PendingChoice.KIND_FLEE_PAYMENT, {}, "Choose the Energy to discard to flee %s" % retreating.card.name,
 			options, PendingChoice.RESUME_RETREAT, {"slot": slot})
 
 

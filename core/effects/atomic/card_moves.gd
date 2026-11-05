@@ -26,7 +26,8 @@ static func switch_in(context: EffectContext, player: PlayerState, chooser: Play
 				"value": index,
 				"shows": player.bench[index],
 			})
-		return context.ask(chooser, "Choose the Darkner to switch into the Battle Zone", options)
+		var details := {"side": PendingChoice.SIDE_OWN if player == chooser else PendingChoice.SIDE_OPPONENT, "purpose": PendingChoice.PURPOSE_SWITCH_IN}
+		return context.ask(chooser, PendingChoice.KIND_CHOOSE_DARKNER, details, "Choose the Darkner to switch into the Battle Zone", options)
 	context.operations.switch_in(player, slot)
 	return 1
 
@@ -58,7 +59,7 @@ static func search_deck(context: EffectContext, player: PlayerState, filters: Ar
 		if not excluded.has(card.name):
 			matching.append(card)
 	var picked: Variant = EffectChoices.choose_several(context, player, prompt, EffectChoices.each_card_options(matching, verb, ""), 0, count,
-			"%s nothing" % verb, top_first)
+			"%s nothing" % verb, top_first, PendingChoice.ZONE_DECK, verb.to_lower())
 	if picked is String:
 		return picked
 	var cards: Array[CardData] = []
@@ -78,7 +79,8 @@ static func search_deck(context: EffectContext, player: PlayerState, filters: Ar
 ## chosen with EffectChoices.pick_cards(). Returns how many cards were taken.
 static func take_from_discard(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
 	var prompt := "Choose %s to put into your hand from your discard pile" % ["a card" if count == 1 else "%d cards" % count]
-	var picked: Variant = EffectChoices.pick_cards(context, player, CardFilter.select(player.discard, filters, []), count, prompt, "Take", "")
+	var picked: Variant = EffectChoices.pick_cards(context, player, CardFilter.select(player.discard, filters, []), count, prompt, "Take", "",
+			PendingChoice.ZONE_DISCARD)
 	if picked is String:
 		return picked
 	return context.operations.take_from_discard(player, picked as Array[CardData])
@@ -90,7 +92,7 @@ static func discard_from_hand(context: EffectContext, player: PlayerState, filte
 	var noun := CardFilter.describe(filters) if not filters.has(CardFilter.ANY) else "card"
 	var prompt := "Choose %s to discard from your hand" % (("a %s" % noun) if count == 1 else "%d %ss" % [count, noun])
 	var candidates := CardFilter.select(hand_without_card_played(context, player), filters, [])
-	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, count, prompt, "Discard", "")
+	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, count, prompt, "Discard", "", PendingChoice.ZONE_HAND)
 	if picked is String:
 		return picked
 	return context.operations.discard_from_hand(player, picked as Array[CardData])
@@ -115,7 +117,8 @@ static func attach_to_benched(context: EffectContext, player: PlayerState, pile:
 	if candidates.is_empty() or player.bench.is_empty():
 		return 0
 	var prompt := "Choose a card from your %s to attach" % ["hand" if from_hand else "discard pile"]
-	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, 1, prompt, "Attach", "")
+	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, 1, prompt, "Attach", "",
+			PendingChoice.ZONE_HAND if from_hand else PendingChoice.ZONE_DISCARD)
 	if picked is String:
 		return picked
 	var energy := (picked as Array[CardData])[0]
@@ -131,7 +134,8 @@ static func attach_to_benched(context: EffectContext, player: PlayerState, pile:
 				"value": index,
 				"shows": player.bench[index],
 			})
-		return context.ask(player, "Choose a Darkner on your Field to attach %s to" % energy.name, targets)
+		var details := {"side": PendingChoice.SIDE_OWN, "purpose": PendingChoice.PURPOSE_ATTACH}
+		return context.ask(player, PendingChoice.KIND_CHOOSE_DARKNER, details, "Choose a Darkner on your Field to attach %s to" % energy.name, targets)
 	if from_hand:
 		context.operations.attach_from_hand(player, energy, player.bench[slot])
 	else:

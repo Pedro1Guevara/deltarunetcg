@@ -70,13 +70,15 @@ func is_waiting() -> bool:
 
 ## Suspends the effect until chooser answers. The effect decides who that is: usually its
 ## own player, but some effects make the opponent choose.
-func ask(chooser: PlayerState, prompt: String, options: Array) -> String:
-	choice = {"chooser": chooser, "prompt": prompt, "options": options, "revealed": []}
+## kind and details say what the question is about (PendingChoice.KIND_).
+func ask(chooser: PlayerState, kind: String, details: Dictionary, prompt: String, options: Array) -> String:
+	choice = {"chooser": chooser, "kind": kind, "details": details, "prompt": prompt, "options": options, "revealed": []}
 	return PENDING
 
 
 ## Like ask(), and shows cards to the chooser while they answer, such as their deck during a
 ## search.
-func ask_showing(chooser: PlayerState, prompt: String, options: Array, shown: Array[CardData]) -> String:
-	choice = {"chooser": chooser, "prompt": prompt, "options": options, "revealed": shown.duplicate()}
+func ask_showing(chooser: PlayerState, kind: String, details: Dictionary, prompt: String, options: Array,
+		shown: Array[CardData]) -> String:
+	choice = {"chooser": chooser, "kind": kind, "details": details, "prompt": prompt, "options": options, "revealed": shown.duplicate()}
 	return PENDING

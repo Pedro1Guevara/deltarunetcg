@@ -1,6 +1,7 @@
 extends Control
 
-## The decks each picker starts on, by decks.json id. Any deck in decks.json can be picked.
+const DECK_SELECT_SCENE := "res://game/screen/debug/deck_select/deck_select.tscn"
+## The decks played when the scene is run on its own, without the deck select screen.
 const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
 const FONT_SIZE := 22
 
@@ -16,9 +17,14 @@ var _log_label: Label
 var _open_group: String = ""
 ## Whether each player's discard pile is shown. Public information, so either can be opened.
 var _discard_open: Array[bool] = [false, false]
-## One deck picker per player, and the decks.json ids in the order the pickers list them.
-var _deck_pickers: Array[OptionButton] = []
-var _deck_ids: Array[String] = []
+## Each player's deck, by decks.json id, and its display name.
+var _deck_ids: Array[String] = DEFAULT_DECKS.duplicate()
+var _deck_names: Array[String] = []
+
+
+## Called by the deck select screen before the scene enters the tree.
+func setup(deck_ids: Array[String]) -> void:
+	_deck_ids = deck_ids.duplicate()
 
 func _ready() -> void:
 	var ui_theme := Theme.new()
@@ -47,6 +53,9 @@ func _build_ui() -> void:
 	columns.add_child(board)
 
 	_status_label = Label.new()
+	# A long prompt wraps onto more lines instead of widening the board past the window.
+	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	board.add_child(_status_label)
 
 	_shared_row = HBoxContainer.new()
@@ -94,19 +103,6 @@ func _build_ui() -> void:
 	_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_scroll.add_child(_log_label)
 
-	var deck_row := HBoxContainer.new()
-	deck_row.add_theme_constant_override("separation", 12)
-	side_panel.add_child(deck_row)
-	for index in 2:
-		var deck_label := Label.new()
-		deck_label.text = "P%d deck" % (index + 1)
-		deck_row.add_child(deck_label)
-		var picker := OptionButton.new()
-		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		picker.clip_text = true
-		deck_row.add_child(picker)
-		_deck_pickers.append(picker)
-
 	var controls := WindowControls.new()
 	add_child(controls)
 
@@ -115,6 +111,7 @@ func _build_ui() -> void:
 	side_panel.add_child(buttons)
 	for entry: Array in [
 		["New match", _start_match],
+		["Change decks", _change_decks],
 		["Window / Fullscreen (F11)", WindowControls.toggle_windowed],
 		["Quit (Esc)", controls.quit],
 	]:
@@ -144,40 +141,37 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 		return
 
 	var deck_defs := decks as Dictionary
-	if deck_defs.is_empty():
-		_show_error("decks.json defines no deck.")
-		return
-	if _deck_ids.is_empty():
-		_fill_deck_pickers(deck_defs)
-	var picked: Array[String] = []
-	for picker in _deck_pickers:
-		picked.append(_deck_ids[picker.selected])
+	for id in _deck_ids:
+		if not deck_defs.has(id):
+			_show_error("decks.json has no deck '%s'." % id)
+			return
+	_deck_names.clear()
+	for id in _deck_ids:
+		_deck_names.append(str((deck_defs[id] as Dictionary).get("name", id)))
+
 
 	_seed = randi()
 	_engine = MatchEngine.new()
 	_engine.effects = DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
 
-	var deck_1 := database.build_deck(deck_defs[picked[0]] as Dictionary)
-	var deck_2 := database.build_deck(deck_defs[picked[1]] as Dictionary)
+	var deck_1 := database.build_deck(deck_defs[_deck_ids[0]] as Dictionary)
+	var deck_2 := database.build_deck(deck_defs[_deck_ids[1]] as Dictionary)
 	# Test decks are smaller than the rules require on purpose: report, do not block.
-	for entry: Array in [[picked[0], deck_1], [picked[1], deck_2]]:
+	for entry: Array in [[_deck_ids[0], deck_1], [_deck_ids[1], deck_2]]:
 		for problem in DeckValidator.validate(entry[1] as Array[CardData], match_rules):
 			push_warning("Deck %s %s" % [entry[0], problem])
 	_engine.start(deck_1, deck_2, match_rules, Rng.new(_seed))
 	_refresh()
 
 
-## Lists every deck in decks.json in both pickers, in file order, each on its default deck.
-## A new pick applies from the next New match.
-func _fill_deck_pickers(deck_defs: Dictionary) -> void:
-	for id: Variant in deck_defs:
-		_deck_ids.append(str(id))
-	for index in _deck_pickers.size():
-		var picker := _deck_pickers[index]
-		for id in _deck_ids:
-			picker.add_item(str((deck_defs[id] as Dictionary).get("name", id)))
-		var default_index := _deck_ids.find(DEFAULT_DECKS[index])
-		picker.select(default_index if default_index != -1 else mini(index, _deck_ids.size() - 1))
+## Goes back to the deck select screen, with this match's decks selected.
+func _change_decks() -> void:
+	var deck_select: Node = (load(DECK_SELECT_SCENE) as PackedScene).instantiate()
+	deck_select.call("setup", _deck_ids)
+	var tree := get_tree()
+	tree.root.add_child(deck_select)
+	tree.current_scene = deck_select
+	queue_free()
 
 
 func _refresh() -> void:
@@ -335,7 +329,7 @@ func _fill_player_panel(index: int) -> void:
 		child.queue_free()
 
 	var player := _engine.players[index]
-	var header := "PLAYER %d" % (index + 1)
+	var header := "PLAYER %d (%s)" % [index + 1, _deck_names[index]]
 	var actor := _engine.choice_chooser() if _engine.is_waiting_for_choice() else _engine.current_index
 	if not _engine.is_over() and actor == index:
 		header += "   <- to act"

@@ -9,7 +9,7 @@ extends RefCounted
 static func discard_energy_cards(context: EffectContext, target: CardInPlay, energy_type: String, count: int) -> Variant:
 	var prompt := "Choose %s to discard from %s" % ["an Energy card" if count == 1 else "%d Energy cards" % count, target.card.name]
 	var picked: Variant = EffectChoices.pick_cards(context, context.player, matching_cards(target, energy_type), count, prompt,
-			"Discard", " from %s" % target.card.name)
+			"Discard", " from %s" % target.card.name, PendingChoice.ZONE_IN_PLAY)
 	if picked is String:
 		return picked
 	return context.operations.discard_energy_cards(target, picked as Array[CardData])
@@ -39,7 +39,8 @@ static func discard_energy_in_play(context: EffectContext, player: PlayerState, 
 	else:
 		var noun := "%s attached to a Darkner" % CardFilter.describe(filters) if count == 1 \
 				else "%d %s attached to Darkners" % [count, CardFilter.describe(filters)]
-		var several: Variant = EffectChoices.choose_several(context, chooser, "Choose %s to discard" % noun, items, count, count, "", [])
+		var several: Variant = EffectChoices.choose_several(context, chooser, "Choose %s to discard" % noun, items, count, count, "", [],
+				PendingChoice.ZONE_IN_PLAY, "discard")
 		if several is String:
 			return several
 		picked = several as Array

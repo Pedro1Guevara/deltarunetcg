@@ -359,7 +359,7 @@ static func _pay_tp(context: EffectContext, player: PlayerState, amount: int) ->
 	if not context.operations.can_spend_tp(player, amount):
 		return 0
 	if context.selection.is_empty():
-		return context.ask(player, "Use %d%% TP?" % (amount * 25), [
+		return context.ask(player, PendingChoice.KIND_PAY_TP, {"amount": amount}, "Use %d%% TP?" % (amount * 25), [
 			{"label": "Use %d%% TP" % (amount * 25), "value": 1},
 			{"label": "Don't use TP", "value": 0},
 		])

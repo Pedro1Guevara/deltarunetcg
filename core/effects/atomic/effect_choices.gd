@@ -12,12 +12,14 @@ const CONFIRM := "__confirm__"
 ## the choice does not matter, because there are no more candidates than needed or they are all
 ## the same card, they are picked without asking. Otherwise they pick with choose_several().
 ## Returns Array[CardData], or PENDING while waiting for an answer.
+## zone is where the candidates are (PendingChoice.ZONE_); verb is what happens to them.
 static func pick_cards(context: EffectContext, chooser: PlayerState, candidates: Array[CardData], count: int,
-		prompt: String, verb: String, suffix: String) -> Variant:
+		prompt: String, verb: String, suffix: String, zone: String) -> Variant:
 	if count < 0 or candidates.size() <= count or all_same_card(candidates):
 		var taken := candidates.size() if count < 0 else mini(count, candidates.size())
 		return candidates.slice(candidates.size() - taken)
-	var several: Variant = choose_several(context, chooser, prompt, each_card_options(candidates, verb, suffix), count, count, "", [])
+	var several: Variant = choose_several(context, chooser, prompt, each_card_options(candidates, verb, suffix), count, count, "", [],
+			zone, verb.to_lower())
 	if several is String:
 		return several
 	var picked: Array[CardData] = []
@@ -31,9 +33,10 @@ static func pick_cards(context: EffectContext, chooser: PlayerState, candidates:
 ## When several can be picked, every item is its own option, copies numbered; when one can,
 ## items with the same label are the same choice and offered once. Answers accumulate in
 ## context.selection up to the confirmation (see answers_after_choice()). Returns the picked
-## values in the order they were picked, or PENDING while waiting for an answer.
+## values in the order they were picked, or PENDING while waiting for an answer. zone and action
+## describe the question for players who do not read it (PendingChoice.KIND_PICK_CARDS).
 static func choose_several(context: EffectContext, chooser: PlayerState, prompt: String, items: Array,
-		minimum: int, maximum: int, nothing_label: String, shown: Array[CardData]) -> Variant:
+		minimum: int, maximum: int, nothing_label: String, shown: Array[CardData], zone: String, action: String) -> Variant:
 	var picked: Array = []
 	for answer: Variant in context.selection:
 		if answer is String and answer == CONFIRM:
@@ -58,12 +61,18 @@ static func choose_several(context: EffectContext, chooser: PlayerState, prompt:
 		var chosen := picked.has(item["value"])
 		if not chosen and picked.size() >= maximum:
 			continue
-		options.append({"label": ("Undo: %s" % labels[index]) if chosen else labels[index], "value": item["value"], "shows": item["shows"]})
+		options.append({
+			"label": ("Undo: %s" % labels[index]) if chosen else labels[index],
+			"value": item["value"],
+			"shows": item["shows"],
+			"pick": PendingChoice.PICK_UNDO if chosen else PendingChoice.PICK_ADD,
+		})
 	if picked.size() >= minimum:
-		options.append({"label": nothing_label if picked.is_empty() else "Confirm", "value": CONFIRM})
+		options.append({"label": nothing_label if picked.is_empty() else "Confirm", "value": CONFIRM, "pick": PendingChoice.PICK_CONFIRM})
 	if maximum >= 2:
 		prompt = "%s (%d/%d chosen)" % [prompt, picked.size(), maximum]
-	return context.ask_showing(chooser, prompt, options, shown)
+	var details := {"minimum": minimum, "maximum": maximum, "picked": picked.duplicate(), "zone": zone, "action": action}
+	return context.ask_showing(chooser, PendingChoice.KIND_PICK_CARDS, details, prompt, options, shown)
 
 
 ## The answers given after a choice made with choose_several() was confirmed, for the next
@@ -133,5 +142,6 @@ static func choose_darkner(context: EffectContext, player: PlayerState, chooser:
 				"shows": darkner,
 			})
 		var whose := "your" if player == chooser else "your opponent's"
-		return context.ask(chooser, "Choose one of %s Darkners" % whose, options)
+		var details := {"side": PendingChoice.SIDE_OWN if player == chooser else PendingChoice.SIDE_OPPONENT, "purpose": PendingChoice.PURPOSE_TARGET}
+		return context.ask(chooser, PendingChoice.KIND_CHOOSE_DARKNER, details, "Choose one of %s Darkners" % whose, options)
 	return player.active if slot == -1 else player.bench[slot]

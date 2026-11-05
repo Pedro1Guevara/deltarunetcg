@@ -857,6 +857,61 @@ func _run() -> void:
 	play(feathered, "Play Petal Feather (Item)")
 	expect(feathered.current_player().bench[0].card.name == "Jevil" and feathered.current_player().bench[0].damage == 0, "a Darkner moved from the Battle Zone to the Field gets nothing")
 
+	print("== structured actions and choices")
+	var setup_kinds := start_round(rules, 4)
+	expect([PendingChoice.KIND_COIN_CALL, PendingChoice.KIND_BATTLING_DARKNER].has(setup_kinds.choice_kind()), "setup questions say what they ask (%s)" % setup_kinds.choice_kind())
+	var by_fields := battle("jevil", [], "tenna")
+	var by_fields_turn := by_fields.turn
+	by_fields.apply({"type": "end_turn"})
+	expect(by_fields.turn == by_fields_turn + 1, "an action is identified by its fields: no label needed")
+	by_fields.apply({"type": "end_turn", "label": "Some other words"})
+	expect(by_fields.turn == by_fields_turn + 2, "and the label is ignored")
+
+	var glow := battle("jevil", [], "tenna")
+	glow.current_player().hand.assign(cards(["glowshard"]))
+	glow.current_player().deck.assign(cards(["chaos_energy", "kris"]))
+	play(glow, "Play Glowshard (Item)")
+	var glow_details := glow.choice_details()
+	expect(glow.choice_kind() == PendingChoice.KIND_PICK_CARDS and glow_details["zone"] == PendingChoice.ZONE_DECK and glow_details["action"] == "take"
+			and glow_details["minimum"] == 0 and glow_details["maximum"] == 1, "a search is a pick_cards question from the deck: %s" % [glow_details])
+	expect(glow.choice_option(0)["pick"] == PendingChoice.PICK_ADD and glow.choice_option(1)["pick"] == PendingChoice.PICK_CONFIRM, "each option says whether it adds a card or confirms")
+	glow.apply({"type": "choose", "option": 0.0})
+	expect((glow.choice_details()["picked"] as Array).size() == 1 and glow.choice_option(0)["pick"] == PendingChoice.PICK_UNDO, "an option index that arrives as a float still matches; the picked card is listed and offered as undo")
+
+	var manual_kind := battle("jevil", [], "tenna")
+	manual_kind.current_player().hand.assign(cards(["recruit_manual", "kris", "glowshard", "guei"]))
+	play(manual_kind, "Play Recruit Manual (Item)")
+	var manual_details := manual_kind.choice_details()
+	expect(manual_details["zone"] == PendingChoice.ZONE_HAND and manual_details["action"] == "discard" and manual_details["minimum"] == 2 and manual_details["maximum"] == 2,
+			"discarding 2 from the hand: %s" % [manual_details])
+
+	var switch_kind := battle("jevil", [], "tenna")
+	switch_kind.current_player().bench.append_array([in_play("guei", []), in_play("koody", [])])
+	switch_kind.opponent_player().bench.append_array([in_play("guei", []), in_play("koody", [])])
+	switch_kind.current_player().hand.assign(cards(["petal_feather", "susie"]))
+	play(switch_kind, "Play Petal Feather (Item)")
+	expect(switch_kind.choice_kind() == PendingChoice.KIND_CHOOSE_DARKNER and switch_kind.choice_details() == {"side": PendingChoice.SIDE_OWN, "purpose": PendingChoice.PURPOSE_SWITCH_IN},
+			"Petal Feather: choose one of your own Darkners to switch in")
+	play(switch_kind, "Switch in Guei (Field 1)")
+	play(switch_kind, "Play Susie (Lightner)")
+	expect(switch_kind.choice_details()["side"] == PendingChoice.SIDE_OPPONENT, "Susie: one of the opponent's")
+
+	var tp_kind := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
+	tp_kind.current_player().bench.append(in_play("guei", []))
+	attack(tp_kind, "Refreshing Splash")
+	expect(tp_kind.choice_kind() == PendingChoice.KIND_PAY_TP and tp_kind.choice_details() == {"amount": 1}, "Refreshing Splash asks whether to pay 1 quarter of TP")
+
+	var ability_kind := battle("jevil", [], "tenna")
+	ability_kind.current_player().hand.assign(cards(["balthizard"]))
+	play(ability_kind, "Put Balthizard on the Field")
+	expect(ability_kind.choice_kind() == PendingChoice.KIND_USE_ABILITY and ability_kind.choice_details() == {"power": "Luring Incense"}, "an on-play Ability names itself")
+
+	var promote_kind := battle("jevil", ["chaos_energy"], "koody")
+	promote_kind.opponent_player().bench.append_array([in_play("guei", []), in_play("water_cooler", [])])
+	promote_kind.opponent_player().active.damage = 30
+	attack(promote_kind, "Slash")
+	expect(promote_kind.choice_kind() == PendingChoice.KIND_PROMOTE, "a promotion says so (%s)" % promote_kind.choice_kind())
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()

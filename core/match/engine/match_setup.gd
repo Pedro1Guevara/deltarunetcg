@@ -56,7 +56,7 @@ func advance() -> PendingChoice:
 		var player := _players[index]
 		match str(step["step"]):
 			"coin_call":
-				return _ask(index, "Call the coin flip: whoever wins goes first", [
+				return _ask(index, PendingChoice.KIND_COIN_CALL, {}, "Call the coin flip: whoever wins goes first", [
 					{"label": "Heads", "value": true},
 					{"label": "Tails", "value": false},
 				])
@@ -65,7 +65,7 @@ func advance() -> PendingChoice:
 				if options.is_empty():
 					_steps.pop_front()
 					continue
-				return _ask(index, "Choose your Battling Darkner", options)
+				return _ask(index, PendingChoice.KIND_BATTLING_DARKNER, {}, "Choose your Battling Darkner", options)
 			"bench":
 				var allowed: Array[CardData] = player.hand
 				if step.has("cards"):
@@ -78,13 +78,14 @@ func advance() -> PendingChoice:
 					_steps.pop_front()
 					continue
 				options.append({"label": "Finish placing Darkners", "value": null})
-				return _ask(index, "Put Basic Darkners on the Field before the game starts", options)
+				return _ask(index, PendingChoice.KIND_SETUP_BENCH, {}, "Put Basic Darkners on the Field before the game starts", options)
 			"compensation":
 				var count := int(step["count"])
 				var options: Array = []
 				for amount in range(count, -1, -1):
 					options.append({"label": "Draw %d card%s for the opponent's mulligans" % [amount, "" if amount == 1 else "s"], "value": amount})
-				return _ask(index, "Your opponent took %d more mulligan%s" % [count, "" if count == 1 else "s"], options)
+				return _ask(index, PendingChoice.KIND_MULLIGAN_DRAWS, {"maximum": count},
+						"Your opponent took %d more mulligan%s" % [count, "" if count == 1 else "s"], options)
 	return null
 
 
@@ -165,8 +166,8 @@ func _basic_options(cards: Array[CardData], label_format: String) -> Array:
 	return options
 
 
-func _ask(index: int, prompt: String, options: Array) -> PendingChoice:
-	return PendingChoice.new(index, prompt, options, PendingChoice.RESUME_SETUP, {})
+func _ask(index: int, kind: String, details: Dictionary, prompt: String, options: Array) -> PendingChoice:
+	return PendingChoice.new(index, kind, details, prompt, options, PendingChoice.RESUME_SETUP, {})
 
 
 func _place_active(index: int, card: CardData) -> void:
