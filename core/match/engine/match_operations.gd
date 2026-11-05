@@ -20,6 +20,8 @@ var _rng: Rng
 var _events: Array[String]
 ## The Darkners the resolving attack has damaged, in order. Cleared when an attack starts.
 var _attack_damaged: Array[CardInPlay] = []
+## Darkners put onto a Field during a turn whose triggers have not resolved yet, in order.
+var _entered_field: Array[CardInPlay] = []
 
 
 func _init(players: Array[PlayerState], rng: Rng, events: Array[String]) -> void:
@@ -207,9 +209,32 @@ func put_on_bench_from_deck(player: PlayerState, cards: Array[CardData], turn: i
 		_log("  Player %d finds nothing" % index)
 	for card in cards:
 		player.deck.erase(card)
-		player.bench.append(CardInPlay.new(card, turn))
+		_put_on_bench(player, card, turn)
 		_log("  Player %d puts %s from their deck onto the Field" % [index, card.name])
 	return cards.size()
+
+
+## Puts a Basic Darkner from a player's hand onto their Field, as played on turn. Returns it.
+func put_on_bench_from_hand(player: PlayerState, card: CardData, turn: int) -> CardInPlay:
+	player.hand.erase(card)
+	var darkner := _put_on_bench(player, card, turn)
+	_log("Player %d puts %s on the Field" % [_players.find(player) + 1, card.name])
+	return darkner
+
+
+## The Darkners put onto a Field since the last call, oldest first, for the engine to resolve
+## what that sets off (Cold Place).
+func take_entered_field() -> Array[CardInPlay]:
+	var entered := _entered_field.duplicate()
+	_entered_field.clear()
+	return entered
+
+
+func _put_on_bench(player: PlayerState, card: CardData, turn: int) -> CardInPlay:
+	var darkner := CardInPlay.new(card, turn)
+	player.bench.append(darkner)
+	_entered_field.append(darkner)
+	return darkner
 
 
 ## Moves the given cards from a player's deck to their discard pile. Returns how many moved.

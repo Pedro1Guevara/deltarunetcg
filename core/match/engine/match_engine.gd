@@ -147,6 +147,8 @@ func apply(action: Dictionary) -> void:
 			_do_attack(int(action["attack_index"]))
 		"use_power":
 			_do_use_power(int(action["slot"]), str(action["power"]))
+		"use_area":
+			_do_use_area()
 		"end_turn":
 			_end_turn(false)
 		"choose":
@@ -218,10 +220,10 @@ func _set_tp(player: PlayerState, quarters: int) -> void:
 
 func _do_bench(hand_index: int) -> void:
 	var player := current_player()
-	var card := player.hand.pop_at(hand_index) as CardData
-	var darkner := CardInPlay.new(card, turn)
-	player.bench.append(darkner)
-	_log("Player %d puts %s on the Field" % [current_index + 1, card.name])
+	var darkner := operations.put_on_bench_from_hand(player, player.hand[hand_index], turn)
+	_resolve_knockouts()
+	if is_over() or not player.bench.has(darkner):
+		return
 	_on_play_user = darkner
 	_on_play_queue = EffectBindings.on_play_powers(self, darkner)
 	_offer_on_play()
@@ -298,6 +300,10 @@ func _do_play_trainer(hand_index: int) -> void:
 func _resolve_trainer(card: CardData) -> void:
 	resolving_trainer = card
 	var binding := EffectBindings.trainer_binding(self, card)
+	if binding.has(EffectLibrary.TIMING_KEY):
+		# An Area with an action or a trigger: it does nothing when played.
+		_finish_trainer(card)
+		return
 	if binding.is_empty():
 		_log("  [effect not implemented]")
 		_finish_trainer(card)
@@ -390,7 +396,7 @@ func _finish_effect(context: EffectContext) -> void:
 	match context.kind:
 		EffectContext.KIND_TRAINER:
 			_finish_trainer(context.card)
-		EffectContext.KIND_POWER:
+		EffectContext.KIND_POWER, EffectContext.KIND_AREA:
 			_finish_power()
 		EffectContext.KIND_TRIGGER:
 			_continue_attack()
@@ -492,7 +498,34 @@ func _advance_promotions() -> bool:
 
 
 ## Resolves knockouts after an attack, ACT card or Ability (KnockoutResolver.resolve()).
+## Uses the action of the Area in play ("Once during each player's turn, that player may...").
+func _do_use_area() -> void:
+	var player := current_player()
+	var used := player.powers_used_this_turn
+	used[stadium.name] = int(used.get(stadium.name, 0)) + 1
+	_log("Player %d uses %s" % [current_index + 1, stadium.name])
+	var binding := EffectBindings.area_binding(self, EffectLibrary.TIMING_AREA_ACTION)
+	_pending = EffectBindings.run(self, binding, EffectBindings.area_context(self, null))
+	if _pending == null:
+		_finish_power()
+
+
+## Resolves the Area's on_put_onto_field effect for every Darkner put onto a Field since the
+## last time (Cold Place). These effects resolve at once and never ask a question.
+func _resolve_field_entries() -> void:
+	for darkner in operations.take_entered_field():
+		var binding := EffectBindings.area_binding(self, EffectLibrary.TIMING_ON_PUT_ONTO_FIELD)
+		if binding.is_empty():
+			continue
+		_log("%s: %s" % [stadium.name, darkner.card.name])
+		if EffectBindings.run(self, binding, EffectBindings.area_context(self, darkner)) != null:
+			push_error("MatchEngine: %s asked a question while resolving on_put_onto_field" % stadium.name)
+
+
+## Resolves what Darkners put onto a Field set off, then knockouts, after an attack, an Ability,
+## an Area action or a Darkner put onto the Field (KnockoutResolver.resolve()).
 func _resolve_knockouts() -> void:
+	_resolve_field_entries()
 	var result := _knockouts.resolve(_opponent_index(), rules)
 	if result != NO_WINNER:
 		winner = result

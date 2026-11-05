@@ -13,6 +13,8 @@ const KIND_TRAINER := "trainer"
 const KIND_TRIGGER := "trigger"
 ## An Ability that applies while its condition holds, read through ContinuousEffects.
 const KIND_CONTINUOUS := "continuous"
+## An effect of the Area in play: an action it gives the player taking the turn, or a trigger.
+const KIND_AREA := "area"
 
 ## Returned by an atomic effect that needs a player's choice before it can finish.
 const PENDING := "__pending_choice__"
@@ -30,6 +32,8 @@ var source: CardInPlay
 var defender: CardInPlay
 var player: PlayerState
 var opponent: PlayerState
+## The Darkner a triggered effect is about ($subject), or null.
+var subject: CardInPlay
 ## The attack being resolved. Null unless kind is attack.
 var attack: AttackData
 
@@ -49,6 +53,8 @@ func value_of(ref_name: String) -> Variant:
 	match ref_name:
 		EffectTypes.SELF:
 			return source
+		EffectTypes.SUBJECT:
+			return subject
 		EffectTypes.DEFENDER:
 			return defender
 		EffectTypes.PLAYER_REF:

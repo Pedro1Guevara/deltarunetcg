@@ -139,5 +139,21 @@
         "per_turn": 0
       }
     }
+  },
+  "dark_zone": {
+    "trainer": {
+      "function": "discard_from_hand_then_draw",
+      "args": {"filter": ["any"], "discard": 2, "draw": 1},
+      "timing": "area_action",
+      "per_turn": 1
+    }
+  },
+  "cold_place": {
+    "trainer": {
+      "function": "counters_on_subject",
+      "args": {"counters": 1},
+      "timing": "on_put_onto_field",
+      "per_turn": 0
+    }
   }
 }

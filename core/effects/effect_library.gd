@@ -34,6 +34,14 @@ const TIMING_ON_ATTACK_DAMAGE := "on_attack_damage"
 const TIMING_ON_PLAY := "on_play_from_hand"
 const TIMING_CONTINUOUS := "continuous"
 const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY, TIMING_CONTINUOUS]
+## When the effect of an Area applies. Every Area binding declares it, with per_turn.
+## area_action: the player taking the turn may use it as an action ("Once during each player's
+## turn, that player may...").
+## on_put_onto_field: it resolves by itself whenever a player puts a Darkner onto their Field
+## during their turn, from the hand or the deck; $subject is that Darkner.
+const TIMING_AREA_ACTION := "area_action"
+const TIMING_ON_PUT_ONTO_FIELD := "on_put_onto_field"
+const AREA_TIMINGS := [TIMING_AREA_ACTION, TIMING_ON_PUT_ONTO_FIELD]
 ## How many times its owner may use an Ability with this name during one turn, counting every
 ## copy in play together ("You can't use more than 1 Way of the Worm ability during your turn").
 ## Every Ability binding declares it; 0 means no limit.
@@ -53,6 +61,7 @@ var _invalid_functions: Dictionary = {}
 var _requires_cache: Dictionary = {}
 var _attack_only_cache: Dictionary = {}
 var _uses_self_cache: Dictionary = {}
+var _uses_subject_cache: Dictionary = {}
 
 
 func load_data(functions_document: Dictionary, card_effects_document: Dictionary, database: CardDatabase) -> void:
@@ -65,6 +74,7 @@ func load_data(functions_document: Dictionary, card_effects_document: Dictionary
 	_requires_cache.clear()
 	_attack_only_cache.clear()
 	_uses_self_cache.clear()
+	_uses_subject_cache.clear()
 
 	for name: Variant in functions:
 		if AtomicEffects.has(str(name)):
@@ -121,16 +131,24 @@ func is_attack_only(function_name: String) -> bool:
 
 
 func uses_self(function_name: String) -> bool:
-	if _uses_self_cache.has(function_name):
-		return bool(_uses_self_cache[function_name])
-	_uses_self_cache[function_name] = false
+	return _uses_reference(function_name, EffectTypes.SELF, _uses_self_cache)
+
+
+func uses_subject(function_name: String) -> bool:
+	return _uses_reference(function_name, EffectTypes.SUBJECT, _uses_subject_cache)
+
+
+func _uses_reference(function_name: String, reference: String, cache: Dictionary) -> bool:
+	if cache.has(function_name):
+		return bool(cache[function_name])
+	cache[function_name] = false
 	var definition := functions.get(function_name, {}) as Dictionary
-	var result := JSON.stringify(definition).contains("\"%s\"" % EffectTypes.SELF)
+	var result := JSON.stringify(definition).contains("\"%s\"" % reference)
 	for step in _steps(definition):
 		var callee := str(step.get("call", ""))
-		if functions.has(callee) and uses_self(callee):
+		if functions.has(callee) and _uses_reference(callee, reference, cache):
 			result = true
-	_uses_self_cache[function_name] = result
+	cache[function_name] = result
 	return result
 
 
@@ -384,17 +402,18 @@ func _validate_card_effects(database: CardDatabase) -> void:
 						if not printed.has(printed_name):
 							errors.append("%s: the card does not print it" % where)
 							continue
-						_validate_binding(where, id, str(section), str(printed_name), (entry[section] as Dictionary)[printed_name], names_to_functions)
+						_validate_binding(where, id, str(section), str(printed_name), (entry[section] as Dictionary)[printed_name], names_to_functions, false)
 				SECTION_TRAINER:
 					if not card.is_trainer():
 						errors.append("card_effects %s: trainer entry on a card that is not a Trainer" % id)
 						continue
-					_validate_binding("card_effects %s trainer" % id, id, SECTION_TRAINER, card.name, entry[section], names_to_functions)
+					_validate_binding("card_effects %s trainer" % id, id, SECTION_TRAINER, card.name, entry[section], names_to_functions,
+							card.trainer_type == CardData.TRAINER_STADIUM)
 				SECTION_ENERGY:
 					if not (card.is_energy() and card.energy_kind == CardData.ENERGY_SPECIAL):
 						errors.append("card_effects %s: energy entry on a card that is not Special Energy" % id)
 						continue
-					_validate_binding("card_effects %s energy" % id, id, SECTION_ENERGY, card.name, entry[section], names_to_functions)
+					_validate_binding("card_effects %s energy" % id, id, SECTION_ENERGY, card.name, entry[section], names_to_functions, false)
 				_:
 					errors.append("card_effects %s: unknown section '%s'" % [id, section])
 
@@ -405,19 +424,24 @@ func _validate_card_effects(database: CardDatabase) -> void:
 			warnings.append("%s is bound to different functions: %s" % [key, ", ".join(PackedStringArray(bound))])
 
 
-func _validate_binding(where: String, card_id: String, section: String, printed_name: String, value: Variant, names_to_functions: Dictionary) -> void:
+## is_area: the binding of an Area, which declares a timing and per_turn like an Ability.
+func _validate_binding(where: String, card_id: String, section: String, printed_name: String, value: Variant, names_to_functions: Dictionary,
+		is_area: bool) -> void:
 	if not value is Dictionary:
 		errors.append("%s: binding is not an object" % where)
 		return
 	var binding := value as Dictionary
 	var error_count := errors.size()
+	var timed := section == SECTION_POWERS or is_area
 	for key: Variant in binding:
-		if not BINDING_KEYS.has(key) and not ((key == TIMING_KEY or key == PER_TURN_KEY) and section == SECTION_POWERS):
+		if not BINDING_KEYS.has(key) and not ((key == TIMING_KEY or key == PER_TURN_KEY) and timed):
 			errors.append("%s: unknown key '%s'" % [where, key])
 	if section == SECTION_POWERS and not TIMINGS.has(binding.get(TIMING_KEY)):
 		errors.append("%s: timing must be one of %s" % [where, TIMINGS])
+	if is_area and not AREA_TIMINGS.has(binding.get(TIMING_KEY)):
+		errors.append("%s: timing must be one of %s" % [where, AREA_TIMINGS])
 	var continuous: bool = section == SECTION_POWERS and binding.get(TIMING_KEY) == TIMING_CONTINUOUS
-	if section == SECTION_POWERS:
+	if timed:
 		var per_turn: Variant = binding.get(PER_TURN_KEY)
 		if not EffectTypes.literal_matches(EffectTypes.INT, per_turn) or int(per_turn) < 0:
 			errors.append("%s: per_turn must be a whole number, 0 for no limit" % where)
@@ -435,6 +459,8 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 		errors.append("%s: function '%s' only works while an attack resolves" % [where, function_name])
 	if kind == EffectContext.KIND_TRAINER and uses_self(function_name):
 		errors.append("%s: function '%s' uses $self, which a Trainer does not have" % [where, function_name])
+	if uses_subject(function_name) and binding.get(TIMING_KEY) != TIMING_ON_PUT_ONTO_FIELD:
+		errors.append("%s: function '%s' uses $subject, which only a triggered effect has" % [where, function_name])
 
 	var args: Variant = binding.get("args")
 	if not args is Dictionary:

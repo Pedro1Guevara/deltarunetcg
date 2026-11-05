@@ -370,5 +370,11 @@
     "steps": [
       {"call": "prevent_attack_damage_to_bench", "args": {"player": "$player"}}
     ]
+  },
+  "counters_on_subject": {
+    "params": { "counters": "int" },
+    "steps": [
+      {"call": "place_damage_counters", "args": {"target": "$subject", "count": "$counters"}}
+    ]
   }
 }

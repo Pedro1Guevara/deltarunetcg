@@ -5,8 +5,9 @@
 			"jevil": 4,
 			"old_man": 3,
 			"hammer_of_justice": 2,
-			"chaos_energy": 11,
-			"creative_energy": 10
+			"cold_place": 3,
+			"chaos_energy": 9,
+			"creative_energy": 9
 		}
 	},
 	"deltarune_holy": {
@@ -15,7 +16,8 @@
 			"water_cooler": 4,
 			"miss_mizzle": 3,
 			"balthizard": 3,
-			"holy_energy": 20
+			"dark_zone": 3,
+			"holy_energy": 17
 		}
 	},
 	"creative": {

@@ -812,6 +812,51 @@ func _run() -> void:
 	play(counters, "Choose Guei (Field 1, 80/80 HP)")
 	expect(counted.bench[0].damage == 20, "damage counters placed by an attack are not damage: Vow of Majesty does not stop them")
 
+	print("== Area effects")
+	var dark := battle("jevil", [], "tenna")
+	var darker := dark.current_player()
+	darker.hand.assign(cards(["dark_zone", "kris"]))
+	expect(play(dark, "Play Dark Zone (Area)") and dark.stadium.name == "Dark Zone" and not dark.is_waiting_for_choice(), "Dark Zone can be played with 1 other card: playing it does nothing by itself")
+	expect(not has_label(dark, "Use Dark Zone (Area)"), "its action needs 2 cards in hand")
+	darker.hand.append_array(cards(["holy_energy", "guei"]))
+	var dark_deck := darker.deck.size()
+	expect(play(dark, "Use Dark Zone (Area)"), "with 2 cards in hand the player taking the turn may use it")
+	var dark_labels: Array = []
+	for action in dark.legal_actions():
+		dark_labels.append(action["label"])
+	expect(dark.choice_prompt() == "Choose 2 cards to discard from your hand (0/2 chosen)" and dark_labels == ["Discard Kris", "Discard Holy Energy", "Discard Guei"], "the player chooses 2 cards: %s" % [dark_labels])
+	play(dark, "Discard Kris")
+	play(dark, "Discard Guei")
+	play(dark, "Confirm")
+	expect(darker.discard.map(func(card: CardData) -> String: return card.name) == ["Kris", "Guei"] and darker.hand.size() == 2 and darker.deck.size() == dark_deck - 1, "they discard 2 cards and draw 1")
+	darker.hand.append_array(cards(["kris", "kris"]))
+	expect(not has_label(dark, "Use Dark Zone (Area)"), "once during each player's turn")
+	dark.opponent_player().hand.append_array(cards(["guei", "guei"]))
+	dark.apply({"type": "end_turn", "label": "End turn"})
+	expect(has_label(dark, "Use Dark Zone (Area)"), "the opponent may use it during their own turn too")
+
+	var cold := battle("jevil", [], "tenna")
+	var cooler := cold.current_player()
+	cooler.hand.assign(cards(["cold_place", "guei", "balthizard"]))
+	cooler.deck.assign(cards(["water_cooler", "kris"]))
+	play(cold, "Play Cold Place (Area)")
+	play(cold, "Put Guei on the Field")
+	expect(cooler.bench[0].damage == 10 and cold.events.has("Cold Place: Guei"), "Cold Place: 1 damage counter on a Darkner put onto the Field from the hand")
+	play(cold, "Put Balthizard on the Field")
+	play(cold, "Use Luring Incense (Balthizard)")
+	pick(cold, "Put Water Cooler")
+	expect(cooler.bench[1].damage == 10 and cooler.bench[2].card.name == "Water Cooler" and cooler.bench[2].damage == 10, "and on one put there from the deck, by Luring Incense")
+	cold.opponent_player().hand.assign(cards(["guei"]))
+	cold.apply({"type": "end_turn", "label": "End turn"})
+	play(cold, "Put Guei on the Field")
+	expect(cold.current_player().bench.back().damage == 10, "it applies to any player")
+	var feathered := battle("jevil", [], "tenna")
+	feathered.stadium = db.make("cold_place")
+	feathered.current_player().bench.append(in_play("guei", []))
+	feathered.current_player().hand.assign(cards(["petal_feather"]))
+	play(feathered, "Play Petal Feather (Item)")
+	expect(feathered.current_player().bench[0].card.name == "Jevil" and feathered.current_player().bench[0].damage == 0, "a Darkner moved from the Battle Zone to the Field gets nothing")
+
 	print("== field limit")
 	var field := battle("jevil", [], "guei")
 	var player := field.current_player()
@@ -902,7 +947,7 @@ func _run() -> void:
 	var picker := RandomNumberGenerator.new()
 	var mixed := {"jevil": 4, "tenna": 4, "guei": 4, "cuptain": 2, "chaos_energy": 8, "petal_feather": 2, "kris": 2, "rude_buster": 2, "cyber_city": 1, "mewers_live": 1,
 			"cd_bagel": 2, "recruit_manual": 2, "revive_mint": 1, "napstablook": 1, "sans": 1, "berdly": 1,
-			"old_man": 2, "balthizard": 2, "koody": 2, "hammer_of_justice": 2}
+			"old_man": 2, "balthizard": 2, "koody": 2, "hammer_of_justice": 2, "dark_zone": 1, "cold_place": 1}
 	var same_darkner := {"jevil": 4, "chaos_energy": 26}
 	var repeated := ""
 	var rounds_finished := 0

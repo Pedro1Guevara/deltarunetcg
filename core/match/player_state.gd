@@ -21,7 +21,7 @@ var tp: int = 0
 ## The attack this player used during this turn and during their previous turn, by name, or "".
 var attack_used_this_turn: String = ""
 var attack_used_last_turn: String = ""
-## How many times each Ability was used this turn, by name, every copy together.
+## How many times each Ability or Area action was used this turn, by name, every copy together.
 var powers_used_this_turn: Dictionary = {}
 
 func reset_turn_flags() -> void:

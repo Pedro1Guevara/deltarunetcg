@@ -88,8 +88,42 @@ static func _power_ready(engine: MatchEngine, user: CardInPlay, power: PowerData
 	return _requirements_met(engine, binding, power_context(engine, user, EffectContext.KIND_POWER))
 
 
+## An Area's binding is its effect while in play, not when played, so it never stops the Area
+## from being played.
 static func trainer_requirements_met(engine: MatchEngine, card: CardData) -> bool:
-	return _requirements_met(engine, trainer_binding(engine, card), trainer_context(engine, card))
+	var binding := trainer_binding(engine, card)
+	if binding.has(EffectLibrary.TIMING_KEY):
+		return true
+	return _requirements_met(engine, binding, trainer_context(engine, card))
+
+
+## The context of an effect of the Area in play. subject is the Darkner a trigger is about, or
+## null for an action.
+static func area_context(engine: MatchEngine, subject: CardInPlay) -> EffectContext:
+	var context := _context(engine, EffectContext.KIND_AREA)
+	context.card = engine.stadium
+	context.subject = subject
+	return context
+
+
+## The binding of the Area in play when it has this timing, or an empty Dictionary.
+static func area_binding(engine: MatchEngine, timing: String) -> Dictionary:
+	if engine.stadium == null:
+		return {}
+	var binding := trainer_binding(engine, engine.stadium)
+	return binding if binding.get(EffectLibrary.TIMING_KEY) == timing else {}
+
+
+## Whether the player taking the turn can use the action of the Area in play: it has one, its
+## per-turn limit is not reached, and its requirements hold.
+static func area_action_usable(engine: MatchEngine) -> bool:
+	var binding := area_binding(engine, EffectLibrary.TIMING_AREA_ACTION)
+	if binding.is_empty():
+		return false
+	var limit := int(binding.get(EffectLibrary.PER_TURN_KEY, 0))
+	if limit > 0 and int(engine.current_player().powers_used_this_turn.get(engine.stadium.name, 0)) >= limit:
+		return false
+	return _requirements_met(engine, binding, area_context(engine, null))
 
 
 ## Runs a binding in its context. Returns null when the effect finished, or the question it is

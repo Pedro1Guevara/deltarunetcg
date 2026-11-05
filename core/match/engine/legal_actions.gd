@@ -71,6 +71,12 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 					"label": "Use %s (%s, %s)" % [power.name, user.card.name, MatchEngine.slot_name(slot)],
 				})
 
+	if EffectBindings.area_action_usable(engine):
+		actions.append({
+			"type": "use_area",
+			"label": "Use %s (Area)" % engine.stadium.name,
+		})
+
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(engine.retreat_cost(player.active)):
 		for slot in player.bench.size():
 			actions.append({

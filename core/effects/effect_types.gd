@@ -22,8 +22,11 @@ const SELF := "$self"
 const DEFENDER := "$defender"
 const PLAYER_REF := "$player"
 const OPPONENT := "$opponent"
+## The Darkner a triggered effect is about, such as the one Cold Place sees enter the Field.
+const SUBJECT := "$subject"
 const CONTEXT := {
 	SELF: POKEMON,
+	SUBJECT: POKEMON,
 	DEFENDER: POKEMON,
 	PLAYER_REF: PLAYER,
 	OPPONENT: PLAYER,
