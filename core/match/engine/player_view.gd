@@ -36,9 +36,13 @@ var turn: int
 var current: int
 var is_over: bool
 var winner: int
+## A copy of the round's rules, as they stand now (effects can change some).
+var rules: MatchRules
 ## The Area in play and who played it, or null and -1.
 var stadium: CardData = null
 var stadium_owner: int = -1
+## The ACT card the player taking the turn is playing, while it resolves, or null.
+var resolving_trainer: CardData = null
 ## Both sides, by player index.
 var sides: Array[SideView] = []
 ## The player who answers the open question, or -1. Every player sees that one is open and its

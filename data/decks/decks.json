@@ -74,6 +74,11 @@
 			"recruit_manual": 3.0,
 			"revive_song": 4.0,
 			"glowshard": 3.0
+		},
+		"plan": {
+			"battle_zone": "jevil",
+			"attack": "Chaos Bomb",
+			"field": ["electro_dasher", "electro_dasher", "electro_dasher", "electro_dasher"]
 		}
 	}
 }

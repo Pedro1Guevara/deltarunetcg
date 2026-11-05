@@ -930,6 +930,8 @@ func _run() -> void:
 	my_view.me().active.damage = 50
 	my_view.me().active.attached_energy.clear()
 	my_view.opponent().discard.append(db.make("guei"))
+	my_view.rules.prizes_per_knockout = 3
+	expect(seen_round.rules.prizes_per_knockout == 1 and my_view.rules.prize_count == seen_round.rules.prize_count, "the view holds a copy of the rules")
 	expect(seen_round.current_player().hand.size() == 2 and seen_round.current_player().active.damage == 0 and seen_round.current_player().active.attached_energy.size() == 1
 			and seen_round.opponent_player().discard.is_empty(), "changing a view changes nothing in the round")
 
@@ -944,6 +946,8 @@ func _run() -> void:
 	expect(view_watcher.chooser == search_view.current_index and view_watcher.choice_kind == PendingChoice.KIND_PICK_CARDS and view_watcher.choice_options.is_empty()
 			and view_watcher.choice_details.is_empty() and view_watcher.choice_prompt == "" and view_watcher.revealed.is_empty() and view_watcher.legal_actions.is_empty(),
 			"the other player sees only that a search is open")
+	expect(view_chooser.resolving_trainer != null and view_chooser.resolving_trainer.id == "glowshard" and view_watcher.resolving_trainer == view_chooser.resolving_trainer,
+			"both see the ACT card being played")
 	view_chooser.choice_details["picked"].append(db.make("kris"))
 	expect((search_view.choice_details()["picked"] as Array).is_empty(), "changing the question in a view changes nothing")
 

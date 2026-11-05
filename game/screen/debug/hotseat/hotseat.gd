@@ -6,7 +6,7 @@ const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
 ## Which players the CPU plays when the scene is run on its own: player 2.
 const DEFAULT_CPU_SEATS: Array[bool] = [false, true]
 ## Seconds between two CPU decisions, so each one can be followed on the board.
-const CPU_DELAY := 0.6
+const CPU_DELAY := 1.2
 ## A CPU turn that takes more decisions than this is ended, as a safety net.
 const CPU_DECISIONS_PER_TURN := 300
 const FONT_SIZE := 22
@@ -33,7 +33,8 @@ var _deck_ids: Array[String] = DEFAULT_DECKS.duplicate()
 var _deck_names: Array[String] = []
 ## Whether the CPU plays each seat.
 var _cpu_seats: Array[bool] = DEFAULT_CPU_SEATS.duplicate()
-var _cpu := CpuPlayer.new()
+## One CPU per seat, since each remembers what it saw; made for each round with its deck.
+var _cpus: Array[CpuPlayer] = []
 ## A CPU decision is waiting for its pause to end.
 var _cpu_waiting := false
 ## Bumped by every new round, so a pause started in the previous round does nothing.
@@ -189,6 +190,12 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 	for entry: Array in [[_deck_ids[0], deck_1], [_deck_ids[1], deck_2]]:
 		for problem in DeckValidator.validate(entry[1] as Array[CardData], match_rules):
 			push_warning("Deck %s %s" % [entry[0], problem])
+	# Each CPU gets its decklist and the deck's plan, if decks.json writes one, before the
+	# round shuffles the decks.
+	_cpus.clear()
+	for entry: Array in [[_deck_ids[0], deck_1], [_deck_ids[1], deck_2]]:
+		var plan_data := (deck_defs[entry[0]] as Dictionary).get("plan", {}) as Dictionary
+		_cpus.append(CpuPlayer.new(_engine.effects, (entry[1] as Array[CardData]).duplicate(), plan_data))
 	_engine.start(deck_1, deck_2, match_rules, Rng.new(_seed))
 	_refresh()
 
@@ -323,6 +330,12 @@ func _schedule_cpu() -> void:
 	get_tree().create_timer(CPU_DELAY).timeout.connect(_play_cpu.bind(_round_number))
 
 
+## Whether the mouse is on a control that shows a card's text (CardChip, CardButton).
+func _is_reading_a_card() -> bool:
+	var hovered := get_viewport().gui_get_hovered_control()
+	return hovered != null and not hovered.tooltip_text.is_empty()
+
+
 ## The CPU decides from its own view of the round (PlayerView) and its action is applied.
 func _play_cpu(round_number: int) -> void:
 	if round_number != _round_number:
@@ -330,11 +343,16 @@ func _play_cpu(round_number: int) -> void:
 	_cpu_waiting = false
 	if _engine.is_over() or not _cpu_seats[_actor()]:
 		return
+	# While the mouse is on a card, the CPU waits: acting would rebuild the board and close
+	# the card's text.
+	if _is_reading_a_card():
+		_schedule_cpu()
+		return
 	if _engine.turn != _cpu_turn:
 		_cpu_turn = _engine.turn
 		_cpu_decisions = 0
 	_cpu_decisions += 1
-	var action := _cpu.choose(_engine.view_for(_actor()))
+	var action := _cpus[_actor()].choose(_engine.view_for(_actor()))
 	if _cpu_decisions > CPU_DECISIONS_PER_TURN and _engine.is_legal({"type": "end_turn"}):
 		push_warning("Hotseat: the CPU took more than %d decisions this turn; ending it" % CPU_DECISIONS_PER_TURN)
 		action = {"type": "end_turn"}

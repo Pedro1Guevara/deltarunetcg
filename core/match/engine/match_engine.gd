@@ -109,8 +109,10 @@ func view_for(player_index: int) -> PlayerView:
 	view.current = current_index
 	view.is_over = is_over()
 	view.winner = winner
+	view.rules = MatchRules.from_dict(rules.to_dict())
 	view.stadium = stadium
 	view.stadium_owner = stadium_owner
+	view.resolving_trainer = resolving_trainer
 	for index in players.size():
 		var player := players[index]
 		var side := PlayerView.SideView.new()
