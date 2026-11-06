@@ -17,6 +17,8 @@ const DATA_KEYS: Array[String] = ["battle_zone", "attack", "field"]
 const ASSUMED_OPPONENT_FIELD := 3
 ## An opponent's Darkner that no estimate knocks out and that has no Weakness or Resistance.
 const NEUTRAL_HP := 1000
+## How many Energy beyond its cost the plan looks at for an attack that grows with Energy.
+const MAX_EXTRA_ENERGY := 6
 
 var source: String = SOURCE_AUTOMATIC
 ## The attacker's evolution line as card ids, Basic first; its last card is the attacker.
@@ -27,6 +29,9 @@ var field_lines: Array = []
 ## The attack's expected damage on the planned board, against ASSUMED_OPPONENT_FIELD neutral
 ## Darkners on the opponent's Field.
 var expected_damage: float = 0.0
+## How many Energy units the attacker wants: its attack's cost, or more when more Energy makes
+## the attack hit harder (Flash Melt: 80 more with 5). The fewest that give the most damage.
+var energy_goal: int = 0
 ## Problems with a written plan, which then gave way to the automatic one.
 var warnings: Array[String] = []
 
@@ -42,11 +47,52 @@ static func build(deck: Array[CardData], reader: EffectReader, bench_limit: int,
 		if problems.is_empty():
 			written.source = SOURCE_PREDEFINED
 			written.expected_damage = written._estimate(reader, by_id)
+			written._set_energy_goal(reader, by_id, deck)
 			return written
 		var fallback := _automatic(lines, counts, by_id, reader, bench_limit, deck)
 		fallback.warnings = problems
+		fallback._set_energy_goal(reader, by_id, deck)
 		return fallback
-	return _automatic(lines, counts, by_id, reader, bench_limit, deck)
+	var automatic := _automatic(lines, counts, by_id, reader, bench_limit, deck)
+	automatic._set_energy_goal(reader, by_id, deck)
+	return automatic
+
+
+## Whether darkner is the plan's attacker (or will evolve into it) and has fewer Energy units
+## than the plan wants on it.
+func wants_energy(darkner: CardInPlay) -> bool:
+	return energy_short(darkner) > 0
+
+
+## How many Energy units the plan's attacker still lacks for energy_goal; 0 for any other
+## Darkner.
+func energy_short(darkner: CardInPlay) -> int:
+	if not is_attacker(darkner):
+		return 0
+	return maxi(0, energy_goal - darkner.energy_pool().size())
+
+
+func _set_energy_goal(reader: EffectReader, by_id: Dictionary, deck: Array[CardData]) -> void:
+	var attacker := _chain(attacker_line, by_id)
+	var energies := _energy_by_type(deck)
+	for attack in attacker.attacks():
+		if attack.name != attack_name:
+			continue
+		energy_goal = attack.cost.size()
+		var paid := _paid(attacker, attack, energies)
+		if paid == null:
+			return
+		var main := paid.attached_energy[0] if not paid.attached_energy.is_empty() else null
+		var best := _damage(paid, attack, field_lines, by_id, reader)
+		for extra in range(1, MAX_EXTRA_ENERGY + 1):
+			if main == null:
+				return
+			paid.attached_energy.append(main)
+			var damage := _damage(paid, attack, field_lines, by_id, reader)
+			if damage > best:
+				best = damage
+				energy_goal = attack.cost.size() + extra
+		return
 
 
 ## Card ids and how many of each the plan wants in play, counting every card of each line.

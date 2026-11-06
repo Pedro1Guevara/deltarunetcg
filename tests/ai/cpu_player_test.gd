@@ -182,6 +182,8 @@ func _run() -> void:
 	expect(incomplete.source == DeckPlan.SOURCE_AUTOMATIC and incomplete.warnings == ["plan has no 'field'"], "and so does one missing a key: nothing is assumed")
 	var holy_plan := DeckPlan.build(deck_cards("holy"), reader, 4, {})
 	expect(holy_plan.attacker_line == ["guei"] and holy_plan.attack_name == "Flash Melt", "Holy, automatic: Guei's Flash Melt (%s %s)" % [holy_plan.attacker_line, holy_plan.attack_name])
+	expect(holy_plan.energy_goal == 5 and creative_plan.energy_goal == 3 and chaos_written.energy_goal == 2,
+			"the Energy the attacker wants: 5 for Flash Melt, whose 80 more comes with 5 Energy; the cost for the others (%d, %d, %d)" % [holy_plan.energy_goal, creative_plan.energy_goal, chaos_written.energy_goal])
 	var view_round := battle("jevil", [], "tenna")
 	var missing := chaos_written.missing(view_round.view_for(view_round.current_index).me())
 	expect(missing == {"electro_dasher": 4}, "what the plan lacks: Jevil is in play, the four Electro-Dasher are not (%s)" % missing)
@@ -376,6 +378,25 @@ func _run() -> void:
 	precious.stadium = db.make("dark_zone")
 	precious.stadium_owner = precious.current_index
 	expect((decide(precious) as Dictionary)["type"] == "end_turn", "and not when they are worth more")
+
+	print("== Energy for the plan")
+	var holy_cpu := CpuPlayer.new(library, deck_cards("holy"), {})
+	var devotion_round := battle("water_cooler", ["holy_energy"], "tenna")
+	var holy_side := devotion_round.current_player()
+	holy_side.bench.append_array([in_play("cuptain", []), in_play("cuptain", []), in_play("guei", ["holy_energy", "holy_energy"])])
+	holy_side.discard.assign(cards(["holy_energy"]))
+	holy_side.energy_attached_this_turn = true
+	devotion_round.apply({"type": "use_power", "slot": 0, "power": "Selfless Devotion"})
+	while devotion_round.is_waiting_for_choice() and devotion_round.choice_kind() == PendingChoice.KIND_PICK_CARDS:
+		devotion_round.apply(decide_with(devotion_round, holy_cpu))
+	var devotion_target := decide_with(devotion_round, holy_cpu)
+	expect(devotion_round.choice_kind() == PendingChoice.KIND_CHOOSE_DARKNER and int(devotion_round.choice_option(int(devotion_target["option"]))["value"]) == 2,
+			"Selfless Devotion gives its Energy to Guei, who can already attack, not to a Cuptain: Flash Melt wants 5")
+	var hand_round := battle("water_cooler", ["holy_energy", "holy_energy"], "tenna")
+	hand_round.current_player().bench.append_array([in_play("cuptain", []), in_play("guei", ["holy_energy", "holy_energy", "holy_energy"])])
+	hand_round.current_player().hand.assign(cards(["holy_energy"]))
+	var hand_attach := decide_with(hand_round, CpuPlayer.new(library, deck_cards("holy"), {}))
+	expect(hand_attach["type"] == "attach" and int(hand_attach["slot"]) == 1, "and so does the Energy from the hand, up to the fifth (%s)" % hand_attach)
 
 	print("== switching in")
 	var feather := battle("guei", [], "tenna")

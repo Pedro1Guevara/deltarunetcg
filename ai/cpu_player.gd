@@ -43,7 +43,6 @@ var _reader: EffectReader
 var _deck: Array[CardData] = []
 var _plan_data: Dictionary = {}
 var _plan: DeckPlan = null
-var _plan_cost: Array[String] = []
 ## A knockout it is setting up this turn by giving up a Darkner (_sacrifice_plan()):
 ## {"turn", "slot": the Field slot that gets the Energy and is promoted, "energy": card id}.
 var _sacrifice: Dictionary = {}
@@ -66,7 +65,6 @@ func _init(effects: EffectLibrary, deck: Array[CardData], plan_data: Dictionary)
 func plan_for(bench_limit: int) -> DeckPlan:
 	if _plan == null:
 		_plan = DeckPlan.build(_deck, _reader, bench_limit, _plan_data)
-		_plan_cost = _plan.attack_cost(_deck)
 		for warning in _plan.warnings:
 			push_warning("CpuPlayer: %s; playing an automatic plan" % warning)
 	return _plan
@@ -178,8 +176,9 @@ func _pick_retreat(view: PlayerView, candidates: Array) -> Dictionary:
 
 
 ## Energy goes first where it lets the Battling Darkner attack, then to the plan's attacker
-## while its attack is not paid, then where it makes or brings closer another attack, the
-## Battle Zone before the Field; failing that, to the Battle Zone.
+## while it has fewer Energy than the plan wants on it (DeckPlan.energy_goal), then where it
+## makes or brings closer another attack, the Battle Zone before the Field; failing that, to
+## the Battle Zone.
 func _attach_score(view: PlayerView, action: Dictionary) -> float:
 	var me := view.me()
 	var slot := int(action["slot"])
@@ -194,7 +193,7 @@ func _attach_score(view: PlayerView, action: Dictionary) -> float:
 		score += 30.0 if in_battle_zone else 6.0
 	elif _energy_helps(target, energy):
 		score += 12.0 if in_battle_zone else 3.0
-	if _plan.is_attacker(target) and _helps_cost(target, energy, _plan_cost):
+	if _plan.wants_energy(target):
 		score += 15.0
 	return score
 
@@ -322,7 +321,7 @@ func _worth(view: PlayerView, card: CardData) -> float:
 		worth += PLAN_BONUS
 	elif card.is_energy():
 		for darkner in _in_play(me):
-			if _plan.is_attacker(darkner) and _helps_cost(darkner, card, _plan_cost):
+			if _plan.wants_energy(darkner):
 				worth += PLAN_BONUS - 1.0
 				break
 	return worth
@@ -333,8 +332,8 @@ func _worth(view: PlayerView, card: CardData) -> float:
 func _energy_needed(me: PlayerView.SideView) -> int:
 	var needed := 0
 	for darkner in _in_play(me):
-		if _plan.is_attacker(darkner) and not _plan_cost.is_empty():
-			needed += maxi(0, _plan_cost.size() - darkner.energy_pool().size())
+		if _plan.is_attacker(darkner):
+			needed += _plan.energy_short(darkner)
 		elif darkner == me.active:
 			needed += mini(_energy_distance(darkner), 5)
 	return maxi(needed, 1)
@@ -409,7 +408,7 @@ func _attach_from_value(me: PlayerView.SideView, pile: Array[CardData], filter: 
 		return 0.0
 	for darkner in me.bench:
 		for energy: CardData in energies:
-			if _energy_helps(darkner, energy) or (_plan.is_attacker(darkner) and _helps_cost(darkner, energy, _plan_cost)):
+			if _energy_helps(darkner, energy) or _plan.wants_energy(darkner):
 				return 2.0
 	return 0.3
 
@@ -629,8 +628,9 @@ func _can_pay_plan_attack(darkner: CardInPlay) -> bool:
 	return darkner.attacks().any(func(attack: AttackData) -> bool: return attack.name == _plan.attack_name and darkner.can_pay(attack.cost))
 
 
-## Own Darkners: switch in the one it would promote, attach where it lets an attack be paid
-## (or where its sacrifice plan says), aim at the most damaged. The opponent's: switch in one
+## Own Darkners: switch in the one it would promote, attach to the plan's attacker while it
+## wants Energy, else where it lets an attack be paid (or where its sacrifice plan says), aim
+## at the most damaged. The opponent's: switch in one
 ## that cannot attack, the weakest first; aim at the one closest to being knocked out.
 func _darkner_score(view: PlayerView, option: Dictionary) -> float:
 	var details := view.choice_details
@@ -647,8 +647,8 @@ func _darkner_score(view: PlayerView, option: Dictionary) -> float:
 			if _sacrifice_slot() != -1 and int(option["value"]) == _sacrifice_slot():
 				return 10000.0
 			var score := float(_payable_attacks(darkner) < darkner.attacks().size()) * 10.0 - darkner.attached_energy.size()
-			if _plan.is_attacker(darkner):
-				score += 5.0
+			if _plan.wants_energy(darkner):
+				score += 15.0
 			return score
 	return darkner.damage if own else -darkner.remaining_hp()
 
