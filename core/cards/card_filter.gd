@@ -12,17 +12,6 @@ const TRAINER := "trainer"
 const ANY := "any"
 const NAMES := [BASIC_ENERGY, POKEMON, BASIC_POKEMON, STADIUM, TRAINER, ANY]
 
-## What the player reads for each name.
-const DESCRIPTIONS := {
-	BASIC_ENERGY: "basic Energy",
-	POKEMON: "Darkner",
-	BASIC_POKEMON: "non-Evolution Darkner",
-	STADIUM: "Area",
-	TRAINER: "ACT card",
-	ANY: "any card",
-}
-
-
 ## True for a non-empty list of known names.
 static func is_valid(filters: Variant) -> bool:
 	if not filters is Array or (filters as Array).is_empty():
@@ -63,11 +52,3 @@ static func select(cards: Array[CardData], filters: Array, exclude: Array) -> Ar
 		if matches(card, filters) and not exclude.has(card):
 			result.append(card)
 	return result
-
-
-## "basic Energy or Darkner", for prompts.
-static func describe(filters: Array) -> String:
-	var words: Array[String] = []
-	for name: Variant in filters:
-		words.append(str(DESCRIPTIONS.get(name, name)))
-	return " or ".join(PackedStringArray(words))

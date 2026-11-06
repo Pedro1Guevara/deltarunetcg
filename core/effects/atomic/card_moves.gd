@@ -21,13 +21,9 @@ static func switch_in(context: EffectContext, player: PlayerState, chooser: Play
 	elif player.bench.size() > 1:
 		var options: Array = []
 		for index in player.bench.size():
-			options.append({
-				"label": "Switch in %s (%s)" % [player.bench[index].card.name, MatchEngine.slot_name(index)],
-				"value": index,
-				"shows": player.bench[index],
-			})
+			options.append({"value": index, "shows": player.bench[index]})
 		var details := {"side": PendingChoice.SIDE_OWN if player == chooser else PendingChoice.SIDE_OPPONENT, "purpose": PendingChoice.PURPOSE_SWITCH_IN}
-		return context.ask(chooser, PendingChoice.KIND_CHOOSE_DARKNER, details, "Choose the Darkner to switch into the Battle Zone", options)
+		return context.ask(chooser, PendingChoice.KIND_CHOOSE_DARKNER, details, options)
 	context.operations.switch_in(player, slot)
 	return 1
 
@@ -41,25 +37,21 @@ static func switch_in(context: EffectContext, player: PlayerState, chooser: Play
 ## may confirm with fewer cards than count, or none. Returns how many cards were found.
 static func search_deck(context: EffectContext, player: PlayerState, filters: Array, count: int, destination: String,
 		excluded: Array[String]) -> Variant:
-	var verb := "Take"
-	var prompt := "Search your deck for %s" % CardFilter.describe(filters)
+	var action := "take"
 	match destination:
 		TO_DISCARD:
-			verb = "Discard"
-			prompt += " to discard"
+			action = "discard"
 		TO_BENCH:
-			verb = "Put"
-			prompt += " to put onto your Field"
-	if not excluded.is_empty():
-		prompt += " (not %s)" % ", ".join(PackedStringArray(excluded))
+			action = "put"
+	var details := {"about": PendingChoice.ABOUT_SEARCH_DECK, "filter": filters.duplicate(), "destination": destination, "excluded": excluded.duplicate()}
 	var top_first := player.deck.duplicate()
 	top_first.reverse()
 	var matching: Array[CardData] = []
 	for card in CardFilter.select(player.deck, filters, []):
 		if not excluded.has(card.name):
 			matching.append(card)
-	var picked: Variant = EffectChoices.choose_several(context, player, prompt, EffectChoices.each_card_options(matching, verb, ""), 0, count,
-			"%s nothing" % verb, top_first, PendingChoice.ZONE_DECK, verb.to_lower())
+	var picked: Variant = EffectChoices.choose_several(context, player, details, EffectChoices.each_card_options(matching), 0, count,
+			top_first, PendingChoice.ZONE_DECK, action)
 	if picked is String:
 		return picked
 	var cards: Array[CardData] = []
@@ -79,9 +71,9 @@ static func search_deck(context: EffectContext, player: PlayerState, filters: Ar
 ## player puts up to count cards that match filters from their discard pile into their hand,
 ## chosen with EffectChoices.pick_cards(). Returns how many cards were taken.
 static func take_from_discard(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
-	var prompt := "Choose %s to put into your hand from your discard pile" % ["a card" if count == 1 else "%d cards" % count]
-	var picked: Variant = EffectChoices.pick_cards(context, player, CardFilter.select(player.discard, filters, []), count, prompt, "Take", "",
-			PendingChoice.ZONE_DISCARD)
+	var details := {"about": PendingChoice.ABOUT_TAKE_FROM_DISCARD, "count": count}
+	var picked: Variant = EffectChoices.pick_cards(context, player, CardFilter.select(player.discard, filters, []), count, details,
+			PendingChoice.ZONE_DISCARD, "take")
 	if picked is String:
 		return picked
 	return context.operations.take_from_discard(player, picked as Array[CardData])
@@ -90,10 +82,9 @@ static func take_from_discard(context: EffectContext, player: PlayerState, filte
 ## player discards count cards that match filters from their hand, other than the ACT card
 ## being played, chosen with EffectChoices.pick_cards(). Returns how many cards were discarded.
 static func discard_from_hand(context: EffectContext, player: PlayerState, filters: Array, count: int) -> Variant:
-	var noun := CardFilter.describe(filters) if not filters.has(CardFilter.ANY) else "card"
-	var prompt := "Choose %s to discard from your hand" % (("a %s" % noun) if count == 1 else "%d %ss" % [count, noun])
+	var details := {"about": PendingChoice.ABOUT_DISCARD_FROM_HAND, "count": count, "filter": filters.duplicate()}
 	var candidates := CardFilter.select(hand_without_card_played(context, player), filters, [])
-	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, count, prompt, "Discard", "", PendingChoice.ZONE_HAND)
+	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, count, details, PendingChoice.ZONE_HAND, "discard")
 	if picked is String:
 		return picked
 	return context.operations.discard_from_hand(player, picked as Array[CardData])
@@ -117,9 +108,8 @@ static func attach_to_benched(context: EffectContext, player: PlayerState, pile:
 	var candidates := CardFilter.select(pile, filters, [])
 	if candidates.is_empty() or player.bench.is_empty():
 		return 0
-	var prompt := "Choose a card from your %s to attach" % ["hand" if from_hand else "discard pile"]
-	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, 1, prompt, "Attach", "",
-			PendingChoice.ZONE_HAND if from_hand else PendingChoice.ZONE_DISCARD)
+	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, 1, {"about": PendingChoice.ABOUT_ATTACH_FROM},
+			PendingChoice.ZONE_HAND if from_hand else PendingChoice.ZONE_DISCARD, "attach")
 	if picked is String:
 		return picked
 	var energy := (picked as Array[CardData])[0]
@@ -130,13 +120,9 @@ static func attach_to_benched(context: EffectContext, player: PlayerState, pile:
 	elif player.bench.size() > 1:
 		var targets: Array = []
 		for index in player.bench.size():
-			targets.append({
-				"label": "Attach %s to %s (%s)" % [energy.name, player.bench[index].card.name, MatchEngine.slot_name(index)],
-				"value": index,
-				"shows": player.bench[index],
-			})
-		var details := {"side": PendingChoice.SIDE_OWN, "purpose": PendingChoice.PURPOSE_ATTACH}
-		return context.ask(player, PendingChoice.KIND_CHOOSE_DARKNER, details, "Choose a Darkner on your Field to attach %s to" % energy.name, targets)
+			targets.append({"value": index, "shows": player.bench[index]})
+		var details := {"side": PendingChoice.SIDE_OWN, "purpose": PendingChoice.PURPOSE_ATTACH, "card": energy.id}
+		return context.ask(player, PendingChoice.KIND_CHOOSE_DARKNER, details, targets)
 	if from_hand:
 		context.operations.attach_from_hand(player, energy, player.bench[slot])
 	else:

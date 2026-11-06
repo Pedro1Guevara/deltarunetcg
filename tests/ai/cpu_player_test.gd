@@ -211,7 +211,7 @@ func _run() -> void:
 	expect(off_type["type"] == "attach" and int(off_type["slot"]) == 0, "Chaos Energy is not given to Tenna, whose attack needs Fun (%s)" % off_type)
 
 	var striker := battle("jevil", ["chaos_energy", "chaos_energy"], "koody")
-	expect(decide(striker) == {"type": "attack", "attack_index": 0, "label": striker.legal_actions().filter(func(a: Dictionary) -> bool: return a["type"] == "attack" and a["attack_index"] == 0)[0]["label"]},
+	expect(decide(striker) == {"type": "attack", "attack_index": 0},
 			"Slash (20) is chosen over Chaos Bomb (0)")
 	var finisher := battle("guei", ["holy_energy", "holy_energy"], "koody")
 	finisher.opponent_player().active.damage = 10

@@ -139,7 +139,7 @@ static func run(engine: MatchEngine, binding: Dictionary, context: EffectContext
 static func choice_for(resolver: EffectResolver, context: EffectContext) -> PendingChoice:
 	var asked := context.choice
 	var choice := PendingChoice.new(context.engine.players.find(asked["chooser"]), str(asked["kind"]),
-			asked["details"] as Dictionary, str(asked["prompt"]), asked["options"] as Array, PendingChoice.RESUME_EFFECT, {})
+			asked["details"] as Dictionary, asked["options"] as Array, PendingChoice.RESUME_EFFECT, {})
 	choice.revealed.assign(asked["revealed"] as Array)
 	choice.resolver = resolver
 	choice.context = context

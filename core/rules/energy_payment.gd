@@ -35,8 +35,8 @@ static func units(card: CardData) -> int:
 
 
 ## Every distinct set of cards worth at least units_needed units with no card to spare, as
-## {"label": "Discard ...", "value": Array of CardData}, sorted by label. Copies of the same
-## card are interchangeable, so each combination appears once. Empty when nothing is owed.
+## {"value": Array of CardData}, sorted by the cards' names. Copies of the same card are
+## interchangeable, so each combination appears once. Empty when nothing is owed.
 static func discard_options(cards: Array[CardData], units_needed: int) -> Array:
 	if units_needed <= 0:
 		return []
@@ -66,6 +66,8 @@ static func discard_options(cards: Array[CardData], units_needed: int) -> Array:
 		if seen.has(key):
 			continue
 		seen.append(key)
-		options.append({"label": "Discard %s" % key, "value": chosen})
-	options.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["label"]) < str(b["label"]))
+		options.append({"value": chosen, "key": key})
+	options.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return str(a["key"]) < str(b["key"]))
+	for option: Dictionary in options:
+		option.erase("key")
 	return options

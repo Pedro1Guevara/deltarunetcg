@@ -2,7 +2,7 @@ class_name MatchEvent
 extends RefCounted
 ## One thing that happened in a round, as data (Design Document 8.4): what a board, a log or an
 ## animation shows, and what a player is allowed to know of it. The engine writes events as
-## the round goes (MatchLog); each player reads them through their view (PlayerView.events),
+## the round goes (MatchLog); each player reads them through MatchEngine.events_for(),
 ## where a private event shows its hidden version to the other player, or nothing.
 ##
 ## data holds card ids (never CardData), Darkners as darkner refs ({"side", "slot", "card"}, as
@@ -11,7 +11,7 @@ extends RefCounted
 
 ## Every player sees the whole event.
 const PUBLIC := "public"
-## The player it is about sees data and text; the other sees hidden_data and hidden_text.
+## The player it is about sees data; the other sees hidden_data.
 const PRIVATE := "private"
 ## Only the player it is about sees it at all.
 const SECRET := "secret"
@@ -39,10 +39,11 @@ const EXTRA_TURN := "extra_turn"
 const TP_RECOVERED := "tp_recovered"
 const DECK_OUT := "deck_out"
 ## Actions. evolved: {"darkner", "from", "into"}. energy_attached: {"card", "darkner", "from":
-## a zone}. trainer_played: {"card", "trainer_type"}. area_replaced: {"card", "owner"}.
+## a zone, "by_effect": false for the turn's attachment}. trainer_played: {"card", "trainer_type"}. area_replaced: {"card", "owner"}.
 ## area_used: {"card"}. retreated: {"from", "to", "discarded": card ids}. power_used:
 ## {"darkner", "power", "timing"}. attack_used: {"darkner", "attack"}. area_triggered: {"card",
-## "darkner"}. effect_missing: {}. choice_answered (secret): {"kind", "option", "label"}.
+## "darkner"}. effect_missing: {}. choice_answered (secret): {"kind", "index", "details",
+## "option"}, the question's details and the option picked as data (MatchLog.as_data()).
 const EVOLVED := "evolved"
 const ENERGY_ATTACHED := "energy_attached"
 const TRAINER_PLAYED := "trainer_played"
@@ -69,7 +70,8 @@ const COIN_FLIP := "coin_flip"
 ## Cards. card_moved: {"card", "from", "to"} with zones; a card taken from the deck into the hand
 ## is private when the search could find any card (hidden {"from", "to"}). put_on_field:
 ## {"darkner", "from"}. nothing_found: {}. nothing_discarded: {}. hand_shuffled_into_deck /
-## hand_to_bottom_of_deck: {"count"}. deck_shuffled: {}. drew: {"count"}, private {"cards"}.
+## hand_to_bottom_of_deck: {"count"}. deck_shuffled: {}. drew: {"count", "at_turn_start"},
+## private {"cards"}.
 const CARD_MOVED := "card_moved"
 const PUT_ON_FIELD := "put_on_field"
 const NOTHING_FOUND := "nothing_found"
@@ -79,7 +81,8 @@ const HAND_TO_BOTTOM_OF_DECK := "hand_to_bottom_of_deck"
 const DECK_SHUFFLED := "deck_shuffled"
 const DREW := "drew"
 ## Knockouts. knocked_out: {"darkner"}. prize_taken: {"left"}, private {"card"}. promoted:
-## {"darkner"}. won: {"winner"}. sudden_death: {}.
+## {"darkner"}. won: {"winner", "after_deck_out": true when the legacy deck-out rule gave the
+## last Mercy Card}. sudden_death: {}.
 const KNOCKED_OUT := "knocked_out"
 const PRIZE_TAKEN := "prize_taken"
 const PROMOTED := "promoted"
@@ -97,9 +100,6 @@ var visibility: String = PUBLIC
 var data: Dictionary = {}
 ## What the other player sees of a private event.
 var hidden_data: Dictionary = {}
-## The line the log shows, or "" for an event the log does not show (a turn's draw).
-var text: String = ""
-var hidden_text: String = ""
 
 
 ## The event as viewer sees it: itself, its hidden version, or null when it is not theirs to see.
@@ -110,10 +110,8 @@ func for_viewer(viewer: int) -> MatchEvent:
 		return null
 	var hidden := copy()
 	hidden.data = hidden_data.duplicate(true)
-	hidden.text = hidden_text
 	hidden.visibility = PUBLIC
 	hidden.hidden_data = {}
-	hidden.hidden_text = ""
 	return hidden
 
 
@@ -125,6 +123,4 @@ func copy() -> MatchEvent:
 	event.visibility = visibility
 	event.data = data.duplicate(true)
 	event.hidden_data = hidden_data.duplicate(true)
-	event.text = text
-	event.hidden_text = hidden_text
 	return event

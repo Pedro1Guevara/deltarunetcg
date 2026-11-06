@@ -42,8 +42,8 @@ var card: CardData
 
 var _engine: WeakRef = null
 
-## The open question, or empty:
-## {"chooser": PlayerState, "prompt": String, "options": [{"label": String, "value": Variant}]}.
+## The open question, or empty: {"chooser": PlayerState, "kind", "details", "options",
+## "revealed"} (PendingChoice).
 var choice: Dictionary = {}
 ## Answers given so far to the step currently resolving. Cleared when the step finishes.
 var selection: Array = []
@@ -71,14 +71,14 @@ func is_waiting() -> bool:
 ## Suspends the effect until chooser answers. The effect decides who that is: usually its
 ## own player, but some effects make the opponent choose.
 ## kind and details say what the question is about (PendingChoice.KIND_).
-func ask(chooser: PlayerState, kind: String, details: Dictionary, prompt: String, options: Array) -> String:
-	choice = {"chooser": chooser, "kind": kind, "details": details, "prompt": prompt, "options": options, "revealed": []}
+func ask(chooser: PlayerState, kind: String, details: Dictionary, options: Array) -> String:
+	choice = {"chooser": chooser, "kind": kind, "details": details, "options": options, "revealed": []}
 	return PENDING
 
 
 ## Like ask(), and shows cards to the chooser while they answer, such as their deck during a
 ## search.
-func ask_showing(chooser: PlayerState, kind: String, details: Dictionary, prompt: String, options: Array,
+func ask_showing(chooser: PlayerState, kind: String, details: Dictionary, options: Array,
 		shown: Array[CardData]) -> String:
-	choice = {"chooser": chooser, "kind": kind, "details": details, "prompt": prompt, "options": options, "revealed": shown.duplicate()}
+	choice = {"chooser": chooser, "kind": kind, "details": details, "options": options, "revealed": shown.duplicate()}
 	return PENDING

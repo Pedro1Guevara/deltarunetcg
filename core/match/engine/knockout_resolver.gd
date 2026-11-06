@@ -41,7 +41,7 @@ func resolve(defender_index: int, rules: MatchRules) -> int:
 	for position in knocked_out.size():
 		var side := _players[owners[position]]
 		var darkner := knocked_out[position]
-		_log.add(MatchEvent.KNOCKED_OUT, owners[position], {"darkner": _log.darkner(darkner)}, "%s is knocked out" % darkner.card.name)
+		_log.add(MatchEvent.KNOCKED_OUT, owners[position], {"darkner": _log.darkner(darkner)})
 		side.discard_from_play(darkner)
 		if side.active == darkner:
 			side.active = null
@@ -60,10 +60,10 @@ func resolve(defender_index: int, rules: MatchRules) -> int:
 
 	if int(ways[0]) > 0 or int(ways[1]) > 0:
 		if int(ways[0]) == int(ways[1]):
-			_log.add(MatchEvent.SUDDEN_DEATH, -1, {}, "Both players win at the same time: Sudden Death")
+			_log.add(MatchEvent.SUDDEN_DEATH, -1, {})
 			return MatchEngine.SUDDEN_DEATH
 		var winner := 0 if int(ways[0]) > int(ways[1]) else 1
-		_log.add(MatchEvent.WON, winner, {"winner": winner}, "Player %d wins" % (winner + 1))
+		_log.add(MatchEvent.WON, winner, {"winner": winner, "after_deck_out": false})
 		return winner
 
 	_promotion_queue.assign(lost_battling)
@@ -78,8 +78,7 @@ func take_prize(taker_index: int, count: int) -> void:
 			return
 		var prize := taker.prizes.pop_back() as CardData
 		taker.hand.append(prize)
-		var text := "Player %d takes a Mercy Card (%d left)" % [taker_index + 1, taker.prizes.size()]
-		_log.add_private(MatchEvent.PRIZE_TAKEN, taker_index, {"left": taker.prizes.size(), "card": prize.id}, {"left": taker.prizes.size()}, text, text)
+		_log.add_private(MatchEvent.PRIZE_TAKEN, taker_index, {"left": taker.prizes.size(), "card": prize.id}, {"left": taker.prizes.size()})
 
 
 ## Each player whose Battling Darkner was knocked out chooses a replacement from the Field,
@@ -95,12 +94,8 @@ func next_promotion() -> PendingChoice:
 		var options: Array = []
 		for slot in side.bench.size():
 			var darkner := side.bench[slot]
-			options.append({
-				"label": "Promote %s (%s, %d/%d HP)" % [darkner.card.name, MatchEngine.slot_name(slot), darkner.remaining_hp(), darkner.card.hp],
-				"value": slot,
-				"shows": darkner,
-			})
-		return PendingChoice.new(index, PendingChoice.KIND_PROMOTE, {}, "Choose a new Battling Darkner", options, PendingChoice.RESUME_PROMOTE, {})
+			options.append({"value": slot, "shows": darkner})
+		return PendingChoice.new(index, PendingChoice.KIND_PROMOTE, {}, options, PendingChoice.RESUME_PROMOTE, {})
 	return null
 
 
@@ -109,7 +104,7 @@ func promote(index: int, slot: int) -> void:
 	var side := _players[index]
 	side.active = side.bench.pop_at(slot) as CardInPlay
 	_promotion_queue.erase(index)
-	_log.add(MatchEvent.PROMOTED, index, {"darkner": _log.darkner(side.active)}, "Player %d promotes %s" % [index + 1, side.active.card.name])
+	_log.add(MatchEvent.PROMOTED, index, {"darkner": _log.darkner(side.active)})
 
 
 ## Mercy Cards taken for knocking out this Darkner. Effects that change it will be read here

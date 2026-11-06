@@ -53,7 +53,6 @@ var sides: Array[SideView] = []
 var chooser: int = -1
 var choice_kind: String = ""
 var choice_details: Dictionary = {}
-var choice_prompt: String = ""
 var choice_options: Array[Dictionary] = []
 ## Cards shown to the chooser, such as their deck during a search.
 var revealed: Array[CardData] = []

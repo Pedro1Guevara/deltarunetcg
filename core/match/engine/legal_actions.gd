@@ -22,7 +22,6 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 			actions.append({
 				"type": "bench",
 				"hand_index": hand_index,
-				"label": "Put %s on the Field" % card.name,
 			})
 		elif card.is_energy() and not player.energy_attached_this_turn:
 			for slot in range(-1, player.bench.size()):
@@ -33,13 +32,11 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 					"type": "attach",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Attach %s to %s (%s)" % [card.name, target.card.name, MatchEngine.slot_name(slot)],
 				})
 		elif card.is_trainer() and can_play_trainer(engine, player, card):
 			actions.append({
 				"type": "play_trainer",
 				"hand_index": hand_index,
-				"label": trainer_label(engine, card),
 			})
 
 	var offered_evolutions := {}
@@ -55,7 +52,6 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 					"type": "evolve",
 					"hand_index": hand_index,
 					"slot": slot,
-					"label": "Evolve %s into %s (%s)" % [target.card.name, evolution.name, MatchEngine.slot_name(slot)],
 				})
 
 	for slot in range(-1, player.bench.size()):
@@ -68,13 +64,11 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 					"type": "use_power",
 					"slot": slot,
 					"power": power.name,
-					"label": "Use %s (%s, %s)" % [power.name, user.card.name, MatchEngine.slot_name(slot)],
 				})
 
 	if EffectBindings.area_action_usable(engine):
 		actions.append({
 			"type": "use_area",
-			"label": "Use %s (Area)" % engine.stadium.name,
 		})
 
 	if player.active != null and not player.retreated_this_turn and player.active.can_pay(engine.retreat_cost(player.active)):
@@ -82,7 +76,6 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 			actions.append({
 				"type": "retreat",
 				"slot": slot,
-				"label": "Flee %s for %s (%s)" % [player.active.card.name, player.bench[slot].card.name, MatchEngine.slot_name(slot)],
 			})
 
 	if player.active != null and opponent.active != null and _attacks_allowed(engine):
@@ -93,10 +86,9 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 				actions.append({
 					"type": "attack",
 					"attack_index": attack_index,
-					"label": "Attack: %s (%d)" % [attack.name, attack.damage],
 				})
 
-	actions.append({"type": "end_turn", "label": "End turn"})
+	actions.append({"type": "end_turn"})
 	return actions
 
 
@@ -143,17 +135,6 @@ static func can_play_trainer(engine: MatchEngine, player: PlayerState, card: Car
 ## on their first turn, which is always turn 1.
 static func _supporters_allowed(engine: MatchEngine) -> bool:
 	return engine.rules.first_player_can_play_supporter or engine.turn > 1
-
-
-static func trainer_label(engine: MatchEngine, card: CardData) -> String:
-	match card.trainer_type:
-		CardData.TRAINER_SUPPORTER:
-			return "Play %s (Lightner)" % card.name
-		CardData.TRAINER_STADIUM:
-			return "Play %s (Area)" % card.name
-		CardData.TRAINER_SPELL:
-			return "Cast %s (%d%% TP)" % [card.name, engine.spell_cost(card) * 25]
-	return "Play %s (Item)" % card.name
 
 
 ## Current standard rule (Design Document 4.2): the player going first cannot attack on

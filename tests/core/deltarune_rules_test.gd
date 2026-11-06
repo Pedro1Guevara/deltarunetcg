@@ -40,14 +40,14 @@ func battle(attacker_id: String, attached: Array, defender_id: String, seed: int
 
 
 func has_action(engine: MatchEngine, type: String) -> bool:
-	for action in engine.legal_actions():
+	for action in labeled(engine):
 		if action["type"] == type:
 			return true
 	return false
 
 
 func has_label(engine: MatchEngine, label: String) -> bool:
-	for action in engine.legal_actions():
+	for action in labeled(engine):
 		if action["label"] == label:
 			return true
 	return false
@@ -55,7 +55,7 @@ func has_label(engine: MatchEngine, label: String) -> bool:
 
 ## Applies the legal action with this label. False when there is none.
 func play(engine: MatchEngine, label: String) -> bool:
-	for action in engine.legal_actions():
+	for action in labeled(engine):
 		if action["label"] == label:
 			engine.apply(action)
 			return true
@@ -68,7 +68,7 @@ func pick(engine: MatchEngine, label: String) -> bool:
 
 
 func attack(engine: MatchEngine, name: String) -> bool:
-	for action in engine.legal_actions():
+	for action in labeled(engine):
 		if action["type"] == "attack" and str(action["label"]).begins_with("Attack: %s " % name):
 			engine.apply(action)
 			return true
@@ -89,8 +89,8 @@ func _run() -> void:
 	var single := MatchEngine.new()
 	single.effects = library
 	single.start(deck({"jevil": 1, "chaos_energy": 29}), deck({"jevil": 1, "chaos_energy": 29}), rules, Rng.new(3))
-	single.apply(single.legal_actions()[0])
-	expect(single.choice_prompt() == "Choose your Battling Darkner" and single.legal_actions().size() == 1, "with one Basic Darkner the player is still asked, not skipped")
+	single.apply(labeled(single)[0])
+	expect(prompt_of(single) == "Choose your Battling Darkner" and labeled(single).size() == 1, "with one Basic Darkner the player is still asked, not skipped")
 
 	print("== coin flip")
 	var callers := {}
@@ -99,9 +99,9 @@ func _run() -> void:
 	for seed in SEEDS:
 		var engine := start_round(rules, seed)
 		var labels: Array = []
-		for action in engine.legal_actions():
+		for action in labeled(engine):
 			labels.append(action["label"])
-		if not (engine.choice_prompt().begins_with("Call the coin flip") and labels == ["Heads", "Tails"]):
+		if not (prompt_of(engine).begins_with("Call the coin flip") and labels == ["Heads", "Tails"]):
 			asked_first = false
 		callers[engine.choice_chooser()] = true
 		finish_setup(engine)
@@ -227,14 +227,14 @@ func _run() -> void:
 	var deck_before := searcher.deck.size()
 	expect(play(search, "Play Glowshard (Item)"), "Glowshard can be played")
 	var search_labels: Array = []
-	for action in search.legal_actions():
+	for action in labeled(search):
 		search_labels.append(action["label"])
-	expect(search.choice_prompt() == "Search your deck for basic Energy" and search_labels == ["Take Chaos Energy", "Take nothing"], "Glowshard offers each basic Energy once, and finding nothing: %s" % [search_labels])
+	expect(prompt_of(search) == "Search your deck for basic Energy" and search_labels == ["Take Chaos Energy", "Take nothing"], "Glowshard offers each basic Energy once, and finding nothing: %s" % [search_labels])
 	var shown := search.choice_revealed()
 	expect(shown.size() == searcher.deck.size() and shown[0] == searcher.deck.back() and shown.back() == searcher.deck[0], "the whole deck is shown during the search, in its real order, top card first")
 	play(search, "Take Chaos Energy")
 	search_labels.clear()
-	for action in search.legal_actions():
+	for action in labeled(search):
 		search_labels.append(action["label"])
 	expect(search_labels == ["Undo: Take Chaos Energy", "Confirm"] and searcher.deck.size() == deck_before, "a single pick also waits for confirmation and can be undone: %s" % [search_labels])
 	play(search, "Confirm")
@@ -244,7 +244,7 @@ func _run() -> void:
 		if card.is_pokemon():
 			darkners_only.append(card)
 	searcher.deck.assign(darkners_only)
-	expect(play(search, "Play Glowshard (Item)") and has_label(search, "Take nothing") and search.legal_actions().size() == 1, "with no basic Energy in the deck, Glowshard still asks, so the deck can be looked at")
+	expect(play(search, "Play Glowshard (Item)") and has_label(search, "Take nothing") and labeled(search).size() == 1, "with no basic Energy in the deck, Glowshard still asks, so the deck can be looked at")
 	expect(search.choice_revealed().size() == searcher.deck.size(), "the deck is shown even when nothing matches")
 	expect(play(search, "Take nothing") and not search.is_waiting_for_choice(), "taking nothing finishes the search")
 	searcher.deck.clear()
@@ -265,7 +265,7 @@ func _run() -> void:
 	reviver.discard.append_array(cards(["kris", "chaos_energy", "guei"]))
 	expect(play(revive, "Cast Revive Song (25% TP)"), "Revive Song can be cast with a basic Energy or a Darkner in the discard pile")
 	var revive_labels: Array = []
-	for action in revive.legal_actions():
+	for action in labeled(revive):
 		revive_labels.append(action["label"])
 	expect(revive_labels == ["Take Chaos Energy", "Take Guei"], "the options are the basic Energy and the Darkner, not Kris: %s" % [revive_labels])
 	pick(revive, "Take Guei")
@@ -287,9 +287,9 @@ func _run() -> void:
 		buster.current_player().tp = 4
 		buster.current_player().hand.append_array(cards(["rude_buster"]))
 		play(buster, "Cast Rude Buster (25% TP)")
-		if buster.events.has("  Coin flip: heads"):
+		if log_lines(buster).has("  Coin flip: heads"):
 			var buster_labels: Array = []
-			for action in buster.legal_actions():
+			for action in labeled(buster):
 				buster_labels.append(action["label"])
 			if not heads_seen:
 				expect(buster.choice_chooser() == buster_player and buster_labels == ["Discard Holy Energy from Guei (Battle Zone)", "Discard Fun Energy from Tenna (Field 1)"], "heads: the caster chooses among the opponent's Darkners, copies once: %s" % [buster_labels])
@@ -315,20 +315,20 @@ func _run() -> void:
 	napper.deck.assign(cards(["chaos_energy", "kris", "guei"]))
 	expect(play(nap, "Play Napstablook (Lightner)"), "Napstablook can be played")
 	var nap_labels: Array = []
-	for action in nap.legal_actions():
+	for action in labeled(nap):
 		nap_labels.append(action["label"])
-	expect(nap.choice_prompt() == "Search your deck for any card to discard (0/2 chosen)" and nap_labels == ["Discard Chaos Energy", "Discard Kris", "Discard Guei", "Discard nothing"], "Napstablook offers every card in the deck: %s" % [nap_labels])
+	expect(prompt_of(nap) == "Search your deck for any card to discard (0/2 chosen)" and nap_labels == ["Discard Chaos Energy", "Discard Kris", "Discard Guei", "Discard nothing"], "Napstablook offers every card in the deck: %s" % [nap_labels])
 	play(nap, "Discard Kris")
 	nap_labels.clear()
-	for action in nap.legal_actions():
+	for action in labeled(nap):
 		nap_labels.append(action["label"])
-	expect(nap.choice_prompt().ends_with("(1/2 chosen)") and nap_labels == ["Discard Chaos Energy", "Undo: Discard Kris", "Discard Guei", "Confirm"], "a picked card can be undone, and the player may confirm fewer: %s" % [nap_labels])
+	expect(prompt_of(nap).ends_with("(1/2 chosen)") and nap_labels == ["Discard Chaos Energy", "Undo: Discard Kris", "Discard Guei", "Confirm"], "a picked card can be undone, and the player may confirm fewer: %s" % [nap_labels])
 	expect(napper.deck.size() == 3, "nothing leaves the deck before confirming")
 	play(nap, "Undo: Discard Kris")
 	play(nap, "Discard Guei")
 	play(nap, "Discard Kris")
 	nap_labels.clear()
-	for action in nap.legal_actions():
+	for action in labeled(nap):
 		nap_labels.append(action["label"])
 	expect(nap_labels == ["Undo: Discard Kris", "Undo: Discard Guei", "Confirm"], "with 2 picked, only undoing or confirming is left: %s" % [nap_labels])
 	play(nap, "Confirm")
@@ -342,9 +342,9 @@ func _run() -> void:
 	expect(play(sans, "Play Sans (Lightner)"), "Sans can be played")
 	expect(sanser.hand.is_empty() and sanser.discard.size() == 2, "Sans discards the rest of the hand first")
 	var sans_labels: Array = []
-	for action in sans.legal_actions():
+	for action in labeled(sans):
 		sans_labels.append(action["label"])
-	expect(sans.choice_prompt() == "Search your deck for ACT card (0/2 chosen)" and sans_labels == ["Take Glowshard", "Take Rude Buster", "Take Kris", "Take nothing"], "then searches for ACT cards: %s" % [sans_labels])
+	expect(prompt_of(sans) == "Search your deck for ACT card (0/2 chosen)" and sans_labels == ["Take Glowshard", "Take Rude Buster", "Take Kris", "Take nothing"], "then searches for ACT cards: %s" % [sans_labels])
 	play(sans, "Take Kris")
 	play(sans, "Take Glowshard")
 	play(sans, "Confirm")
@@ -376,14 +376,14 @@ func _run() -> void:
 	bagger.hand.append_array(cards(["guei"]))
 	play(bagel, "Play CD Bagel (Item)")
 	var bagel_labels: Array = []
-	for action in bagel.legal_actions():
+	for action in labeled(bagel):
 		bagel_labels.append(action["label"])
-	expect(bagel.choice_prompt() == "Choose a card to discard from your hand" and bagel_labels == ["Discard CD Bagel", "Discard Guei"], "the player chooses the card to discard: %s" % [bagel_labels])
+	expect(prompt_of(bagel) == "Choose a card to discard from your hand" and bagel_labels == ["Discard CD Bagel", "Discard Guei"], "the player chooses the card to discard: %s" % [bagel_labels])
 	pick(bagel, "Discard Guei")
 	bagel_labels.clear()
-	for action in bagel.legal_actions():
+	for action in labeled(bagel):
 		bagel_labels.append(action["label"])
-	expect(bagel.choice_prompt() == "Search your deck for basic Energy (0/2 chosen)" and bagel_labels == ["Take Chaos Energy #1", "Take Chaos Energy #2", "Take Holy Energy", "Take nothing"], "then searches the deck; when picking several, every copy is its own option: %s" % [bagel_labels])
+	expect(prompt_of(bagel) == "Search your deck for basic Energy (0/2 chosen)" and bagel_labels == ["Take Chaos Energy #1", "Take Chaos Energy #2", "Take Holy Energy", "Take nothing"], "then searches the deck; when picking several, every copy is its own option: %s" % [bagel_labels])
 	play(bagel, "Take Holy Energy")
 	play(bagel, "Take Chaos Energy #2")
 	play(bagel, "Confirm")
@@ -399,7 +399,7 @@ func _run() -> void:
 	expect(not has_label(manual, "Play Recruit Manual (Item)"), "Recruit Manual needs 2 other cards in hand")
 	recruiter.hand.append_array(cards(["chaos_energy"]))
 	expect(play(manual, "Play Recruit Manual (Item)"), "Recruit Manual can be played with 2 other cards")
-	expect(manual.choice_prompt() == "Search your deck for Darkner" and recruiter.discard.size() == 2 and recruiter.hand.is_empty(), "two copies of the same card are discarded without asking")
+	expect(prompt_of(manual) == "Search your deck for Darkner" and recruiter.discard.size() == 2 and recruiter.hand.is_empty(), "two copies of the same card are discarded without asking")
 	pick(manual, "Take Guei")
 	expect(recruiter.hand.size() == 1 and recruiter.hand[0].name == "Guei", "the Darkner goes into the hand")
 	var choosy := battle("jevil", [], "guei")
@@ -407,20 +407,20 @@ func _run() -> void:
 	chooser.hand.assign(cards(["recruit_manual", "holy_energy", "holy_energy", "sans"]))
 	play(choosy, "Play Recruit Manual (Item)")
 	var choosy_labels: Array = []
-	for action in choosy.legal_actions():
+	for action in labeled(choosy):
 		choosy_labels.append(action["label"])
-	expect(choosy.choice_prompt() == "Choose 2 cards to discard from your hand (0/2 chosen)" and choosy_labels == ["Discard Holy Energy #1", "Discard Holy Energy #2", "Discard Sans"], "discarding 2: every card is its own option and there is nothing to confirm yet: %s" % [choosy_labels])
+	expect(prompt_of(choosy) == "Choose 2 cards to discard from your hand (0/2 chosen)" and choosy_labels == ["Discard Holy Energy #1", "Discard Holy Energy #2", "Discard Sans"], "discarding 2: every card is its own option and there is nothing to confirm yet: %s" % [choosy_labels])
 	play(choosy, "Discard Holy Energy #1")
 	play(choosy, "Discard Holy Energy #2")
 	choosy_labels.clear()
-	for action in choosy.legal_actions():
+	for action in labeled(choosy):
 		choosy_labels.append(action["label"])
 	expect(choosy_labels == ["Undo: Discard Holy Energy #1", "Undo: Discard Holy Energy #2", "Confirm"], "with 2 picked: %s" % [choosy_labels])
 	play(choosy, "Undo: Discard Holy Energy #2")
 	play(choosy, "Discard Sans")
 	expect(chooser.hand.size() == 3 and chooser.discard.is_empty(), "nothing is discarded before confirming")
 	play(choosy, "Confirm")
-	expect(chooser.discard.map(func(card: CardData) -> String: return card.name) == ["Holy Energy", "Sans"] and choosy.choice_prompt() == "Search your deck for Darkner", "confirming discards the 2 picked cards, then the search starts")
+	expect(chooser.discard.map(func(card: CardData) -> String: return card.name) == ["Holy Energy", "Sans"] and prompt_of(choosy) == "Search your deck for Darkner", "confirming discards the 2 picked cards, then the search starts")
 
 	print("== Darkner attack effects")
 	var bomb := battle("jevil", ["chaos_energy", "chaos_energy"], "guei")
@@ -440,7 +440,7 @@ func _run() -> void:
 	var transit_target := transit.opponent_player().active
 	transit_player.bench.append(in_play("jevil", []))
 	attack(transit, "Violent Transit")
-	expect(transit.events.any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")
+	expect(log_lines(transit).any(func(line: String) -> bool: return line.begins_with("  10 damage to Tenna")), "Violent Transit deals its 10 damage")
 	expect(transit_player.active.card.name == "Jevil" and transit_player.bench[0].card.name == "Electro-Dasher", "then the attacker switches with the Darkner on the Field")
 
 	var splash := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
@@ -450,7 +450,7 @@ func _run() -> void:
 	splasher.tp = 1
 	attack(splash, "Refreshing Splash")
 	var splash_labels: Array = []
-	for action in splash.legal_actions():
+	for action in labeled(splash):
 		splash_labels.append(action["label"])
 	expect(splash.choice_chooser() == splash.current_index and splash_labels == ["Use 25% TP", "Don't use TP"], "Refreshing Splash: the player chooses whether to use 25%% TP: %s" % [splash_labels])
 	play(splash, "Use 25% TP")
@@ -492,12 +492,12 @@ func _run() -> void:
 	recruiter_side.deck.assign(cards(["guei", "kris", "jevil"]))
 	expect(attack(recruit, "Recruit"), "Recruit is legal with 1 Energy")
 	var recruit_labels: Array = []
-	for action in recruit.legal_actions():
+	for action in labeled(recruit):
 		recruit_labels.append(action["label"])
-	expect(recruit.choice_prompt() == "Search your deck for Darkner" and recruit_labels == ["Take Guei", "Take Jevil", "Take nothing"], "Recruit searches the deck for a Darkner: %s" % [recruit_labels])
+	expect(prompt_of(recruit) == "Search your deck for Darkner" and recruit_labels == ["Take Guei", "Take Jevil", "Take nothing"], "Recruit searches the deck for a Darkner: %s" % [recruit_labels])
 	pick(recruit, "Take Jevil")
 	expect(recruiter_side.hand.back().name == "Jevil" and recruit.opponent_player().active.damage == 0, "the Darkner goes into the hand; an attack with no printed damage deals none")
-	expect(not recruit.events.any(func(line: String) -> bool: return line.begins_with("  0 damage")), "and logs no damage")
+	expect(not log_lines(recruit).any(func(line: String) -> bool: return line.begins_with("  0 damage")), "and logs no damage")
 	expect(recruit.current_player() != recruiter_side, "then the turn ends")
 
 	var training := battle("dummy", ["fighting_energy"], "tenna")
@@ -508,9 +508,9 @@ func _run() -> void:
 	trainer_side.energy_attached_this_turn = true
 	expect(attack(training, "Helpful Training"), "Helpful Training is legal even after attaching Energy this turn")
 	var training_labels: Array = []
-	for action in training.legal_actions():
+	for action in labeled(training):
 		training_labels.append(action["label"])
-	expect(training.choice_prompt() == "Choose a card from your hand to attach" and training_labels == ["Attach Holy Energy", "Attach Fighting Energy"], "the player chooses a basic Energy from their hand: %s" % [training_labels])
+	expect(prompt_of(training) == "Choose a card from your hand to attach" and training_labels == ["Attach Holy Energy", "Attach Fighting Energy"], "the player chooses a basic Energy from their hand: %s" % [training_labels])
 	pick(training, "Attach Holy Energy")
 	expect(play(training, "Attach Holy Energy to Cuptain (Field 2)"), "then a Darkner on the Field")
 	expect(trainer_side.bench[1].attached_energy.size() == 1 and trainer_side.active.attached_energy.size() == 1 and trainer_side.hand.size() == 2, "the Energy goes from the hand to that Darkner")
@@ -524,9 +524,9 @@ func _run() -> void:
 	for seed in SEEDS:
 		var lunge := battle("koody", ["fun_energy"], "tenna", seed)
 		var lunge_target := lunge.opponent_player().active
-		var start := lunge.events.size()
+		var start := log_lines(lunge).size()
 		attack(lunge, "Lunge")
-		var heads := lunge.events.slice(start).has("  Coin flip: heads")
+		var heads := log_lines(lunge).slice(start).has("  Coin flip: heads")
 		var dealt := lunge_target.damage
 		if heads and not lunge_heads:
 			lunge_heads = true
@@ -555,9 +555,9 @@ func _run() -> void:
 	selfie.opponent_player().bench.append(in_play("guei", []))
 	expect(attack(selfie, "Quick Selfie"), "Quick Selfie is legal")
 	var selfie_labels: Array = []
-	for action in selfie.legal_actions():
+	for action in labeled(selfie):
 		selfie_labels.append(action["label"])
-	expect(selfie.choice_prompt() == "Choose one of your opponent's Darkners" and selfie_labels == ["Choose Tenna (Battle Zone, 100/100 HP)", "Choose Guei (Field 1, 80/80 HP)"], "the attacker chooses any of the opponent's Darkners: %s" % [selfie_labels])
+	expect(prompt_of(selfie) == "Choose one of your opponent's Darkners" and selfie_labels == ["Choose Tenna (Battle Zone, 100/100 HP)", "Choose Guei (Field 1, 80/80 HP)"], "the attacker chooses any of the opponent's Darkners: %s" % [selfie_labels])
 	expect(selfie_player.active.attached_energy.is_empty() and selfie_player.discard.size() == 2, "Shuttah's Energy is discarded first")
 	play(selfie, "Choose Guei (Field 1, 80/80 HP)")
 	expect(selfie.players[1 - selfie_index].bench[0].damage == 20, "2 damage counters on the chosen Darkner, without Weakness or Resistance")
@@ -572,7 +572,7 @@ func _run() -> void:
 	attack(again, "Quick Selfie")
 	play(again, "Choose Guei (Field 1, 20/80 HP)")
 	expect(again.players[again_index].prizes.size() == 3 and again_opponent.bench.is_empty(), "the 2 damage counters knock out Guei on the Field: a Mercy Card")
-	expect(again.current_index == again_index and again.turn == again_turn + 1 and again.events.has("Player %d takes another turn" % (again_index + 1)), "a knockout by Quick Selfie gives the attacker another turn")
+	expect(again.current_index == again_index and again.turn == again_turn + 1 and log_lines(again).has("Player %d takes another turn" % (again_index + 1)), "a knockout by Quick Selfie gives the attacker another turn")
 	var again_player := again.current_player()
 	again_player.active.attached_energy.append_array(cards(["chaos_energy", "chaos_energy"]))
 	expect(not has_action(again, "attack"), "Quick Selfie cannot be used in the turn after it was used")
@@ -605,13 +605,13 @@ func _run() -> void:
 	devotee.discard.append_array(cards(["chaos_energy", "holy_energy"]))
 	expect(play(devotion, "Use Selfless Devotion (Cuptain, Battle Zone)"), "it can be used again in the same turn")
 	var energy_labels: Array = []
-	for action in devotion.legal_actions():
+	for action in labeled(devotion):
 		energy_labels.append(action["label"])
 	expect(energy_labels == ["Attach Chaos Energy", "Attach Holy Energy"], "the player chooses the Energy: %s" % [energy_labels])
 	pick(devotion, "Attach Holy Energy")
 	expect(play(devotion, "Attach Holy Energy to Guei (Field 2)"), "then the Darkner on the Field")
 	var mercy_before := devotion.opponent_player().prizes.size()
-	expect(devotee.active == null and devotion.choice_prompt() == "Choose a new Battling Darkner" and devotion.choice_chooser() == devotion.current_index, "40 damage knocks Cuptain out; its owner chooses the new Battling Darkner")
+	expect(devotee.active == null and prompt_of(devotion) == "Choose a new Battling Darkner" and devotion.choice_chooser() == devotion.current_index, "40 damage knocks Cuptain out; its owner chooses the new Battling Darkner")
 	expect(mercy_before == 3, "the opponent takes a Mercy Card for it")
 	play(devotion, "Promote Guei (Field 2, 80/80 HP)")
 	expect(devotion.turn == devotion_turn and devotion.current_player() == devotee and devotee.active.card.name == "Guei", "the turn goes on after the promotion")
@@ -624,9 +624,9 @@ func _run() -> void:
 	var worm_deck := wormer.deck.size()
 	expect(play(worm, "Use Way of the Worm (Koody, Battle Zone)"), "it can be used with a basic Energy in hand")
 	var worm_labels: Array = []
-	for action in worm.legal_actions():
+	for action in labeled(worm):
 		worm_labels.append(action["label"])
-	expect(worm.choice_prompt() == "Choose a basic Energy to discard from your hand" and worm_labels == ["Discard Fun Energy", "Discard Holy Energy"], "the player chooses a basic Energy, never another card: %s" % [worm_labels])
+	expect(prompt_of(worm) == "Choose a basic Energy to discard from your hand" and worm_labels == ["Discard Fun Energy", "Discard Holy Energy"], "the player chooses a basic Energy, never another card: %s" % [worm_labels])
 	pick(worm, "Discard Holy Energy")
 	expect(wormer.discard.back().name == "Holy Energy" and wormer.hand.size() == 3 and wormer.deck.size() == worm_deck - 1, "the Energy is discarded, then 1 card is drawn")
 	wormer.bench.append(in_play("koody", []))
@@ -643,14 +643,14 @@ func _run() -> void:
 	lurer.deck.assign(cards(["balthizard", "miss_mizzle", "guei", "kris"]))
 	expect(play(lure, "Put Balthizard on the Field"), "Balthizard is played from the hand")
 	var lure_labels: Array = []
-	for action in lure.legal_actions():
+	for action in labeled(lure):
 		lure_labels.append(action["label"])
-	expect(lure.choice_prompt() == "Use Luring Incense?" and lure_labels == ["Use Luring Incense (Balthizard)", "Don't use Luring Incense"], "its owner may use Luring Incense: %s" % [lure_labels])
+	expect(prompt_of(lure) == "Use Luring Incense?" and lure_labels == ["Use Luring Incense (Balthizard)", "Don't use Luring Incense"], "its owner may use Luring Incense: %s" % [lure_labels])
 	play(lure, "Use Luring Incense (Balthizard)")
 	lure_labels.clear()
-	for action in lure.legal_actions():
+	for action in labeled(lure):
 		lure_labels.append(action["label"])
-	expect(lure.choice_prompt() == "Search your deck for non-Evolution Darkner to put onto your Field (not Balthizard)" and lure_labels == ["Put Guei", "Put nothing"], "the search offers non-Evolution Darkners other than Balthizard: %s" % [lure_labels])
+	expect(prompt_of(lure) == "Search your deck for non-Evolution Darkner to put onto your Field (not Balthizard)" and lure_labels == ["Put Guei", "Put nothing"], "the search offers non-Evolution Darkners other than Balthizard: %s" % [lure_labels])
 	pick(lure, "Put Guei")
 	expect(lurer.bench.size() == 2 and lurer.bench[1].card.name == "Guei" and lurer.deck.size() == 3 and not lure.is_waiting_for_choice(), "Guei goes from the deck onto the Field")
 	play(lure, "Put Balthizard on the Field")
@@ -692,9 +692,9 @@ func _run() -> void:
 		var trampled := stampede.opponent_player()
 		trampled.bench.append(in_play("guei", []))
 		trampled.bench.append(in_play("water_cooler", []))
-		var log_start := stampede.events.size()
+		var log_start := log_lines(stampede).size()
 		attack(stampede, "Chaos Bomb")
-		var flips := stampede.events.slice(log_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
+		var flips := log_lines(stampede).slice(log_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
 		if flips.size() == 1 and flips[0].contains("heads") and not stampede_heads:
 			stampede_heads = true
 			expect(trampled.bench[0].damage == 30 and trampled.bench[1].damage == 30 and trampled.active.damage == 0, "heads: 1 damage counter on each Darkner the attack damaged, from the Field, and none on the undamaged one")
@@ -706,16 +706,16 @@ func _run() -> void:
 	var herd := battle("jevil", ["chaos_energy"], "tenna")
 	herd.current_player().bench.append(in_play("electro_dasher", []))
 	herd.current_player().bench.append(in_play("electro_dasher", []))
-	var herd_start := herd.events.size()
+	var herd_start := log_lines(herd).size()
 	attack(herd, "Slash")
-	var herd_flips := herd.events.slice(herd_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
+	var herd_flips := log_lines(herd).slice(herd_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
 	expect(herd_flips.size() == 2, "two Electro-Dasher in play flip a coin each (%d)" % herd_flips.size())
 
 	var blocked := battle("jevil", ["chaos_energy"], "guei")
 	blocked.current_player().bench.append(in_play("electro_dasher", []))
-	var blocked_start := blocked.events.size()
+	var blocked_start := log_lines(blocked).size()
 	attack(blocked, "Slash")
-	var blocked_flips := blocked.events.slice(blocked_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
+	var blocked_flips := log_lines(blocked).slice(blocked_start).filter(func(line: String) -> bool: return line.contains("Coin flip"))
 	expect(blocked_flips.is_empty(), "an attack that deals no damage (Guei resists Chaos) sets off nothing")
 
 	var trigger_heads := false
@@ -725,9 +725,9 @@ func _run() -> void:
 		trigger_ko.opponent_player().bench.append(in_play("guei", []))
 		trigger_ko.opponent_player().active.damage = 80
 		var trigger_taker := trigger_ko.current_index
-		var trigger_start := trigger_ko.events.size()
+		var trigger_start := log_lines(trigger_ko).size()
 		attack(trigger_ko, "Violent Transit")
-		var heads := trigger_ko.events.slice(trigger_start).has("  Coin flip: heads")
+		var heads := log_lines(trigger_ko).slice(trigger_start).has("  Coin flip: heads")
 		var mercy := trigger_ko.players[trigger_taker].prizes.size()
 		if heads and not trigger_heads:
 			trigger_heads = true
@@ -767,7 +767,7 @@ func _run() -> void:
 	inherited_player.deck.assign(cards(["guei"]))
 	expect(has_label(inherited, "Attack: Recruit (0)"), "the kept attack can be used with its own cost")
 	attack(inherited, "Recruit")
-	expect(inherited.choice_prompt() == "Search your deck for Darkner", "and resolves with Old Man's effect")
+	expect(prompt_of(inherited) == "Search your deck for Darkner", "and resolves with Old Man's effect")
 
 	var mizzle := battle("hammer_of_justice", ["creative_energy", "creative_energy", "creative_energy"], "miss_mizzle")
 	var mizzle_target := mizzle.opponent_player().active
@@ -782,9 +782,9 @@ func _run() -> void:
 	vowed.bench.append(in_play("guei", []))
 	vowed.bench.append(in_play("water_cooler", []))
 	vow.current_player().bench.append(in_play("electro_dasher", []))
-	var vow_start := vow.events.size()
+	var vow_start := log_lines(vow).size()
 	attack(vow, "Chaos Bomb")
-	var vow_events := vow.events.slice(vow_start)
+	var vow_events := log_lines(vow).slice(vow_start)
 	expect(vowed.bench[0].damage == 0 and vowed.bench[1].damage == 0, "Vow of Majesty in the Battle Zone prevents attack damage to its owner's Field")
 	expect(vow_events.has("  Vow of Majesty prevents the damage to Guei"), "the log says what prevented it")
 	expect(not vow_events.any(func(line: String) -> bool: return line.contains("Coin flip")), "nothing was damaged, so Relentless Stampede does not flip")
@@ -822,9 +822,9 @@ func _run() -> void:
 	var dark_deck := darker.deck.size()
 	expect(play(dark, "Use Dark Zone (Area)"), "with 2 cards in hand the player taking the turn may use it")
 	var dark_labels: Array = []
-	for action in dark.legal_actions():
+	for action in labeled(dark):
 		dark_labels.append(action["label"])
-	expect(dark.choice_prompt() == "Choose 2 cards to discard from your hand (0/2 chosen)" and dark_labels == ["Discard Kris", "Discard Holy Energy", "Discard Guei"], "the player chooses 2 cards: %s" % [dark_labels])
+	expect(prompt_of(dark) == "Choose 2 cards to discard from your hand (0/2 chosen)" and dark_labels == ["Discard Kris", "Discard Holy Energy", "Discard Guei"], "the player chooses 2 cards: %s" % [dark_labels])
 	play(dark, "Discard Kris")
 	play(dark, "Discard Guei")
 	play(dark, "Confirm")
@@ -841,7 +841,7 @@ func _run() -> void:
 	cooler.deck.assign(cards(["water_cooler", "kris"]))
 	play(cold, "Play Cold Place (Area)")
 	play(cold, "Put Guei on the Field")
-	expect(cooler.bench[0].damage == 10 and cold.events.has("Cold Place: Guei"), "Cold Place: 1 damage counter on a Darkner put onto the Field from the hand")
+	expect(cooler.bench[0].damage == 10 and log_lines(cold).has("Cold Place: Guei"), "Cold Place: 1 damage counter on a Darkner put onto the Field from the hand")
 	play(cold, "Put Balthizard on the Field")
 	play(cold, "Use Luring Incense (Balthizard)")
 	pick(cold, "Put Water Cooler")
@@ -942,9 +942,9 @@ func _run() -> void:
 	var view_chooser := search_view.view_for(search_view.current_index)
 	var view_watcher := search_view.view_for(1 - search_view.current_index)
 	expect(view_chooser.chooser == search_view.current_index and view_chooser.choice_kind == PendingChoice.KIND_PICK_CARDS and view_chooser.revealed.size() == 2
-			and view_chooser.choice_options.size() == search_view.legal_actions().size() and view_chooser.choice_prompt != "", "the chooser sees the question, its options and the cards it shows")
+			and view_chooser.choice_options.size() == labeled(search_view).size() and ActionText.prompt(view_chooser, db) != "", "the chooser sees the question, its options and the cards it shows")
 	expect(view_watcher.chooser == search_view.current_index and view_watcher.choice_kind == PendingChoice.KIND_PICK_CARDS and view_watcher.choice_options.is_empty()
-			and view_watcher.choice_details.is_empty() and view_watcher.choice_prompt == "" and view_watcher.revealed.is_empty() and view_watcher.legal_actions.is_empty(),
+			and view_watcher.choice_details.is_empty() and ActionText.prompt(view_watcher, db) == "" and view_watcher.revealed.is_empty() and view_watcher.legal_actions.is_empty(),
 			"the other player sees only that a search is open")
 	expect(view_chooser.resolving_trainer != null and view_chooser.resolving_trainer.id == "glowshard" and view_watcher.resolving_trainer == view_chooser.resolving_trainer,
 			"both see the ACT card being played")
@@ -971,16 +971,18 @@ func _run() -> void:
 	var watched := battle("jevil", ["chaos_energy"], "koody")
 	var actor_index := watched.current_index
 	var opponent_index := 1 - actor_index
+	# Every event has a line in the log but a turn's draw, which the board shows.
 	var lines_match := func(engine: MatchEngine) -> bool:
-		var texts: Array[String] = []
-		for event in engine.match_log.entries:
-			if not event.text.is_empty():
-				texts.append(event.text)
-		return texts == engine.events
-	expect(lines_match.call(watched), "every line of the log is the text of an event, in order")
-	var turn_draws := watched.events_for(actor_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and event.text.is_empty())
-	var opponent_draws := watched.events_for(opponent_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and event.text.is_empty())
-	expect(not turn_draws.is_empty() and (turn_draws.back() as MatchEvent).data["cards"].size() == 1 and (opponent_draws.back() as MatchEvent).data == {"count": 1},
+		var worded := engine.match_log.entries.filter(func(event: MatchEvent) -> bool:
+			return not (event.type == MatchEvent.DREW and bool(event.data["at_turn_start"])))
+		for event: MatchEvent in worded:
+			if EventText.line(event, db).is_empty():
+				return false
+		return worded.size() == log_lines(engine).size()
+	expect(lines_match.call(watched), "every event has a line in the log, but a turn's draw")
+	var turn_draws := watched.events_for(actor_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and bool(event.data["at_turn_start"]))
+	var opponent_draws := watched.events_for(opponent_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and bool(event.data["at_turn_start"]))
+	expect(not turn_draws.is_empty() and (turn_draws.back() as MatchEvent).data["cards"].size() == 1 and (opponent_draws.back() as MatchEvent).data == {"count": 1, "at_turn_start": true},
 			"a turn's draw is an event without a line: the player sees the card, the opponent only that one was drawn")
 	watched.opponent_player().active.damage = 20
 	var before_attack := watched.match_log.entries.size()
@@ -1019,7 +1021,8 @@ func _run() -> void:
 	unrevealed.operations.take_from_deck(holder, [holder.deck[0]] as Array[CardData], false)
 	var owner_view := unrevealed.events_for(unrevealed.current_index, before_take)[0]
 	var other_view := unrevealed.events_for(1 - unrevealed.current_index, before_take)[0]
-	expect(owner_view.data["card"] == "kris" and not other_view.data.has("card") and other_view.text.contains("a card") and not other_view.text.contains("Kris"),
+	var other_line := EventText.line(other_view, db)
+	expect(owner_view.data["card"] == "kris" and not other_view.data.has("card") and other_line.contains("a card") and not other_line.contains("Kris"),
 			"a card taken by a search for any card is hidden from the opponent, in data and in text")
 
 	var leaks := ""
@@ -1033,7 +1036,7 @@ func _run() -> void:
 		for _step in 300:
 			if leaky.is_over():
 				break
-			var options := leaky.legal_actions()
+			var options := labeled(leaky)
 			leaky.apply(options[event_picker.randi_range(0, options.size() - 1)])
 		for viewer in 2:
 			for event in leaky.events_for(viewer, 0):
@@ -1104,7 +1107,7 @@ func _run() -> void:
 	expect(pool.size() == 4, "can_pay leaves the pool unchanged")
 	var three_chaos := cards(["chaos_energy", "chaos_energy", "chaos_energy"])
 	var flee_two := EnergyPayment.discard_options(three_chaos, 2)
-	expect(flee_two.size() == 1 and str(flee_two[0]["label"]) == "Discard Chaos Energy + Chaos Energy", "copies are one option, with no card to spare")
+	expect(flee_two.size() == 1 and ActionText.option_label(PendingChoice.KIND_FLEE_PAYMENT, {}, flee_two[0], null, db) == "Discard Chaos Energy + Chaos Energy", "copies are one option, with no card to spare")
 	expect(EnergyPayment.discard_options(three_chaos, 0).is_empty(), "nothing owed: no options")
 
 	print("== knockouts and Mercy Cards")
@@ -1122,7 +1125,7 @@ func _run() -> void:
 	var promoter := 1 - promotion.current_index
 	attack(promotion, "Showtime!")
 	expect(promotion.is_waiting_for_choice() and promotion.choice_chooser() == promoter and promotion.turn == 2, "with two Darkners on the Field the loser chooses, and the turn waits")
-	promotion.apply(promotion.legal_actions()[0])
+	promotion.apply(labeled(promotion)[0])
 	expect(promotion.turn == 3 and promotion.current_index == promoter, "the turn ends once the new Battling Darkner is chosen")
 
 	var double_rules := MatchRules.deltarune()
@@ -1185,13 +1188,13 @@ func _run() -> void:
 			if game.is_over():
 				rounds_finished += 1
 				break
-			var actions := game.legal_actions()
+			var actions := labeled(game)
 			if repeated.is_empty() and not labels_distinct(actions):
 				repeated = "seed %d, turn %d: %s" % [seed, game.turn, actions]
 			game.apply(actions[picker.randi_range(0, actions.size() - 1)])
 		var from_text := MatchReplay.from_text(game.replay().to_text())
 		var replayed := from_text.play(db, library)
-		if replay_mismatch.is_empty() and (replayed.events != game.events or replayed.turn != game.turn or replayed.winner != game.winner
+		if replay_mismatch.is_empty() and (log_lines(replayed) != log_lines(game) or replayed.turn != game.turn or replayed.winner != game.winner
 				or replayed.replay().actions.size() != game.replay().actions.size()):
 			replay_mismatch = "seed %d" % seed
 		var from_code := MatchReplay.from_text(game.replay().to_code())

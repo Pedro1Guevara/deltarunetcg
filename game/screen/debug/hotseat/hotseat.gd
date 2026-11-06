@@ -15,6 +15,8 @@ const REPLAY_AS_TEXT := 0
 const REPLAY_AS_CODE := 1
 
 var _engine := MatchEngine.new()
+## The cards of the round, for the words of labels, prompts and the log (game/presentation).
+var _database: CardDatabase = null
 var _seed: int = 0
 
 var _status_label: Label
@@ -163,6 +165,7 @@ func _start_match() -> void:
 
 func _start_with_rules(match_rules: MatchRules) -> void:
 	var database := DataLoader.load_card_database()
+	_database = database
 	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
 	if database.card_count() == 0 or not decks is Dictionary:
 		_show_error("Could not load data/cards.json or data/decks.json. See the Output panel.")
@@ -239,7 +242,8 @@ func _refresh() -> void:
 	elif _engine.is_waiting_for_choice() and _is_hidden(_engine.choice_chooser()):
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d (CPU) is choosing" % [_engine.turn, _seed, _engine.choice_chooser() + 1]
 	elif _engine.is_waiting_for_choice():
-		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, _engine.choice_prompt()]
+		var prompt := ActionText.prompt(_engine.view_for(_engine.choice_chooser()), _database)
+		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, prompt]
 	else:
 		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
 	_status_text = _status_label.text
@@ -306,16 +310,12 @@ func _refresh() -> void:
 ## The log (as the human sees it, against the CPU), then the CPU's next decision if it is to
 ## act.
 func _finish_refresh() -> void:
-	var lines := PackedStringArray()
-	var human := _cpu_seats.find(false)
+	# Against the CPU, the log is the human's: the CPU's draws, Mercy Cards and answers show as
+	# the human sees them (MatchEvent). Otherwise it is everything.
+	var events := _engine.match_log.entries
 	if _cpu_seats.count(false) == 1:
-		# Against the CPU, the log is the human's: the CPU's draws, Mercy Cards and answers
-		# show as the human sees them (MatchEvent).
-		for event in _engine.events_for(human, 0):
-			if not event.text.is_empty():
-				lines.append(event.text)
-	else:
-		lines = PackedStringArray(_engine.events)
+		events = _engine.events_for(_cpu_seats.find(false), 0)
+	var lines := EventText.lines(events, _database)
 	lines.reverse()
 	_log_label.text = "\n".join(lines)
 	_schedule_cpu()
@@ -387,7 +387,7 @@ func _group_key(action: Dictionary) -> String:
 
 func _add_action_button(action: Dictionary, prefix: String) -> void:
 	var button := _make_button(_shown_for(action))
-	button.text = prefix + str(action["label"])
+	button.text = prefix + ActionText.label(_engine.view_for(_actor()), action, _database)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.pressed.connect(_on_action_pressed.bind(action))
 	_actions_box.add_child(button)

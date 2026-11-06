@@ -1,31 +1,29 @@
 class_name MatchLog
 extends RefCounted
-## The round's events (MatchEvent) and, for now, their lines of text. The engine and the parts
-## it owns write here; nothing else does. lines is the same array as MatchEngine.events.
+## The round's events (MatchEvent), in order. The engine and the parts it owns write here;
+## nothing else does. It holds no words: game/presentation writes the log from the events.
 
-var lines: Array[String]
 var entries: Array[MatchEvent] = []
 var _players: Array[PlayerState]
 
 
-func _init(players: Array[PlayerState], text_lines: Array[String]) -> void:
+func _init(players: Array[PlayerState]) -> void:
 	_players = players
-	lines = text_lines
 
 
 ## An event every player sees whole.
-func add(type: String, player: int, data: Dictionary, text: String) -> MatchEvent:
-	return _add(type, player, MatchEvent.PUBLIC, data, {}, text, "")
+func add(type: String, player: int, data: Dictionary) -> MatchEvent:
+	return _add(type, player, MatchEvent.PUBLIC, data, {})
 
 
-## An event the other player sees only as hidden_data and hidden_text.
-func add_private(type: String, player: int, data: Dictionary, hidden_data: Dictionary, text: String, hidden_text: String) -> MatchEvent:
-	return _add(type, player, MatchEvent.PRIVATE, data, hidden_data, text, hidden_text)
+## An event the other player sees only as hidden_data.
+func add_private(type: String, player: int, data: Dictionary, hidden_data: Dictionary) -> MatchEvent:
+	return _add(type, player, MatchEvent.PRIVATE, data, hidden_data)
 
 
 ## An event only player sees.
-func add_secret(type: String, player: int, data: Dictionary, text: String) -> MatchEvent:
-	return _add(type, player, MatchEvent.SECRET, data, {}, text, "")
+func add_secret(type: String, player: int, data: Dictionary) -> MatchEvent:
+	return _add(type, player, MatchEvent.SECRET, data, {})
 
 
 ## The events as viewer sees them, from the index-th on.
@@ -50,6 +48,28 @@ func darkner(target: CardInPlay) -> Dictionary:
 	return {"side": -1, "slot": -1, "card": "" if target == null else target.card.id}
 
 
+## value with every CardData as its id and every Darkner as its ref plus "hp_left", through
+## Arrays and Dictionaries, so it can be kept in an event.
+func as_data(value: Variant) -> Variant:
+	if value is CardData:
+		return (value as CardData).id
+	if value is CardInPlay:
+		var ref := darkner(value as CardInPlay)
+		ref["hp_left"] = (value as CardInPlay).remaining_hp()
+		return ref
+	if value is Array:
+		var items: Array = []
+		for item: Variant in value:
+			items.append(as_data(item))
+		return items
+	if value is Dictionary:
+		var entries_by_key := {}
+		for key: Variant in value:
+			entries_by_key[key] = as_data((value as Dictionary)[key])
+		return entries_by_key
+	return value
+
+
 func player_index(player: PlayerState) -> int:
 	return _players.find(player)
 
@@ -61,7 +81,7 @@ static func ids(cards: Array) -> Array:
 	return found
 
 
-func _add(type: String, player: int, visibility: String, data: Dictionary, hidden_data: Dictionary, text: String, hidden_text: String) -> MatchEvent:
+func _add(type: String, player: int, visibility: String, data: Dictionary, hidden_data: Dictionary) -> MatchEvent:
 	var event := MatchEvent.new()
 	event.index = entries.size()
 	event.type = type
@@ -69,9 +89,5 @@ func _add(type: String, player: int, visibility: String, data: Dictionary, hidde
 	event.visibility = visibility
 	event.data = data
 	event.hidden_data = hidden_data
-	event.text = text
-	event.hidden_text = hidden_text
 	entries.append(event)
-	if not text.is_empty():
-		lines.append(text)
 	return event

@@ -32,7 +32,7 @@ func finish() -> void:
 ## Stops at turn 1 even if an effect choice is already open.
 func finish_setup(engine: MatchEngine) -> void:
 	while engine.is_waiting_for_choice() and engine.turn == 0:
-		var actions := engine.legal_actions()
+		var actions := labeled(engine)
 		var pick := actions[0]
 		for action in actions:
 			var label := str(action["label"])
@@ -49,6 +49,31 @@ func labels_distinct(actions: Array[Dictionary]) -> bool:
 			return false
 		seen[label] = true
 	return true
+
+## The legal actions, each with the "label" its player reads (ActionText) added. The engine
+## ignores the label when one is applied.
+func labeled(engine: MatchEngine) -> Array[Dictionary]:
+	var actor := engine.choice_chooser() if engine.is_waiting_for_choice() else engine.current_index
+	var view := engine.view_for(actor)
+	var actions: Array[Dictionary] = []
+	for action in engine.legal_actions():
+		var copy := action.duplicate()
+		copy["label"] = ActionText.label(view, action, db)
+		actions.append(copy)
+	return actions
+
+
+## The log as the game shows it, every event included (EventText).
+func log_lines(engine: MatchEngine) -> Array[String]:
+	var text: Array[String] = []
+	text.assign(Array(EventText.lines(engine.match_log.entries, db)))
+	return text
+
+
+## The open question in words, for its chooser.
+func prompt_of(engine: MatchEngine) -> String:
+	return ActionText.prompt(engine.view_for(engine.choice_chooser()), db)
+
 
 ## A fresh copy of each card id, in order.
 func cards(ids: Array) -> Array[CardData]:

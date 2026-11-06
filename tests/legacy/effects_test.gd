@@ -26,7 +26,7 @@ var last_attacker: CardInPlay
 func attack(engine: MatchEngine, name: String) -> bool:
 	last_defender = engine.players[1].active
 	last_attacker = engine.players[0].active
-	for action in engine.legal_actions():
+	for action in labeled(engine):
 		if action["type"] == "attack" and str(action["label"]).begins_with("Attack: %s " % name):
 			engine.apply(action)
 			return true
@@ -34,7 +34,7 @@ func attack(engine: MatchEngine, name: String) -> bool:
 
 ## Applies the legal action with this label. False when there is none.
 func play(engine: MatchEngine, label: String) -> bool:
-	for action in engine.legal_actions():
+	for action in labeled(engine):
 		if action["label"] == label:
 			engine.apply(action)
 			return true
@@ -121,7 +121,7 @@ func _run() -> void:
 	var egg := setup("base2-35", [DCE, G], "base2-11")
 	attack(egg, "Big Eggsplosion")
 	var flips := 0
-	for line in egg.events:
+	for line in log_lines(egg):
 		if line.contains("Coin flip"):
 			flips += 1
 	expect(flips == 3, "Big Eggsplosion counts Energy units: DCE + Fighting flips 3 coins (%d)" % flips)
@@ -130,22 +130,22 @@ func _run() -> void:
 	expect(last_defender.damage == 40, "Water Gun: DCE pays the Colorless, so the third Water is unpaid, deals 40 (%d)" % last_defender.damage)
 	var rt := setup("base1-7", [G, DCE], "base2-11")
 	rt.players[0].bench.append(CardInPlay.new(db.make("base1-26"), 0))
-	for action in rt.legal_actions():
+	for action in labeled(rt):
 		if action["type"] == "retreat":
 			rt.apply(action)
 			break
 	expect(rt.players[0].bench[0].energy_pool() == ["Fighting"], "retreat cost 2 is paid by the DCE alone, without asking")
 	var rc := setup("base1-7", [G, G, DCE], "base2-11")
 	rc.players[0].bench.append(CardInPlay.new(db.make("base1-26"), 0))
-	for action in rc.legal_actions():
+	for action in labeled(rc):
 		if action["type"] == "retreat":
 			rc.apply(action)
 			break
 	var retreat_labels: Array = []
-	for action in rc.legal_actions():
+	for action in labeled(rc):
 		retreat_labels.append(action["label"])
 	expect(retreat_labels == ["Discard Double Colorless Energy", "Discard Fighting Energy + Fighting Energy"], "retreat offers only payments without spare cards: %s" % [retreat_labels])
-	for action in rc.legal_actions():
+	for action in labeled(rc):
 		if str(action["label"]).contains("Fighting Energy + Fighting Energy"):
 			rc.apply(action)
 	expect(rc.players[0].bench[0].energy_pool() == ["Colorless", "Colorless"], "paying with two Fighting keeps the DCE")
@@ -158,7 +158,7 @@ func _run() -> void:
 	expect(attack(pr, "Special Punch"), "Special Punch is legal")
 	expect(pr.is_waiting_for_choice() and pr.choice_chooser() == 1, "the knocked out player chooses the replacement")
 	expect(pr.current_index == 0, "the turn does not pass before the promotion")
-	for action in pr.legal_actions():
+	for action in labeled(pr):
 		if str(action["label"]).contains("Dratini"):
 			pr.apply(action)
 	expect(pr.players[1].active.card.id == "base1-26" and pr.players[1].bench.size() == 1, "Dratini was promoted by choice")
@@ -170,16 +170,16 @@ func _run() -> void:
 		var st := MatchEngine.new()
 		st.effects = lib
 		st.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), MatchRules.legacy(), Rng.new(trial))
-		if not (st.is_waiting_for_choice() and st.choice_prompt() == "Choose your Battling Darkner"):
+		if not (st.is_waiting_for_choice() and prompt_of(st) == "Choose your Battling Darkner"):
 			continue
 		asked = true
 		var first_chooser := st.choice_chooser()
 		expect(st.turn == 0 and st.players[first_chooser].active == null, "setup waits before turn 1 with no Battling Darkner")
 		var hand_before_choice := st.players[first_chooser].hand.size()
-		st.apply(st.legal_actions()[0])
+		st.apply(labeled(st)[0])
 		expect(st.players[first_chooser].active != null and st.players[first_chooser].hand.size() == hand_before_choice - 1, "the chosen Basic left the hand and became Active")
 		while st.is_waiting_for_choice():
-			st.apply(st.legal_actions()[0])
+			st.apply(labeled(st)[0])
 		expect(st.turn == 1 and st.players[0].active != null and st.players[1].active != null, "turn 1 starts once both have chosen")
 		break
 	expect(asked, "at least one of 20 setups asked for an Battling Darkner")
@@ -189,13 +189,13 @@ func _run() -> void:
 	for trial in 20:
 		var sb := MatchEngine.new()
 		sb.start(db.build_deck(decks_for_setup["fighting_starter"]), db.build_deck(decks_for_setup["lightning_starter"]), MatchRules.legacy(), Rng.new(trial))
-		if sb.is_waiting_for_choice() and sb.choice_prompt() == "Choose your Battling Darkner":
-			sb.apply(sb.legal_actions()[0])
-		if not (sb.is_waiting_for_choice() and sb.choice_prompt().begins_with("Put Basic Darkners on the Field before the game starts") and sb.choice_chooser() == 0):
+		if sb.is_waiting_for_choice() and prompt_of(sb) == "Choose your Battling Darkner":
+			sb.apply(labeled(sb)[0])
+		if not (sb.is_waiting_for_choice() and prompt_of(sb).begins_with("Put Basic Darkners on the Field before the game starts") and sb.choice_chooser() == 0):
 			continue
 		var hand_size := sb.players[0].hand.size()
-		sb.apply(sb.legal_actions()[0])
-		for action in sb.legal_actions():
+		sb.apply(labeled(sb)[0])
+		for action in labeled(sb):
 			if str(action["label"]).begins_with("Finish"):
 				sb.apply(action)
 				break
@@ -214,22 +214,22 @@ func _run() -> void:
 		if mg.players[0].mulligans <= mg.players[1].mulligans:
 			continue
 		var extra := mg.players[0].mulligans - mg.players[1].mulligans
-		while mg.is_waiting_for_choice() and not mg.choice_prompt().contains("more mulligan"):
-			var actions := mg.legal_actions()
+		while mg.is_waiting_for_choice() and not prompt_of(mg).contains("more mulligan"):
+			var actions := labeled(mg)
 			var pick := actions[0]
 			for action in actions:
 				if str(action["label"]).begins_with("Finish"):
 					pick = action
 			mg.apply(pick)
 		expect(mg.is_waiting_for_choice() and mg.choice_chooser() == 1, "the player with fewer mulligans is offered the draws (%d extra)" % extra)
-		var draw_options := mg.legal_actions()
+		var draw_options := labeled(mg)
 		expect(draw_options.size() == extra + 1, "options run from %d cards down to 0" % extra)
 		var hand_before_draws := mg.players[1].hand.duplicate()
 		mg.apply(draw_options[0])
 		expect(mg.players[1].hand.size() == hand_before_draws.size() + extra, "drew %d cards" % extra)
-		if mg.is_waiting_for_choice() and mg.choice_prompt().begins_with("Put Basic Darkners on the Field before the game starts"):
+		if mg.is_waiting_for_choice() and prompt_of(mg).begins_with("Put Basic Darkners on the Field before the game starts"):
 			var only_drawn := true
-			for action in mg.legal_actions():
+			for action in labeled(mg):
 				var label := str(action["label"])
 				if label.begins_with("Bench"):
 					var in_old_hand := false
@@ -259,18 +259,18 @@ func _run() -> void:
 	ev.turn = 5
 	ev.players[0].turns_started = 3
 	var evolve_labels: Array = []
-	for action in ev.legal_actions():
+	for action in labeled(ev):
 		if action["type"] == "evolve":
 			evolve_labels.append(action["label"])
 	expect(evolve_labels == ["Evolve Charmander into Charmeleon (Battle Zone)"], "Charmeleon can evolve Charmander; Charizard cannot skip a stage: %s" % [evolve_labels])
-	for action in ev.legal_actions():
+	for action in labeled(ev):
 		if action["type"] == "evolve":
 			ev.apply(action)
 	var evolved := ev.players[0].active
 	expect(evolved.card.id == "base1-24" and evolved.evolved_from.size() == 1, "the active is now Charmeleon with Charmander under it")
 	expect(evolved.damage == 20 and evolved.attached_energy.size() == 3, "damage and Energy stay after evolving")
 	var twice := false
-	for action in ev.legal_actions():
+	for action in labeled(ev):
 		if action["type"] == "evolve":
 			twice = true
 	expect(not twice, "a Pokemon cannot evolve twice in the same turn")
@@ -282,20 +282,20 @@ func _run() -> void:
 	ev2.players[0].turns_started = 3
 	ev2.players[0].active.turn_played = 5
 	var blocked := true
-	for action in ev2.legal_actions():
+	for action in labeled(ev2):
 		if action["type"] == "evolve":
 			blocked = false
 	expect(blocked, "a Pokemon put into play this turn cannot evolve")
 	ev2.players[0].active.turn_played = 3
 	ev2.players[0].turns_started = 1
 	blocked = true
-	for action in ev2.legal_actions():
+	for action in labeled(ev2):
 		if action["type"] == "evolve":
 			blocked = false
 	expect(blocked, "nothing evolves during a player's first turn")
 	ev2.players[0].turns_started = 2
 	var allowed := false
-	for action in ev2.legal_actions():
+	for action in labeled(ev2):
 		if action["type"] == "evolve":
 			allowed = true
 	expect(allowed, "evolution is allowed from the player's second turn")
@@ -312,7 +312,7 @@ func _run() -> void:
 	var fs := setup("base1-4", [F, F, F, F, DCE], "base1-3")
 	expect(attack(fs, "Fire Spin"), "Fire Spin is legal")
 	expect(fs.is_waiting_for_choice() and fs.choice_chooser() == 0, "Fire Spin waits for the attacker's choice")
-	var choices := fs.legal_actions()
+	var choices := labeled(fs)
 	var labels: Array = []
 	for action in choices:
 		labels.append(action["label"])
@@ -382,14 +382,14 @@ func _run() -> void:
 		cp.set("_rng", Rng.new(trial))
 		attack(cp, "Comet Punch")
 		var heads := 0
-		for line in cp.events:
+		for line in log_lines(cp):
 			if line.ends_with("heads"): heads += 1
 		if last_defender.damage != 20 * heads:
 			consistent = false
 		var tj := setup("base1-58", [L, L], "base1-7")
 		tj.set("_rng", Rng.new(trial))
 		attack(tj, "Thunder Jolt")
-		var tails := tj.events.has("  Coin flip: tails")
+		var tails := log_lines(tj).has("  Coin flip: tails")
 		if (last_attacker.damage == 10) != tails:
 			jolt_ok = false
 	expect(consistent, "Comet Punch deals 20 per heads across 60 seeds")
@@ -465,7 +465,7 @@ func _run() -> void:
 		engine.start(db.build_deck(decks[pairing[0]]), db.build_deck(decks[pairing[1]]), MatchRules.legacy(), Rng.new(game))
 		var steps := 0
 		while not engine.is_over() and steps < 5000:
-			var actions := engine.legal_actions()
+			var actions := labeled(engine)
 			var chosen := actions[picker.randi_range(0, actions.size() - 1)]
 			for a in actions:
 				if a["type"] == "attack" and picker.randf() < 0.7:
@@ -487,7 +487,7 @@ func _run() -> void:
 		if not engine.is_over():
 			failures += 1
 		wins[engine.winner] += 1
-		for line in engine.events:
+		for line in log_lines(engine):
 			if line.contains("[effect warning]"):
 				warnings_seen += 1
 			if line.contains(" evolves "):

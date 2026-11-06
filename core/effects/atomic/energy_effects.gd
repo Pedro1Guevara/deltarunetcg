@@ -7,9 +7,9 @@ extends RefCounted
 
 ## Discards count matching Energy cards (-1 for all), chosen with EffectChoices.pick_cards().
 static func discard_energy_cards(context: EffectContext, target: CardInPlay, energy_type: String, count: int) -> Variant:
-	var prompt := "Choose %s to discard from %s" % ["an Energy card" if count == 1 else "%d Energy cards" % count, target.card.name]
-	var picked: Variant = EffectChoices.pick_cards(context, context.player, matching_cards(target, energy_type), count, prompt,
-			"Discard", " from %s" % target.card.name, PendingChoice.ZONE_IN_PLAY)
+	var details := {"about": PendingChoice.ABOUT_DISCARD_ATTACHED, "count": count, "darkner": target.card.id}
+	var picked: Variant = EffectChoices.pick_cards(context, context.player, matching_cards(target, energy_type), count, details,
+			PendingChoice.ZONE_IN_PLAY, "discard")
 	if picked is String:
 		return picked
 	return context.operations.discard_energy_cards(target, picked as Array[CardData])
@@ -21,25 +21,25 @@ static func discard_energy_cards(context: EffectContext, target: CardInPlay, ene
 static func discard_energy_in_play(context: EffectContext, player: PlayerState, chooser: PlayerState, filters: Array, count: int) -> Variant:
 	var holders := {}
 	var items: Array = []
-	var labels: Array[String] = []
+	var keys: Array[String] = []
 	for slot in range(-1, player.bench.size()):
 		var target: CardInPlay = player.active if slot == -1 else player.bench[slot]
 		if target == null:
 			continue
 		for energy in CardFilter.select(target.attached_energy, filters, []):
 			holders[energy] = target
-			var label := "Discard %s from %s (%s)" % [energy.name, target.card.name, MatchEngine.slot_name(slot)]
-			items.append({"label": label, "value": energy, "shows": energy})
-			if not labels.has(label):
-				labels.append(label)
+			# The same Energy card on the same Darkner is the same choice.
+			var key := "%s@%d" % [energy.id, slot]
+			items.append({"value": energy, "shows": energy, "holder": target, "slot": slot, "key": key})
+			if not keys.has(key):
+				keys.append(key)
 	var picked: Array = []
-	if items.size() <= count or labels.size() == 1:
+	if items.size() <= count or keys.size() == 1:
 		for index in mini(count, items.size()):
 			picked.append(items[index]["value"])
 	else:
-		var noun := "%s attached to a Darkner" % CardFilter.describe(filters) if count == 1 \
-				else "%d %s attached to Darkners" % [count, CardFilter.describe(filters)]
-		var several: Variant = EffectChoices.choose_several(context, chooser, "Choose %s to discard" % noun, items, count, count, "", [],
+		var details := {"about": PendingChoice.ABOUT_DISCARD_IN_PLAY, "count": count, "filter": filters.duplicate()}
+		var several: Variant = EffectChoices.choose_several(context, chooser, details, items, count, count, [],
 				PendingChoice.ZONE_IN_PLAY, "discard")
 		if several is String:
 			return several

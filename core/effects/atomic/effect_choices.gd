@@ -11,15 +11,15 @@ const CONFIRM := "__confirm__"
 ## chooser picks count of candidates (all of them when count is -1 or there are no more). When
 ## the choice does not matter, because there are no more candidates than needed or they are all
 ## the same card, they are picked without asking. Otherwise they pick with choose_several().
-## Returns Array[CardData], or PENDING while waiting for an answer.
-## zone is where the candidates are (PendingChoice.ZONE_); verb is what happens to them.
+## Returns Array[CardData], or PENDING while waiting for an answer. details says which question
+## it is (PendingChoice.ABOUT_); zone is where the candidates are (PendingChoice.ZONE_); action
+## is what happens to them.
 static func pick_cards(context: EffectContext, chooser: PlayerState, candidates: Array[CardData], count: int,
-		prompt: String, verb: String, suffix: String, zone: String) -> Variant:
+		details: Dictionary, zone: String, action: String) -> Variant:
 	if count < 0 or candidates.size() <= count or all_same_card(candidates):
 		var taken := candidates.size() if count < 0 else mini(count, candidates.size())
 		return candidates.slice(candidates.size() - taken)
-	var several: Variant = choose_several(context, chooser, prompt, each_card_options(candidates, verb, suffix), count, count, "", [],
-			zone, verb.to_lower())
+	var several: Variant = choose_several(context, chooser, details, each_card_options(candidates), count, count, [], zone, action)
 	if several is String:
 		return several
 	var picked: Array[CardData] = []
@@ -27,16 +27,17 @@ static func pick_cards(context: EffectContext, chooser: PlayerState, candidates:
 	return picked
 
 
-## Asks chooser to pick between minimum and maximum of items ({label, value, shows}, each value
-## a distinct object), one at a time. A picked item is offered again as "Undo: ..." until the
-## chooser confirms, which they can do once at least minimum are picked (Design Document 4.1).
-## When several can be picked, every item is its own option, copies numbered; when one can,
-## items with the same label are the same choice and offered once. Answers accumulate in
-## context.selection up to the confirmation (see answers_after_choice()). Returns the picked
-## values in the order they were picked, or PENDING while waiting for an answer. zone and action
-## describe the question for players who do not read it (PendingChoice.KIND_PICK_CARDS).
-static func choose_several(context: EffectContext, chooser: PlayerState, prompt: String, items: Array,
-		minimum: int, maximum: int, nothing_label: String, shown: Array[CardData], zone: String, action: String) -> Variant:
+## Asks chooser to pick between minimum and maximum of items ({"value", "shows", "key"}, each
+## value a distinct object; any other field is kept on its option), one at a time. A picked
+## item is offered again as an undo until the chooser confirms, which they can do once at
+## least minimum are picked (Design Document 4.1). When several can be picked, every item is
+## its own option, copies numbered; when one can, items with the same key are the same choice
+## and offered once. Answers accumulate in context.selection up to the confirmation (see
+## answers_after_choice()). Returns the picked values in the order they were picked, or PENDING
+## while waiting for an answer. details, zone and action describe the question
+## (PendingChoice.KIND_PICK_CARDS).
+static func choose_several(context: EffectContext, chooser: PlayerState, details: Dictionary, items: Array,
+		minimum: int, maximum: int, shown: Array[CardData], zone: String, action: String) -> Variant:
 	var picked: Array = []
 	for answer: Variant in context.selection:
 		if answer is String and answer == CONFIRM:
@@ -49,30 +50,28 @@ static func choose_several(context: EffectContext, chooser: PlayerState, prompt:
 		var distinct: Array = []
 		var seen: Array[String] = []
 		for item: Variant in items:
-			var label := str((item as Dictionary)["label"])
-			if picked.has((item as Dictionary)["value"]) or not seen.has(label):
-				seen.append(label)
+			var key := str((item as Dictionary)["key"])
+			if picked.has((item as Dictionary)["value"]) or not seen.has(key):
+				seen.append(key)
 				distinct.append(item)
 		items = distinct
-	var labels := _numbered_labels(items)
+	var copies := _copy_numbers(items)
 	var options: Array = []
 	for index in items.size():
 		var item := items[index] as Dictionary
 		var chosen := picked.has(item["value"])
 		if not chosen and picked.size() >= maximum:
 			continue
-		options.append({
-			"label": ("Undo: %s" % labels[index]) if chosen else labels[index],
-			"value": item["value"],
-			"shows": item["shows"],
-			"pick": PendingChoice.PICK_UNDO if chosen else PendingChoice.PICK_ADD,
-		})
+		var option := item.duplicate()
+		option.erase("key")
+		option["copy"] = copies[index]
+		option["pick"] = PendingChoice.PICK_UNDO if chosen else PendingChoice.PICK_ADD
+		options.append(option)
 	if picked.size() >= minimum:
-		options.append({"label": nothing_label if picked.is_empty() else "Confirm", "value": CONFIRM, "pick": PendingChoice.PICK_CONFIRM})
-	if maximum >= 2:
-		prompt = "%s (%d/%d chosen)" % [prompt, picked.size(), maximum]
-	var details := {"minimum": minimum, "maximum": maximum, "picked": picked.duplicate(), "zone": zone, "action": action}
-	return context.ask_showing(chooser, PendingChoice.KIND_PICK_CARDS, details, prompt, options, shown)
+		options.append({"value": CONFIRM, "pick": PendingChoice.PICK_CONFIRM})
+	var full := details.duplicate()
+	full.merge({"minimum": minimum, "maximum": maximum, "picked": picked.duplicate(), "zone": zone, "action": action}, true)
+	return context.ask_showing(chooser, PendingChoice.KIND_PICK_CARDS, full, options, shown)
 
 
 ## The answers given after a choice made with choose_several() was confirmed, for the next
@@ -87,30 +86,30 @@ static func answers_after_choice(context: EffectContext) -> Array:
 	return context.selection.slice(index + 1)
 
 
-## One option per card, copies included, labelled "<verb> <name><suffix>".
-static func each_card_options(cards: Array[CardData], verb: String, suffix: String) -> Array:
+## One item per card, copies included, keyed by card id.
+static func each_card_options(cards: Array[CardData]) -> Array:
 	var items: Array = []
 	for card in cards:
-		items.append({"label": "%s %s%s" % [verb, card.name, suffix], "value": card, "shows": card})
+		items.append({"value": card, "shows": card, "key": card.id})
 	return items
 
 
-## The items' labels, with " #1", " #2"... added to labels that repeat.
-static func _numbered_labels(items: Array) -> Array[String]:
+## For each item, which copy of its key it is (1, 2...) when the key repeats, 0 otherwise.
+static func _copy_numbers(items: Array) -> Array[int]:
 	var totals := {}
 	for item: Variant in items:
-		var label := str((item as Dictionary)["label"])
-		totals[label] = int(totals.get(label, 0)) + 1
+		var key := str((item as Dictionary)["key"])
+		totals[key] = int(totals.get(key, 0)) + 1
 	var seen := {}
-	var labels: Array[String] = []
+	var copies: Array[int] = []
 	for item: Variant in items:
-		var label := str((item as Dictionary)["label"])
-		if int(totals[label]) == 1:
-			labels.append(label)
+		var key := str((item as Dictionary)["key"])
+		if int(totals[key]) == 1:
+			copies.append(0)
 			continue
-		seen[label] = int(seen.get(label, 0)) + 1
-		labels.append("%s #%d" % [label, int(seen[label])])
-	return labels
+		seen[key] = int(seen.get(key, 0)) + 1
+		copies.append(int(seen[key]))
+	return copies
 
 
 static func all_same_card(cards: Array[CardData]) -> bool:
@@ -135,13 +134,7 @@ static func choose_darkner(context: EffectContext, player: PlayerState, chooser:
 	elif slots.size() > 1:
 		var options: Array = []
 		for index in slots:
-			var darkner: CardInPlay = player.active if index == -1 else player.bench[index]
-			options.append({
-				"label": "Choose %s (%s, %d/%d HP)" % [darkner.card.name, MatchEngine.slot_name(index), darkner.remaining_hp(), darkner.card.hp],
-				"value": index,
-				"shows": darkner,
-			})
-		var whose := "your" if player == chooser else "your opponent's"
+			options.append({"value": index, "shows": player.active if index == -1 else player.bench[index]})
 		var details := {"side": PendingChoice.SIDE_OWN if player == chooser else PendingChoice.SIDE_OPPONENT, "purpose": PendingChoice.PURPOSE_TARGET}
-		return context.ask(chooser, PendingChoice.KIND_CHOOSE_DARKNER, details, "Choose one of %s Darkners" % whose, options)
+		return context.ask(chooser, PendingChoice.KIND_CHOOSE_DARKNER, details, options)
 	return player.active if slot == -1 else player.bench[slot]
