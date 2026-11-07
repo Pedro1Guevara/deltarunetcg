@@ -1,0 +1,271 @@
+[gd_scene format=3 uid="uid://d3rvj1r6d53j8"]
+
+[ext_resource type="Script" uid="uid://d3c6bb48ct5co" path="res://game/ui/SCRIPT/main_scene.gd" id="1_3xdcr"]
+[ext_resource type="Texture2D" uid="uid://bsehum4eyh8p6" path="res://game/ui/Avatars/RedSoul.png" id="2_b4kl6"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://game/ui/FontesTEXT/DeterminationMonoWebRegular-Z5oq.ttf" id="2_qb6b3"]
+[ext_resource type="Texture2D" uid="uid://x4k78e1v5atg" path="res://game/ui/UI Assets/MolduraBasic.png" id="3_dxbgu"]
+[ext_resource type="Texture2D" uid="uid://h4uwuysftsje" path="res://game/ui/UI Assets/Config.png" id="4_dxbgu"]
+[ext_resource type="Texture2D" uid="uid://dpiigputsqeqf" path="res://game/ui/UI Assets/ConfigSelect.png" id="5_ladi0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xsyfj"]
+corner_radius_top_left = 150
+corner_radius_top_right = 150
+corner_radius_bottom_right = 150
+corner_radius_bottom_left = 150
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_mv1do"]
+texture = ExtResource("4_dxbgu")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_kfdo1"]
+texture = ExtResource("4_dxbgu")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_bog34"]
+texture = ExtResource("5_ladi0")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_yg3st"]
+texture = ExtResource("5_ladi0")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_nhmvn"]
+texture = ExtResource("5_ladi0")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_myf0b"]
+texture = ExtResource("5_ladi0")
+
+[node name="MainScene" type="Control" unique_id=1917285855]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_3xdcr")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1733123632]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="TopBar" type="Control" parent="." unique_id=955620926]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = -28.0
+offset_bottom = 206.0
+grow_horizontal = 2
+
+[node name="Space" type="Label" parent="TopBar" unique_id=1561557957]
+layout_mode = 0
+offset_top = 105.0
+offset_right = 25.0
+offset_bottom = 128.0
+text = "      "
+
+[node name="ProfileCut" type="Panel" parent="TopBar" unique_id=2068304676]
+clip_children = 1
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 15.0
+offset_top = -77.0
+offset_right = 173.0
+offset_bottom = 81.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xsyfj")
+
+[node name="ProfileButton" type="TextureButton" parent="TopBar/ProfileCut" unique_id=408119752]
+custom_minimum_size = Vector2(130, 130)
+layout_mode = 0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = 144.0
+offset_bottom = 142.0
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture_normal = ExtResource("2_b4kl6")
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="Frame" type="TextureRect" parent="TopBar/ProfileCut/ProfileButton" unique_id=1317791400]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -25.0
+offset_top = -23.0
+offset_right = 25.0
+offset_bottom = 27.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_dxbgu")
+expand_mode = 1
+
+[node name="space2" type="Label" parent="TopBar" unique_id=291805369]
+layout_mode = 0
+offset_left = 163.0
+offset_top = 105.0
+offset_right = 180.0
+offset_bottom = 128.0
+text = "    "
+
+[node name="NameLabel" type="Label" parent="TopBar" unique_id=77703233]
+custom_minimum_size = Vector2(800, 0)
+layout_mode = 0
+offset_left = 184.0
+offset_top = 88.0
+offset_right = 984.0
+offset_bottom = 145.0
+theme_override_constants/line_spacing = 60
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 55
+text = "\"PlayerData.player_name\""
+
+[node name="CoinsLabel" type="Label" parent="TopBar" unique_id=1546655684]
+custom_minimum_size = Vector2(490, 0)
+layout_mode = 0
+offset_left = 988.0
+offset_top = 88.0
+offset_right = 1478.0
+offset_bottom = 145.0
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 55
+text = "D$: "
+
+[node name="ConfigButton" type="Button" parent="TopBar" unique_id=1687457433]
+custom_minimum_size = Vector2(140, 140)
+layout_mode = 0
+offset_left = 1751.0
+offset_top = 47.0
+offset_right = 1891.0
+offset_bottom = 187.0
+size_flags_horizontal = 10
+size_flags_vertical = 4
+offset_transform_enabled = true
+theme_override_font_sizes/font_size = 35
+theme_override_styles/normal = SubResource("StyleBoxTexture_mv1do")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxTexture_kfdo1")
+theme_override_styles/hover = SubResource("StyleBoxTexture_bog34")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxTexture_yg3st")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_nhmvn")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxTexture_myf0b")
+icon_alignment = 1
+expand_icon = true
+
+[node name="space3" type="Label" parent="TopBar" unique_id=1364290892]
+layout_mode = 0
+offset_left = 1895.0
+offset_top = 105.0
+offset_right = 1920.0
+offset_bottom = 128.0
+text = "      "
+
+[node name="CenterAreal" type="Control" parent="." unique_id=1662159663]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -316.0
+offset_bottom = 231.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BoostersButton" type="Button" parent="CenterAreal" unique_id=603915167]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 43.0
+offset_top = 8.0
+offset_right = -645.0
+offset_bottom = 31.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "*Boosters Packs*"
+
+[node name="ShopButton" type="Button" parent="CenterAreal" unique_id=2128742175]
+layout_mode = 0
+offset_left = 1368.0
+offset_top = 7.0
+offset_right = 1879.0
+offset_bottom = 278.0
+text = "*Shop*"
+
+[node name="DecksButton" type="Button" parent="CenterAreal" unique_id=1626269016]
+layout_mode = 0
+offset_left = 1370.0
+offset_top = 304.0
+offset_right = 1883.0
+offset_bottom = 574.0
+text = "*Decks*"
+
+[node name="BottomNav" type="HBoxContainer" parent="." unique_id=369868556]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -20.0
+offset_top = -235.0
+offset_right = 23.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 0
+
+[node name="HomeButton" type="Button" parent="BottomNav" unique_id=1580611160]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_constants/h_separation = 30
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 101
+text = " HOME "
+
+[node name="DexButton" type="Button" parent="BottomNav" unique_id=2041980856]
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 101
+text = " RECRUITS "
+
+[node name="TradeButton" type="Button" parent="BottomNav" unique_id=1827315437]
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 101
+text = " TRADE "
+
+[node name="BattleButton" type="Button" parent="BottomNav" unique_id=1576762941]
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 101
+text = " BATTLE "
+
+[node name="StoryButton" type="Button" parent="BottomNav" unique_id=1440928265]
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_qb6b3")
+theme_override_font_sizes/font_size = 101
+text = " STORY "
+
+[connection signal="pressed" from="TopBar/ProfileCut/ProfileButton" to="." method="_on_profile_button_pressed"]
+[connection signal="pressed" from="TopBar/ConfigButton" to="." method="_on_config_button_pressed"]
+[connection signal="pressed" from="CenterAreal/BoostersButton" to="." method="_on_boosters_button_pressed"]
+[connection signal="pressed" from="CenterAreal/ShopButton" to="." method="_on_shop_button_pressed"]
+[connection signal="pressed" from="CenterAreal/DecksButton" to="." method="_on_decks_button_pressed"]
+[connection signal="pressed" from="BottomNav/HomeButton" to="." method="_on_home_button_pressed"]
+[connection signal="pressed" from="BottomNav/DexButton" to="." method="_on_dex_button_pressed"]
+[connection signal="pressed" from="BottomNav/TradeButton" to="." method="_on_trade_button_pressed"]
+[connection signal="pressed" from="BottomNav/BattleButton" to="." method="_on_battle_button_pressed"]
+[connection signal="pressed" from="BottomNav/StoryButton" to="." method="_on_story_button_pressed"]

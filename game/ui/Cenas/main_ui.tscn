@@ -1,0 +1,75 @@
+[gd_scene format=3 uid="uid://bv8gfcot3fpdp"]
+
+[ext_resource type="Script" uid="uid://dxd1el046ifbo" path="res://SCRIPT/main_ui.gd" id="1_drvkt"]
+
+[node name="MainUI" type="Control" unique_id=1498917185]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_drvkt")
+
+[node name="NameInputScreen" type="Panel" parent="." unique_id=1920334963]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -357.0
+offset_top = -117.5
+offset_right = 375.0
+offset_bottom = 21.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="NameInputScreen" unique_id=1442718513]
+custom_minimum_size = Vector2(0.445, 0.1)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -281.0
+offset_top = -165.5
+offset_right = 281.0
+offset_bottom = -55.5
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 80
+text = "CREATE A NAME."
+
+[node name="LineEdit" type="LineEdit" parent="NameInputScreen" unique_id=1150532609]
+layout_mode = 0
+offset_right = 732.0
+offset_bottom = 138.5
+
+[node name="Button" type="Button" parent="NameInputScreen" unique_id=1596122281]
+layout_mode = 0
+offset_left = 214.0
+offset_top = 192.5
+offset_right = 521.0
+offset_bottom = 248.0
+theme_override_font_sizes/font_size = 50
+text = "Confirm"
+
+[node name="MainMenu" type="Control" parent="." unique_id=1963472180]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_bottom = 74.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WelcomeBack" type="Label" parent="MainMenu" unique_id=1708594566]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 140.0
+offset_right = 307.0
+offset_bottom = 168.0
+theme_override_font_sizes/font_size = 20
+text = "Welcome back to Sylk's DTCG"
+
+[connection signal="pressed" from="NameInputScreen/Button" to="." method="_on_button_pressed"]

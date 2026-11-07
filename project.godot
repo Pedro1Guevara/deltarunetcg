@@ -15,8 +15,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="deltarunetcg"
-run/main_scene="res://freecell/scenes/menu/menu.tscn"
+run/main_scene="uid://d3rvj1r6d53j8"
 config/features=PackedStringArray("4.7", "Forward Plus")
+
+[autoload]
+
+PlayerData="*uid://dtdebvibttldi"
 
 [display]
 
@@ -28,3 +32,16 @@ window/stretch/mode="viewport"
 [dotnet]
 
 project/assembly_name="CardFramework"
+
+[file_customization]
+
+folder_colors={
+"res://Avatars/": "green",
+"res://SCRIPT/": "green",
+"res://UI Assets/": "green",
+"res://game/ui/Avatars/": "pink",
+"res://game/ui/Cenas/": "green",
+"res://game/ui/FontesTEXT/": "pink",
+"res://game/ui/SCRIPT/": "green",
+"res://game/ui/UI Assets/": "pink"
+}
