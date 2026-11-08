@@ -145,42 +145,48 @@ horizontal_alignment = 1
 
 [node name="StatsColumn" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox" unique_id=1754171890]
 layout_mode = 0
-offset_left = -753.0
-offset_top = -152.0
-offset_right = -378.0
-offset_bottom = 319.0
-theme_override_constants/separation = 8
+offset_left = -898.0
+offset_top = -183.0
+offset_right = 58.0
+offset_bottom = 294.0
+theme_override_constants/separation = 14
 
 [node name="BattlesLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=947978141]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 50
-text = "Battles Won: X"
+theme_override_font_sizes/font_size = 65
+text = "Battles Won: "
 
 [node name="CardsLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=1355876245]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 50
-text = "Cards Owned: X"
+theme_override_font_sizes/font_size = 65
+text = "Cards Owned: "
 
 [node name="AchievementsLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=782083048]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 50
-text = "Achievements: X"
+theme_override_font_sizes/font_size = 65
+text = "Achievements: "
 
 [node name="TitlesLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=1033101311]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 50
-text = "Titles: X"
+theme_override_font_sizes/font_size = 65
+text = "Titles: "
+
+[node name="StoryLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=1428422092]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "Story: "
 
 [node name="FavoriteCardBox" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox" unique_id=646433151]
 layout_mode = 0
 offset_left = 279.0
-offset_top = -156.0
-offset_right = 684.0
-offset_bottom = 245.0
+offset_top = -360.0
+offset_right = 823.0
+offset_bottom = 262.0
 alignment = 1
 
 [node name="FavTitleLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox" unique_id=888382017]
@@ -188,12 +194,12 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 45
+theme_override_font_sizes/font_size = 55
 text = "Favorite Card"
 horizontal_alignment = 1
 
 [node name="FavoriteCardTexture" type="TextureButton" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox" unique_id=2064207414]
-custom_minimum_size = Vector2(0, 350)
+custom_minimum_size = Vector2(0, 520)
 layout_mode = 2
 offset_transform_enabled = true
 ignore_texture_size = true
@@ -202,25 +208,31 @@ stretch_mode = 0
 [node name="ChangeHintLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox" unique_id=714067077]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 21
+theme_override_font_sizes/font_size = 24
 text = "Click on the box to change"
 horizontal_alignment = 1
 
 [node name="Help" type="Control" parent="ScrollContainer/VBoxContainer" unique_id=308334441]
 layout_mode = 2
+size_flags_vertical = 3
 
 [node name="AchievementsSection" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/Help" unique_id=1544835923]
-layout_mode = 0
-offset_left = -797.0
-offset_top = 300.0
-offset_right = 802.0
-offset_bottom = 1101.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -958.0
+offset_top = 281.0
+offset_right = 955.0
+offset_bottom = 536.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="CompleteHeader" type="Label" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1961102260]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 45
-text = "Complete Achievements"
+theme_override_font_sizes/font_size = 65
+text = "  Complete Achievements"
 
 [node name="Complete Grid" type="GridContainer" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1717729290]
 layout_mode = 2
@@ -231,8 +243,8 @@ columns = 4
 [node name="PendingHeader" type="Label" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1556257046]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_5i8h1")
-theme_override_font_sizes/font_size = 45
-text = "Achievements"
+theme_override_font_sizes/font_size = 65
+text = "  Achievements"
 
 [node name="PendingGrid" type="GridContainer" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1127317635]
 layout_mode = 2
@@ -241,7 +253,7 @@ theme_override_constants/v_separation = 0
 columns = 4
 
 [connection signal="pressed" from="ScrollContainer/VBoxContainer/TopHeaderBar/BackButton" to="." method="_on_back_button_pressed"]
-[connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton" to="." method="_on_profile_pic_button_pressed"]
 [connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton" to="." method="_on_profilepic_button_pressed"]
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton" to="." method="_on_profile_pic_button_pressed"]
 [connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/NameButton" to="." method="_on_name_button_pressed"]
 [connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox/FavoriteCardTexture" to="." method="_on_favorite_card_texture_pressed"]

@@ -19,6 +19,7 @@ var is_owner: bool = true
 @onready var cards_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn/CardsLabel
 @onready var achievements_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn/AchievementsLabel
 @onready var titles_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn/TitlesLabel
+@onready var story_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn/StoryLabel
 
 # Carta Favorita
 @onready var favorite_card_texture: TextureButton = $ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox/FavoriteCardTexture
@@ -63,6 +64,7 @@ func setup_profile_view() -> void:
 		cards_label.text = "Cards Owned: " + str(PlayerData.total_cards_owned)
 		achievements_label.text = "Achievements: " + str(PlayerData.achievements.size())
 		titles_label.text = "Titles: " + str(PlayerData.titles.size())
+		story_label.text = "Story: Chapter " + str(PlayerData.story_chapter) + ", Level " + str(PlayerData.story_level)
 		
 		# Habilita interações de edição
 		profile_pic_button.disabled = false
@@ -83,6 +85,7 @@ func setup_profile_view() -> void:
 		cards_label.text = "Cards Owned: " + str(PlayerData.total_cards_owned)
 		achievements_label.text = "Achievements: " + str(PlayerData.achievements.size())
 		titles_label.text = "Titles: " + str(PlayerData.titles.size())
+		story_label.text = "Story: Chapter " + str(PlayerData.story_chapter) + ", Level " + str(PlayerData.story_level)
 		
 		# Desativa edições para visitantes
 		profile_pic_button.disabled = true

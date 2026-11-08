@@ -1,7 +1,7 @@
 extends Control
 
 # Referências aos nós de texto e imagem 
-@onready var name_label: Label = $TopBar/NameLabel
+@onready var name_label: Button = $TopBar/NameLabel
 @onready var coins_label: Label = $TopBar/CoinsLabel
 @onready var profile_pic_button: TextureButton = $TopBar/ProfileCut/ProfileButton
 
@@ -23,6 +23,11 @@ func update_hud() -> void:
 
 # 1. Botão de Perfil (ProfileButt)
 func _on_profile_button_pressed() -> void:
+	print("Abrindo perfil de: ", PlayerData.player_name)
+	# Mudar para a cena de perfil (exemplo):
+	get_tree().change_scene_to_file("res://game/ui/Cenas/ProfileScene.tscn")
+
+func _on_name_label_pressed() -> void:
 	print("Abrindo perfil de: ", PlayerData.player_name)
 	# Mudar para a cena de perfil (exemplo):
 	get_tree().change_scene_to_file("res://game/ui/Cenas/ProfileScene.tscn")
