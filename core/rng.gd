@@ -20,3 +20,8 @@ func shuffle(items: Array) -> void:
 
 func coin_flip() -> bool:
 	return _generator.randi_range(0, 1) == 1
+
+
+## A seed for another Rng, such as the next round of a combat.
+func next_seed() -> int:
+	return _generator.randi()

@@ -128,6 +128,43 @@ func _run() -> void:
 	expect(undone.is_empty(), "and never undoes a pick: %s" % undone)
 	expect(finished == rounds, "CPU against CPU finishes every round (%d of %d; wins %s; longest %d turns)" % [finished, rounds, wins, longest])
 
+	print("== CPU against CPU in combats")
+	var combats_over := 0
+	var combat_rounds: Array = []
+	var combat_mismatch := ""
+	for pair: Array in DECK_PAIRS:
+		var ids: Array[PackedStringArray] = []
+		for deck_id: String in pair:
+			var listed := PackedStringArray()
+			for card in deck_cards(deck_id):
+				listed.append(card.id)
+			ids.append(listed)
+		var combat := Combat.new(db, library, ids[0], ids[1], MatchRules.deltarune(), 11)
+		combat.start()
+		for game_index in 8:
+			cpus.assign([CpuPlayer.new(library, combat.decklist(0), plan_data(pair[0])), CpuPlayer.new(library, combat.decklist(1), plan_data(pair[1]))])
+			for step in MAX_STEPS:
+				if combat.is_game_over():
+					break
+				combat.engine.apply(decide(combat.engine))
+			if not combat.next_game():
+				break
+		if combat.is_over():
+			combats_over += 1
+		combat_rounds.append(combat.round_number)
+		var record := combat.replay()
+		for written in [record.to_text(), record.to_code()]:
+			var replayed := CombatReplay.from_text(str(written)).play(db, library)
+			var same := replayed.score() == combat.score() and replayed.round_number == combat.round_number and replayed.games.size() == combat.games.size() \
+					and log_lines(replayed.engine) == log_lines(combat.engine)
+			for index in combat.games.size():
+				same = same and int(replayed.games[index]["winner"]) == int(combat.games[index]["winner"]) \
+						and (replayed.games[index]["replay"] as MatchReplay).to_text() == (combat.games[index]["replay"] as MatchReplay).to_text()
+			if combat_mismatch.is_empty() and not same:
+				combat_mismatch = "%s" % [pair]
+	expect(combats_over == DECK_PAIRS.size(), "every CPU combat ends with a player on 2 rounds won (%d of %d; rounds played %s)" % [combats_over, DECK_PAIRS.size(), combat_rounds])
+	expect(combat_mismatch.is_empty(), "and its replay, as text or as a code, plays again as the same combat, game by game: %s" % combat_mismatch)
+
 	print("== the CPU decides from its view")
 	var waiting := start_round(2)
 	var other := 1 - waiting.choice_chooser()

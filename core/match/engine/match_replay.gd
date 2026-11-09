@@ -55,60 +55,99 @@ func duplicate_replay() -> MatchReplay:
 
 ## One line of JSON. The seed is written as text, so no JSON reader rounds it.
 func to_text() -> String:
-	var deck_lists: Array = []
-	for deck in decks:
-		deck_lists.append(Array(deck))
-	return JSON.stringify({
-		"format": FORMAT,
-		"seed": str(rng_seed),
-		"rules": rules,
-		"decks": deck_lists,
-		"actions": actions,
-	})
+	return JSON.stringify(to_data(true))
 
 
 ## A short code for the same replay: one line starting with CODE_PREFIX. Empty when an
 ## action has no token (TOKENS), which a test guards against.
 func to_code() -> String:
-	var deck_runs: Array = []
-	for deck in decks:
-		var runs: Array = []
-		for id in deck:
-			if not runs.is_empty() and (runs.back() as Array)[0] == id:
-				(runs.back() as Array)[1] = int((runs.back() as Array)[1]) + 1
-			else:
-				runs.append([id, 1])
-		deck_runs.append(runs)
+	var compact := to_compact_data(true)
+	return "" if compact.is_empty() else CODE_PREFIX + pack(compact)
+
+
+## The replay as to_code() packs it: decks as runs of copies (with_decks), actions as tokens.
+## Empty when an action has no token.
+func to_compact_data(with_decks: bool) -> Dictionary:
+	var tokens: Variant = actions_as_tokens(actions)
+	if tokens == null:
+		return {}
+	var compact := {"format": FORMAT, "seed": str(rng_seed), "rules": rules}
+	if with_decks:
+		var deck_runs: Array = []
+		for deck in decks:
+			deck_runs.append(deck_as_runs(deck))
+		compact["decks"] = deck_runs
+	compact["actions"] = tokens
+	return compact
+
+
+## The replay as to_text() writes it, without its decks when with_decks is false.
+func to_data(with_decks: bool) -> Dictionary:
+	var data := {"format": FORMAT, "seed": str(rng_seed), "rules": rules}
+	if with_decks:
+		var deck_lists: Array = []
+		for deck in decks:
+			deck_lists.append(Array(deck))
+		data["decks"] = deck_lists
+	data["actions"] = actions
+	return data
+
+
+## A deck as runs of copies in order: [["jevil", 2], ["chaos_energy", 18]].
+static func deck_as_runs(deck: PackedStringArray) -> Array:
+	var runs: Array = []
+	for id in deck:
+		if not runs.is_empty() and (runs.back() as Array)[0] == id:
+			(runs.back() as Array)[1] = int((runs.back() as Array)[1]) + 1
+		else:
+			runs.append([id, 1])
+	return runs
+
+
+## The card ids deck_as_runs() wrote, or null when runs is not its shape.
+static func deck_from_runs(runs: Variant) -> Variant:
+	if not runs is Array:
+		return null
+	var ids: Array = []
+	for run: Variant in runs:
+		if not run is Array or (run as Array).size() != 2:
+			return null
+		for _copy in int((run as Array)[1]):
+			ids.append(str((run as Array)[0]))
+	return ids
+
+
+## The actions as tokens joined by "|", or null when one has no token.
+static func actions_as_tokens(listed: Array[Dictionary]) -> Variant:
 	var tokens := PackedStringArray()
-	for action in actions:
+	for action in listed:
 		var token := _action_token(action)
 		if token.is_empty():
 			push_error("MatchReplay: no token for %s" % action)
-			return ""
+			return null
 		tokens.append(token)
-	var compact := JSON.stringify({
-		"format": FORMAT,
-		"seed": str(rng_seed),
-		"rules": rules,
-		"decks": deck_runs,
-		"actions": "|".join(tokens),
-	})
-	var packed := compact.to_utf8_buffer().compress(FileAccess.COMPRESSION_DEFLATE)
-	return CODE_PREFIX + Marshalls.raw_to_base64(packed)
+	return "|".join(tokens)
 
 
-## The replay written by to_text() or to_code(), or null when text is neither.
-static func from_text(text: String) -> MatchReplay:
-	var trimmed := text.strip_edges()
-	if trimmed.begins_with(CODE_PREFIX):
-		return _from_code(trimmed.substr(CODE_PREFIX.length()))
-	var json := JSON.new()
-	if json.parse(trimmed) != OK or not json.data is Dictionary:
-		return null
-	return _from_data(json.data as Dictionary)
+## The actions actions_as_tokens() wrote, or null when a token is not one.
+static func actions_from_tokens(text: String) -> Variant:
+	var listed: Array = []
+	for token in ([] if text.is_empty() else Array(text.split("|"))):
+		var action := _token_action(str(token))
+		if action.is_empty():
+			return null
+		listed.append(action)
+	return listed
 
 
-static func _from_code(code: String) -> MatchReplay:
+## data as compressed base64: JSON, then Deflate.
+static func pack(data: Dictionary) -> String:
+	var packed := JSON.stringify(data).to_utf8_buffer().compress(FileAccess.COMPRESSION_DEFLATE)
+	return Marshalls.raw_to_base64(packed)
+
+
+## The Dictionary pack() wrote, or null when code is not one.
+static func unpack(code: String) -> Variant:
 	# Checked first: Godot reports an error for text that is not base64.
 	var base64 := RegEx.create_from_string("^[A-Za-z0-9+/]+={0,2}$")
 	if code.length() % 4 != 0 or base64.search(code) == null:
@@ -119,30 +158,49 @@ static func _from_code(code: String) -> MatchReplay:
 	var json := JSON.new()
 	if json.parse(packed.decompress_dynamic(MAX_CODE_BYTES, FileAccess.COMPRESSION_DEFLATE).get_string_from_utf8()) != OK or not json.data is Dictionary:
 		return null
-	var data := json.data as Dictionary
-	if not data.get("decks") is Array or not data.get("actions") is String:
+	return json.data
+
+
+## The replay written by to_text() or to_code(), or null when text is neither.
+static func from_text(text: String) -> MatchReplay:
+	var trimmed := text.strip_edges()
+	if trimmed.begins_with(CODE_PREFIX):
+		return _from_code(trimmed.substr(CODE_PREFIX.length()))
+	var json := JSON.new()
+	if json.parse(trimmed) != OK or not json.data is Dictionary:
 		return null
-	var decks_by_id: Array = []
-	for runs: Variant in data["decks"]:
-		if not runs is Array:
+	return from_data(json.data as Dictionary)
+
+
+static func _from_code(code: String) -> MatchReplay:
+	var data: Variant = unpack(code)
+	if data == null:
+		return null
+	return from_compact_data(data as Dictionary, null)
+
+
+## The replay to_compact_data() wrote, or null. decks, when given, are the card ids of both
+## decks for data written without them.
+static func from_compact_data(data: Dictionary, decks_by_id: Variant) -> MatchReplay:
+	if not data.get("actions") is String:
+		return null
+	var copy := data.duplicate()
+	if decks_by_id == null:
+		if not data.get("decks") is Array:
 			return null
-		var ids: Array = []
-		for run: Variant in runs:
-			if not run is Array or (run as Array).size() != 2:
+		var read_decks: Array = []
+		for runs: Variant in data["decks"]:
+			var ids: Variant = deck_from_runs(runs)
+			if ids == null:
 				return null
-			for _copy in int((run as Array)[1]):
-				ids.append(str((run as Array)[0]))
-		decks_by_id.append(ids)
-	data["decks"] = decks_by_id
-	var listed: Array = []
-	var text := str(data["actions"])
-	for token in ([] if text.is_empty() else Array(text.split("|"))):
-		var action := _token_action(str(token))
-		if action.is_empty():
-			return null
-		listed.append(action)
-	data["actions"] = listed
-	return _from_data(data)
+			read_decks.append(ids)
+		decks_by_id = read_decks
+	copy["decks"] = decks_by_id
+	var listed: Variant = actions_from_tokens(str(data["actions"]))
+	if listed == null:
+		return null
+	copy["actions"] = listed
+	return from_data(copy)
 
 
 static func _action_token(action: Dictionary) -> String:
@@ -179,7 +237,8 @@ static func _token_action(token: String) -> Dictionary:
 	return {}
 
 
-static func _from_data(data: Dictionary) -> MatchReplay:
+## The replay to_data(true) wrote, or null when data is not one.
+static func from_data(data: Dictionary) -> MatchReplay:
 	for key: String in ["format", "seed", "rules", "decks", "actions"]:
 		if not data.has(key):
 			return null

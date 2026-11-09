@@ -26,14 +26,18 @@ Conversation in Spanish. Code, identifiers, comments and documents in English. R
 - Work step by step; confirm each stage before moving on.
 - Rule divergences are fixed in code, not only documented.
 
+## Team
+
+The UI (the board, its widgets and every screen the player will use) is worked on by another team member; the Repo Guide for UI Work (a Claude Doc) explains the repository to them. Claude Code works on `core/`, `ai/`, `data/`, `tests/`, `tools/` and the debug screens in `game/screen/debug/`, which are how each stage is tested. Do not build or change UI outside the debug screens.
+
 ## Repository layout
 
 Layers are top-level folders (Design Document 8.2). Dependencies point one way: `core/` references nothing; `ai/`, `meta/` and `net/` reference only `core/` and never each other; `game/` may reference all of them. Create a layer folder only when its first file is written.
 
 - `addons/card-framework/`, `example1/`, `freecell/`, `docs/`, `scripts/` — the card-framework fork (chun92/card-framework). **Never modify anything that ships with the fork.** Extend it by subclassing.
-- `core/` — rules engine. Pure GDScript, every class extends RefCounted. No scene tree, input, threads or file I/O. `cards/` (card model; `parsers/` turns JSON into CardData), `match/` (round state; `engine/` holds MatchEngine and the parts it owns: MatchSetup, MatchOperations, KnockoutResolver, LegalActions, EffectBindings, ContinuousEffects; and PlayerView, MatchReplay, MatchLog and MatchEvent), `rules/` (pure checks and calculations), `effects/` (library, resolver, context; `atomic/` holds AtomicEffects and its helpers EffectChoices, CardMoves, EnergyEffects), `rng.gd`.
+- `core/` — rules engine. Pure GDScript, every class extends RefCounted. No scene tree, input, threads or file I/O. `cards/` (card model; `parsers/` turns JSON into CardData), `match/` (round state; `engine/` holds MatchEngine and the parts it owns: MatchSetup, MatchOperations, KnockoutResolver, LegalActions, EffectBindings, ContinuousEffects; and PlayerView, MatchReplay, MatchLog and MatchEvent), `rules/` (pure checks and calculations), `effects/` (library, resolver, context; `atomic/` holds AtomicEffects and its helpers EffectChoices, CardMoves, EnergyEffects), `combat/` (Combat, the best of three, one MatchEngine per game; CombatReplay), `rng.gd`.
 - `ai/` — CPU opponents: `CpuPlayer` decides, `EffectReader` reads effect data and estimates attacks, `DeckPlan` is the board a deck aims for (automatic, or `plan` in decks.json), `DeckMemory` tracks its deck. `meta/` — story progression (and the frozen roguelite). `net/` — multiplayer, out of scope. `meta/` and `net/` do not exist yet.
-- `game/` — the Godot app. `app/`, `services/` (DataLoader, SaveService), `presentation/` (the words the player reads: CardText for cards, ActionText for action labels, prompts and options, EventText for the log), `ui/` (reusable widgets such as CardChip), `screens/` (`debug/hotseat/` today).
+- `game/` — the Godot app. `app/`, `services/` (DataLoader, SaveService), `presentation/` (the words the player reads: CardText for cards, ActionText for action labels, prompts and options, EventText for the log), `ui/` (reusable widgets such as CardChip), `screen/` (`debug/deck_select/` and `debug/hotseat/` today).
 - `data/` — `cards/cards.json`, `decks/decks.json`, `effects/` (`functions.json`, `card_effects.json`), `legacy/` (WOTC regression fixture).
 - `assets/` — images, sounds, fonts and the Godot resources built only from them (Theme, TileSet, SpriteFrames); never scripts or scenes. Card art is `assets/cards/fronts/<card_id>.png`. Board graphics in `board/`, menus and HUD in `ui/`, type icons in `icons/types/`. `legacy/tcgdex/` holds downloaded WOTC art, not committed.
 - `tests/` — headless checks extending `tests/support/test_case.gd`, one folder per layer: `godot --headless --path . --script res://tests/core/<file>.gd` (also `tests/ai/`; legacy suite in `tests/legacy/`).

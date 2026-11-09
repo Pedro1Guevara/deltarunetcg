@@ -14,10 +14,11 @@ const FONT_SIZE := 22
 const REPLAY_AS_TEXT := 0
 const REPLAY_AS_CODE := 1
 
+## The combat being played (best of three) and the engine of its game being played.
+var _combat: Combat = null
 var _engine := MatchEngine.new()
-## The cards of the round, for the words of labels, prompts and the log (game/presentation).
+## The cards of the combat, for the words of labels, prompts and the log (game/presentation).
 var _database: CardDatabase = null
-var _seed: int = 0
 
 var _status_label: Label
 ## The status line as _refresh() wrote it, before any notice is added to it.
@@ -39,8 +40,8 @@ var _cpu_seats: Array[bool] = DEFAULT_CPU_SEATS.duplicate()
 var _cpus: Array[CpuPlayer] = []
 ## A CPU decision is waiting for its pause to end.
 var _cpu_waiting := false
-## Bumped by every new round, so a pause started in the previous round does nothing.
-var _round_number := 0
+## Bumped by every new game, so a pause started in the previous game does nothing.
+var _game_number := 0
 var _cpu_turn := -1
 var _cpu_decisions := 0
 
@@ -56,7 +57,7 @@ func _ready() -> void:
 	ui_theme.default_font_size = FONT_SIZE
 	theme = ui_theme
 	_build_ui()
-	_start_match()
+	_start_combat()
 
 
 func _build_ui() -> void:
@@ -137,7 +138,7 @@ func _build_ui() -> void:
 	buttons.add_theme_constant_override("v_separation", 12)
 	side_panel.add_child(buttons)
 	for entry: Array in [
-		["New match", _start_match],
+		["New combat", _start_combat],
 		["Change decks", _change_decks],
 		["Copy replay ▾", Callable()],
 		["Window / Fullscreen (F11)", WindowControls.toggle_windowed],
@@ -159,11 +160,7 @@ func _make_panel() -> VBoxContainer:
 	return panel
 
 
-func _start_match() -> void:
-	_start_with_rules(MatchRules.deltarune())
-
-
-func _start_with_rules(match_rules: MatchRules) -> void:
+func _start_combat() -> void:
 	var database := DataLoader.load_card_database()
 	_database = database
 	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
@@ -180,27 +177,43 @@ func _start_with_rules(match_rules: MatchRules) -> void:
 	for id in _deck_ids:
 		_deck_names.append(str((deck_defs[id] as Dictionary).get("name", id)))
 
+	var rules := MatchRules.deltarune()
+	var deck_ids: Array[PackedStringArray] = []
+	for id in _deck_ids:
+		var deck := database.build_deck(deck_defs[id] as Dictionary)
+		# Test decks are smaller than the rules require on purpose: report, do not block.
+		for problem in DeckValidator.validate(deck, rules):
+			push_warning("Deck %s %s" % [id, problem])
+		var listed := PackedStringArray()
+		for card in deck:
+			listed.append(card.id)
+		deck_ids.append(listed)
+	var effects := DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
+	_combat = Combat.new(database, effects, deck_ids[0], deck_ids[1], rules, randi())
+	_combat.start()
+	_start_game()
 
-	_seed = randi()
-	_round_number += 1
+
+## Starts playing the game the combat just started: a new round or a Sudden Death game.
+func _start_game() -> void:
+	_engine = _combat.engine
+	_game_number += 1
 	_cpu_waiting = false
-	_engine = MatchEngine.new()
-	_engine.effects = DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
-
-	var deck_1 := database.build_deck(deck_defs[_deck_ids[0]] as Dictionary)
-	var deck_2 := database.build_deck(deck_defs[_deck_ids[1]] as Dictionary)
-	# Test decks are smaller than the rules require on purpose: report, do not block.
-	for entry: Array in [[_deck_ids[0], deck_1], [_deck_ids[1], deck_2]]:
-		for problem in DeckValidator.validate(entry[1] as Array[CardData], match_rules):
-			push_warning("Deck %s %s" % [entry[0], problem])
-	# Each CPU gets its decklist and the deck's plan, if decks.json writes one, before the
-	# round shuffles the decks.
+	_cpu_turn = -1
+	_open_group = ""
+	# Each CPU gets its decklist and the deck's plan, if decks.json writes one, for every game.
+	var deck_defs := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
 	_cpus.clear()
-	for entry: Array in [[_deck_ids[0], deck_1], [_deck_ids[1], deck_2]]:
-		var plan_data := (deck_defs[entry[0]] as Dictionary).get("plan", {}) as Dictionary
-		_cpus.append(CpuPlayer.new(_engine.effects, (entry[1] as Array[CardData]).duplicate(), plan_data))
-	_engine.start(deck_1, deck_2, match_rules, Rng.new(_seed))
+	for index in 2:
+		var plan_data := (deck_defs[_deck_ids[index]] as Dictionary).get("plan", {}) as Dictionary
+		_cpus.append(CpuPlayer.new(_engine.effects, _combat.decklist(index), plan_data))
 	_refresh()
+
+
+## Ends the game that is over and plays the next one.
+func _next_game() -> void:
+	if _combat.next_game():
+		_start_game()
 
 
 ## A button that opens the two ways to copy the replay.
@@ -214,10 +227,10 @@ func _make_replay_menu() -> MenuButton:
 	return menu
 
 
-## Puts this round's replay (MatchReplay) on the clipboard, to paste into a bug report: as
-## legible JSON, or as a short code. Both paste back the same way.
+## Puts the combat's replay (CombatReplay, every game so far) on the clipboard, to paste into a
+## bug report: as legible JSON, or as a short code. Both paste back the same way.
 func _copy_replay(format: int) -> void:
-	var replay := _engine.replay()
+	var replay := _combat.replay()
 	var text := replay.to_code() if format == REPLAY_AS_CODE else replay.to_text()
 	DisplayServer.clipboard_set(text)
 	# Only the latest notice: it replaces the previous one, and the next action clears it.
@@ -235,17 +248,22 @@ func _change_decks() -> void:
 
 
 func _refresh() -> void:
-	if _engine.winner == MatchEngine.SUDDEN_DEATH:
-		_status_label.text = "Turn %d  |  Seed %d  |  Both players won: Sudden Death" % [_engine.turn, _seed]
+	var score := _combat.score()
+	var game := "Round %d%s  |  Score %d-%d  |  Turn %d  |  Seed %d" % [_combat.round_number, " (Sudden Death)" if _combat.sudden_death else "",
+			score[0], score[1], _engine.turn, _combat.combat_seed]
+	if _combat.is_over():
+		_status_label.text = "%s  |  Player %d wins the combat %d-%d" % [game, _combat.winner() + 1, score[_combat.winner()], score[1 - _combat.winner()]]
+	elif _engine.winner == MatchEngine.SUDDEN_DEATH:
+		_status_label.text = "%s  |  Both players won: Sudden Death decides the round" % game
 	elif _engine.is_over():
-		_status_label.text = "Turn %d  |  Seed %d  |  Player %d wins" % [_engine.turn, _seed, _engine.winner + 1]
+		_status_label.text = "%s  |  Player %d wins round %d" % [game, _engine.winner + 1, _combat.round_number]
 	elif _engine.is_waiting_for_choice() and _is_hidden(_engine.choice_chooser()):
-		_status_label.text = "Turn %d  |  Seed %d  |  Player %d (CPU) is choosing" % [_engine.turn, _seed, _engine.choice_chooser() + 1]
+		_status_label.text = "%s  |  Player %d (CPU) is choosing" % [game, _engine.choice_chooser() + 1]
 	elif _engine.is_waiting_for_choice():
 		var prompt := ActionText.prompt(_engine.view_for(_engine.choice_chooser()), _database)
-		_status_label.text = "Turn %d  |  Seed %d  |  Player %d: %s" % [_engine.turn, _seed, _engine.choice_chooser() + 1, prompt]
+		_status_label.text = "%s  |  Player %d: %s" % [game, _engine.choice_chooser() + 1, prompt]
 	else:
-		_status_label.text = "Turn %d  |  Seed %d  |  Player %d to act" % [_engine.turn, _seed, _engine.current_index + 1]
+		_status_label.text = "%s  |  Player %d to act" % [game, _engine.current_index + 1]
 	_status_text = _status_label.text
 	_fill_shared_row()
 	
@@ -297,12 +315,19 @@ func _refresh() -> void:
 			for action: Dictionary in members:
 				_add_action_button(action, "      ↳ ")
 
-	if _engine.winner == MatchEngine.SUDDEN_DEATH:
-		var sudden_death := Button.new()
-		sudden_death.text = "Play Sudden Death (1 Prize each)"
-		sudden_death.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		sudden_death.pressed.connect(_start_with_rules.bind(_engine.rules.with_prize_count(1)))
-		_actions_box.add_child(sudden_death)
+	if _engine.is_over():
+		var next := Button.new()
+		next.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if _combat.is_over():
+			next.text = "New combat"
+			next.pressed.connect(_start_combat)
+		elif _combat.next_is_sudden_death():
+			next.text = "Play Sudden Death (%d Mercy Card each)" % Combat.SUDDEN_DEATH_PRIZE_COUNT
+			next.pressed.connect(_next_game)
+		else:
+			next.text = "Next round (round %d)" % (_combat.round_number + 1)
+			next.pressed.connect(_next_game)
+		_actions_box.add_child(next)
 
 	_finish_refresh()
 
@@ -337,7 +362,7 @@ func _schedule_cpu() -> void:
 	if _cpu_waiting or _engine.is_over() or not _cpu_seats[_actor()]:
 		return
 	_cpu_waiting = true
-	get_tree().create_timer(CPU_DELAY).timeout.connect(_play_cpu.bind(_round_number))
+	get_tree().create_timer(CPU_DELAY).timeout.connect(_play_cpu.bind(_game_number))
 
 
 ## Whether the mouse is on a control that shows a card's text (CardChip, CardButton).
@@ -347,8 +372,8 @@ func _is_reading_a_card() -> bool:
 
 
 ## The CPU decides from its own view of the round (PlayerView) and its action is applied.
-func _play_cpu(round_number: int) -> void:
-	if round_number != _round_number:
+func _play_cpu(game_number: int) -> void:
+	if game_number != _game_number:
 		return
 	_cpu_waiting = false
 	if _engine.is_over() or not _cpu_seats[_actor()]:
