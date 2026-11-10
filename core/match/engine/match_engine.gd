@@ -590,6 +590,8 @@ func _do_choose(option: int) -> void:
 			if _advance_promotions() and _turn_ends_after_promotions:
 				_turn_ends_after_promotions = false
 				_end_turn(true)
+		PendingChoice.RESUME_TAKE_PRIZE:
+			_answer_prize(int(picked["value"]), choice.data)
 		PendingChoice.RESUME_SPARE_FIGHT:
 			_answer_spare_fight(choice.chooser, picked["value"] == PendingChoice.SPARE, choice.data)
 		PendingChoice.RESUME_RETREAT:
@@ -695,12 +697,22 @@ func _resolve_field_entries() -> void:
 
 ## Resolves what Darkners put onto a Field set off, then knockouts, after an attack, an Ability,
 ## an Area action or a Darkner put onto the Field (KnockoutResolver.resolve()). True when the
-## turn goes on at once; false when the round is over or the player who took their last Mercy
-## Card must choose to Spare or to Fight. then says how the turn goes on if they Fight.
+## turn goes on at once; false when the round is over, a Mercy Card waits to be picked
+## (MatchRules.choose_prizes), or the player who took their last Mercy Card must choose to
+## Spare or to Fight. then says how the turn goes on once those questions are answered.
 func _resolve_knockouts(then: Dictionary) -> bool:
 	_resolve_field_entries()
-	var fighter := fighting
 	var result := _knockouts.resolve(_opponent_index(), rules, fighting)
+	if result == KnockoutResolver.CHOOSING_PRIZES:
+		_pending = _knockouts.next_prize_choice(then)
+		return false
+	return _settle_knockouts(result, then)
+
+
+## What the knockouts lead to once every Mercy Card is taken: the end of the round, the Spare
+## or Fight question, or (true) the turn goes on.
+func _settle_knockouts(result: int, then: Dictionary) -> bool:
+	var fighter := fighting
 	if result != NO_WINNER:
 		winner = result
 		if fighter != -1 and result == 1 - fighter:
@@ -715,6 +727,16 @@ func _resolve_knockouts(then: Dictionary) -> bool:
 	return true
 
 
+## The next Mercy Card is picked; after the last one the knockouts settle and the turn goes on.
+func _answer_prize(slot: int, then: Dictionary) -> void:
+	_knockouts.take_prize_at(slot)
+	if _knockouts.has_prize_choice():
+		_pending = _knockouts.next_prize_choice(then)
+		return
+	if _settle_knockouts(_knockouts.settle(rules, fighting), then):
+		_go_on_after_knockouts(then)
+
+
 ## Spare wins the round, and the opponent draws the extra cards next round. Fight goes on with
 ## the turn: the next knockout decides the round (KnockoutResolver.resolve()).
 func _answer_spare_fight(chooser: int, spared: bool, then: Dictionary) -> void:
@@ -726,6 +748,11 @@ func _answer_spare_fight(chooser: int, spared: bool, then: Dictionary) -> void:
 		return
 	fighting = chooser
 	match_log.add(MatchEvent.FIGHT_CHOSEN, chooser, {})
+	_go_on_after_knockouts(then)
+
+
+## How the turn goes on after knockouts that did not end the round (_resolve_knockouts()).
+func _go_on_after_knockouts(then: Dictionary) -> void:
 	match str(then["then"]):
 		_AFTER_BENCH:
 			_after_bench(then["darkner"] as CardInPlay)

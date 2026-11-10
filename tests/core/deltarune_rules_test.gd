@@ -58,8 +58,16 @@ func play(engine: MatchEngine, label: String) -> bool:
 	for action in labeled(engine):
 		if action["label"] == label:
 			engine.apply(action)
+			take_mercy_cards(engine)
 			return true
 	return false
+
+
+## Answers every Mercy Card pick that is open with the first card of the pile (Design Document
+## 4.4), as play() and attack() do after their action, so checks after a knockout read its result.
+func take_mercy_cards(engine: MatchEngine) -> void:
+	while engine.is_waiting_for_choice() and engine.choice_kind() == PendingChoice.KIND_TAKE_PRIZE:
+		engine.apply({"type": "choose", "option": 0})
 
 
 ## Picks the card option with this label, then confirms the choice.
@@ -100,6 +108,7 @@ func attack(engine: MatchEngine, name: String) -> bool:
 	for action in labeled(engine):
 		if action["type"] == "attack" and str(action["label"]).begins_with("Attack: %s " % name):
 			engine.apply(action)
+			take_mercy_cards(engine)
 			return true
 	return false
 
@@ -1016,6 +1025,7 @@ func _run() -> void:
 	watched.opponent_player().active.damage = 20
 	var before_attack := watched.match_log.entries.size()
 	watched.apply({"type": "attack", "attack_index": 0})
+	take_mercy_cards(watched)
 	var attack_events := watched.events_for(opponent_index, before_attack)
 	var damage := attack_events.filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DAMAGE)[0] as MatchEvent
 	expect(attack_events[0].type == MatchEvent.ATTACK_USED and attack_events[0].data["attack"] == "Slash"
@@ -1233,7 +1243,12 @@ func _run() -> void:
 	var both_fighter := both.fighting
 	both.players[both_fighter].active.damage = 100
 	both.players[1 - both_fighter].active.damage = 80
-	var both_result := KnockoutResolver.new(both.players, both.match_log).resolve(both.current_index, both.rules, both_fighter)
+	var both_resolver := KnockoutResolver.new(both.players, both.match_log)
+	var both_result := both_resolver.resolve(both.current_index, both.rules, both_fighter)
+	while both_resolver.has_prize_choice():
+		both_resolver.take_prize_at(0)
+	if both_result == KnockoutResolver.CHOOSING_PRIZES:
+		both_result = both_resolver.settle(both.rules, both_fighter)
 	expect(both_result == MatchEngine.SUDDEN_DEATH, "a Darkner on each side knocked out during a Fight: Sudden Death")
 
 	var legacy_last := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
@@ -1243,6 +1258,68 @@ func _run() -> void:
 	legacy_last.opponent_player().active.damage = 80
 	var legacy_result := KnockoutResolver.new(legacy_last.players, legacy_last.match_log).resolve(1 - legacy_taker, MatchRules.legacy(), -1)
 	expect(legacy_result == legacy_taker, "legacy rules: the last Mercy Card wins at once")
+
+	print("== picking Mercy Cards")
+	var mc_picked := battle("jevil", ["chaos_energy", "chaos_energy"], "koody")
+	var mc_picker := mc_picked.current_index
+	var mc_picker_turn := mc_picked.turn
+	mc_picked.opponent_player().bench.append(in_play("guei", []))
+	mc_picked.opponent_player().bench.append(in_play("tenna", []))
+	mc_picked.opponent_player().active.damage = 20
+	mc_picked.apply({"type": "attack", "attack_index": 0})
+	expect(mc_picked.choice_kind() == PendingChoice.KIND_TAKE_PRIZE and mc_picked.choice_chooser() == mc_picker and mc_picked.players[mc_picker].prizes.size() == 4
+			and mc_picked.current_index == mc_picker and mc_picked.turn == mc_picker_turn, "a knockout does not take a Mercy Card by itself: its taker picks one, before the turn ends")
+	expect(option_labels(mc_picked) == ["Take Mercy Card #1", "Take Mercy Card #2", "Take Mercy Card #3", "Take Mercy Card #4"]
+			and ActionText.prompt(mc_picked.view_for(mc_picker), db) == "Take a Mercy Card", "one option per face-down card, by position (%s)" % [option_labels(mc_picked)])
+	var mc_watcher_view := mc_picked.view_for(1 - mc_picker)
+	expect(mc_watcher_view.choice_kind == PendingChoice.KIND_TAKE_PRIZE and mc_watcher_view.choice_options.is_empty()
+			and mc_picked.view_for(mc_picker).choice_options.all(func(option: Dictionary) -> bool: return not option.has("shows")),
+			"the opponent sees the pick is open; no option shows a card")
+	var mc_third: CardData = mc_picked.players[mc_picker].prizes[2]
+	var mc_before_pick := mc_picked.match_log.entries.size()
+	play(mc_picked, "Take Mercy Card #3")
+	var mc_pick_events := mc_picked.events_for(mc_picker, mc_before_pick).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.PRIZE_TAKEN)
+	expect(mc_picked.players[mc_picker].hand.has(mc_third) and not mc_picked.players[mc_picker].prizes.has(mc_third) and mc_picked.players[mc_picker].prizes.size() == 3,
+			"Take Mercy Card #3 puts that card in the hand")
+	expect(mc_pick_events.size() == 1 and int((mc_pick_events[0] as MatchEvent).data["slot"]) == 2 and (mc_pick_events[0] as MatchEvent).data["card"] == mc_third.id,
+			"the event says which position it came from")
+	expect(mc_picked.choice_kind() == PendingChoice.KIND_PROMOTE and mc_picked.choice_chooser() == 1 - mc_picker, "then the opponent promotes, as before")
+
+	var mc_two_picks := battle("jevil", ["chaos_energy", "chaos_energy"], "guei")
+	var mc_two_picker := mc_two_picks.current_index
+	for id in ["koody", "koody"]:
+		mc_two_picks.opponent_player().bench.append(in_play(id, []))
+		mc_two_picks.opponent_player().bench.back().damage = 30
+	mc_two_picks.apply({"type": "attack", "attack_index": 1})
+	expect(mc_two_picks.choice_kind() == PendingChoice.KIND_TAKE_PRIZE and ActionText.prompt(mc_two_picks.view_for(mc_two_picker), db) == "Take a Mercy Card (2 to take)",
+			"two knockouts at once: two picks, the prompt counts them")
+	mc_two_picks.apply({"type": "choose", "option": 0})
+	expect(mc_two_picks.choice_kind() == PendingChoice.KIND_TAKE_PRIZE and option_labels(mc_two_picks).size() == 3 and ActionText.prompt(mc_two_picks.view_for(mc_two_picker), db) == "Take a Mercy Card",
+			"then one more, from the three left")
+	mc_two_picks.apply({"type": "choose", "option": 2})
+	expect(mc_two_picks.players[mc_two_picker].prizes.size() == 2 and not mc_two_picks.is_waiting_for_choice() and mc_two_picks.current_index != mc_two_picker,
+			"after the last pick the turn ends as usual")
+
+	var mc_last_pick := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+	var mc_last_picker := mc_last_pick.current_index
+	mc_last_pick.opponent_player().bench.append(in_play("guei", []))
+	while mc_last_pick.players[mc_last_picker].prizes.size() > 1:
+		mc_last_pick.players[mc_last_picker].prizes.pop_back()
+	mc_last_pick.apply({"type": "attack", "attack_index": 0})
+	expect(mc_last_pick.choice_kind() == PendingChoice.KIND_TAKE_PRIZE and option_labels(mc_last_pick) == ["Take Mercy Card #1"], "the last Mercy Card is mc_picked too")
+	play(mc_last_pick, "Take Mercy Card #1")
+	expect(mc_last_pick.choice_kind() == PendingChoice.KIND_SPARE_FIGHT, "and only then come Spare or Fight")
+
+	var mc_auto_round := battle("jevil", ["chaos_energy"], "koody")
+	mc_auto_round.rules.choose_prizes = false
+	var mc_auto_taker := mc_auto_round.current_index
+	var mc_top: CardData = mc_auto_round.players[mc_auto_taker].prizes.back()
+	mc_auto_round.opponent_player().bench.append(in_play("guei", []))
+	mc_auto_round.opponent_player().active.damage = 20
+	mc_auto_round.apply({"type": "attack", "attack_index": 0})
+	expect(mc_auto_round.choice_kind() != PendingChoice.KIND_TAKE_PRIZE and mc_auto_round.players[mc_auto_taker].hand.has(mc_top) and mc_auto_round.players[mc_auto_taker].prizes.size() == 3,
+			"without choose_prizes (legacy rules, older replays) the mc_top card is taken at once")
+	expect(not MatchRules.legacy().choose_prizes and MatchRules.deltarune().choose_prizes, "Deltarune rules pick; legacy rules do not")
 
 	print("== extra cards after a Spare")
 	var extra_rules := MatchRules.deltarune()
@@ -1265,10 +1342,10 @@ func _run() -> void:
 	var later_extra := extra_round.events_for(0, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and bool(event.data["extra"]))
 	expect(later_extra.size() == 1, "only on the first turn")
 	var old_rules := MatchRules.deltarune().to_dict()
-	for added in ["spare_fight", "spare_extra_draws", "first_turn_extra_draws", "match_point"]:
+	for added in ["spare_fight", "spare_extra_draws", "first_turn_extra_draws", "match_point", "choose_prizes"]:
 		old_rules.erase(added)
 	var read_old := MatchRules.from_dict(old_rules)
-	expect(read_old != null and not read_old.spare_fight and read_old.first_turn_extra_draws == [0, 0] and read_old.match_point == [false, false],
+	expect(read_old != null and not read_old.spare_fight and read_old.first_turn_extra_draws == [0, 0] and read_old.match_point == [false, false] and not read_old.choose_prizes,
 			"rules recorded before Spare and Fight read back without them, so old replays play as they were played")
 
 	var empty_field := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")

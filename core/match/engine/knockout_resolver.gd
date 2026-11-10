@@ -11,6 +11,15 @@ var _promotion_queue: Array[int] = []
 ## The player who took their last Mercy Card in the last resolve() and chooses to Spare or to
 ## Fight, or -1 (Design Document 4.5). Read once with take_spare_fight_offer().
 var _spare_fight_offer: int = -1
+## resolve() returns it while Mercy Cards wait to be picked (MatchRules.choose_prizes): ask
+## next_prize_choice() until has_prize_choice() is false, then settle().
+const CHOOSING_PRIZES := -3
+## Who still picks a Mercy Card, one entry per card, in order.
+var _prize_queue: Array[int] = []
+## The knockouts being resolved, kept for settle(): each knocked out Darkner's owner, and the
+## players who lost their Battling Darkner.
+var _owners: Array[int] = []
+var _lost_battling: Array[int] = []
 
 
 func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
@@ -20,7 +29,9 @@ func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
 
 ## Resolves every knocked out Darkner at once, as the rulebook does, in the Battle Zone or on
 ## the Field, the defending player's first: all are discarded, every Mercy Card is taken, and
-## only then are wins checked. A player wins by taking their last Mercy Card, or when the
+## only then are wins checked. When the rules let players pick their Mercy Cards, it returns
+## CHOOSING_PRIZES after the discards; the engine asks each pick and then calls settle(), which
+## checks wins as described here. A player wins by taking their last Mercy Card, or when the
 ## opponent's Battling Darkner was knocked out and nothing on their Field can replace it. If
 ## both win, the one who won in more ways is the winner; otherwise it is Sudden Death. Returns
 ## the winner (MatchEngine.NO_WINNER, a player index or MatchEngine.SUDDEN_DEATH). With no
@@ -58,9 +69,32 @@ func resolve(defender_index: int, rules: MatchRules, fighting: int) -> int:
 		else:
 			side.bench.erase(darkner)
 
-	var ways := [0, 0]
+	_owners = owners
+	_lost_battling = lost_battling
+	var owed := [0, 0]
 	for position in knocked_out.size():
-		take_prize(1 - owners[position], _prizes_for_knockout(rules, knocked_out[position]))
+		var taker := 1 - owners[position]
+		owed[taker] = int(owed[taker]) + _prizes_for_knockout(rules, knocked_out[position])
+	_prize_queue.clear()
+	for taker in 2:
+		var count := mini(int(owed[taker]), _players[taker].prizes.size())
+		if not rules.choose_prizes:
+			take_prize(taker, count)
+			continue
+		for _i in count:
+			_prize_queue.append(taker)
+	if not _prize_queue.is_empty():
+		return CHOOSING_PRIZES
+	return settle(rules, fighting)
+
+
+## Checks wins once every Mercy Card of the knockouts resolve() found has been taken: the
+## winner (MatchEngine.NO_WINNER, a player index or MatchEngine.SUDDEN_DEATH), the Spare or
+## Fight offer, or the promotions to make.
+func settle(rules: MatchRules, fighting: int) -> int:
+	var owners := _owners
+	var lost_battling := _lost_battling
+	var ways := [0, 0]
 	for taker in 2:
 		if owners.has(1 - taker) and _players[taker].prizes.is_empty():
 			ways[taker] = 1
@@ -110,15 +144,42 @@ func _end_fight(fighter: int, fighter_won: bool, fighter_lost: bool, rules: Matc
 	return winner
 
 
-## Moves count Mercy Cards from the taker's pile to their hand, stopping when the pile is empty.
+## Moves count Mercy Cards from the top of the taker's pile to their hand, stopping when the
+## pile is empty.
 func take_prize(taker_index: int, count: int) -> void:
-	var taker := _players[taker_index]
 	for _i in count:
-		if taker.prizes.is_empty():
+		if _players[taker_index].prizes.is_empty():
 			return
-		var prize := taker.prizes.pop_back() as CardData
-		taker.hand.append(prize)
-		_log.add_private(MatchEvent.PRIZE_TAKEN, taker_index, {"left": taker.prizes.size(), "card": prize.id}, {"left": taker.prizes.size()})
+		_move_prize(taker_index, _players[taker_index].prizes.size() - 1)
+
+
+## Whether a Mercy Card is still to be picked.
+func has_prize_choice() -> bool:
+	return not _prize_queue.is_empty()
+
+
+## The next pick: its player chooses a position in their face-down pile. data is what the
+## engine goes on with once every pick is made.
+func next_prize_choice(data: Dictionary) -> PendingChoice:
+	var taker := _prize_queue[0]
+	var options: Array = []
+	for slot in _players[taker].prizes.size():
+		options.append({"value": slot})
+	return PendingChoice.new(taker, PendingChoice.KIND_TAKE_PRIZE, {"left": _players[taker].prizes.size(), "to_take": _prize_queue.count(taker)},
+			options, PendingChoice.RESUME_TAKE_PRIZE, data)
+
+
+## The next pick's player takes the Mercy Card at slot.
+func take_prize_at(slot: int) -> void:
+	_move_prize(_prize_queue.pop_front(), slot)
+
+
+func _move_prize(taker_index: int, slot: int) -> void:
+	var taker := _players[taker_index]
+	var prize := taker.prizes.pop_at(slot) as CardData
+	taker.hand.append(prize)
+	_log.add_private(MatchEvent.PRIZE_TAKEN, taker_index, {"left": taker.prizes.size(), "slot": slot, "card": prize.id},
+			{"left": taker.prizes.size(), "slot": slot})
 
 
 ## Each player whose Battling Darkner was knocked out chooses a replacement from the Field,

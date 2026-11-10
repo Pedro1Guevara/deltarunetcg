@@ -11,6 +11,7 @@ const RESUME_RETREAT := "retreat"
 const RESUME_EFFECT := "effect"
 const RESUME_ON_PLAY := "on_play"
 const RESUME_SPARE_FIGHT := "spare_fight"
+const RESUME_TAKE_PRIZE := "take_prize"
 
 ## What the question is about, as data: the engine holds no words (Design Document 8.4). The
 ## kind, its details and its options are all a player needs to answer it, and all the game
@@ -50,6 +51,10 @@ const KIND_CHOOSE_DARKNER := "choose_darkner"
 ## (Design Document 4.5). Values SPARE and FIGHT. details {"extra_draws": the cards the opponent
 ## draws next round if spared}.
 const KIND_SPARE_FIGHT := "spare_fight"
+## take_prize: the player who knocked out a Darkner picks one of their face-down Mercy Cards.
+## Values are positions in the pile, 0 first; options show no card. details {"left": cards in
+## the pile, "to_take": how many they still take now, this one included}.
+const KIND_TAKE_PRIZE := "take_prize"
 const SPARE := "spare"
 const FIGHT := "fight"
 

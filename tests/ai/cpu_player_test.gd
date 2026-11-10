@@ -50,6 +50,12 @@ func battle(attacker_id: String, attached: Array, defender_id: String) -> MatchE
 	return engine
 
 
+## Lets the CPU of the player who picks take every open Mercy Card pick.
+func take_mercy_cards(engine: MatchEngine) -> void:
+	while engine.is_waiting_for_choice() and engine.choice_kind() == PendingChoice.KIND_TAKE_PRIZE:
+		engine.apply(decide(engine))
+
+
 func decide(engine: MatchEngine) -> Dictionary:
 	var actor := engine.choice_chooser() if engine.is_waiting_for_choice() else engine.current_index
 	return cpus[actor].choose(engine.view_for(actor))
@@ -364,6 +370,8 @@ func _run() -> void:
 	loser.bench[1].damage = 70
 	loser.active.damage = 30
 	promoter.apply({"type": "attack", "attack_index": 0})
+	expect(promoter.choice_kind() == PendingChoice.KIND_TAKE_PRIZE and int(decide(promoter)["option"]) == 0, "it takes the first face-down Mercy Card: they are all alike to it")
+	take_mercy_cards(promoter)
 	var promote := decide(promoter)
 	expect(promoter.choice_kind() == PendingChoice.KIND_PROMOTE and promoter.choice_option(int(promote["option"]))["value"] == 0,
 			"the healthiest Darkner is promoted: Water Cooler, not Guei at 10 HP")
@@ -400,6 +408,7 @@ func _run() -> void:
 		while engine.players[taker].prizes.size() > 1:
 			engine.players[taker].prizes.pop_back()
 		engine.apply({"type": "attack", "attack_index": 0})
+		take_mercy_cards(engine)
 		if engine.choice_kind() != PendingChoice.KIND_SPARE_FIGHT:
 			return "no question"
 		return str(engine.choice_option(int(decide(engine)["option"]))["value"])

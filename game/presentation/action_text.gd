@@ -103,6 +103,9 @@ static func prompt(view: PlayerView, cards: CardDatabase) -> String:
 			return "Choose one of %s Darkners" % ("your" if details["side"] == PendingChoice.SIDE_OWN else "your opponent's")
 		PendingChoice.KIND_SPARE_FIGHT:
 			return "You took your last Mercy Card: Spare or Fight?"
+		PendingChoice.KIND_TAKE_PRIZE:
+			var to_take := int(details["to_take"])
+			return "Take a Mercy Card" if to_take == 1 else "Take a Mercy Card (%d to take)" % to_take
 	return ""
 
 
@@ -179,6 +182,8 @@ static func option_label(kind: String, details: Dictionary, option: Dictionary, 
 				PendingChoice.PURPOSE_ATTACH:
 					return "Attach %s to %s (%s)" % [_name(details["card"], cards), _name(shown, cards), slot_name(slot)]
 			return "Choose %s (%s, %d/%d HP)" % [_name(shown, cards), slot_name(slot), _hp_left(shown), _card(shown, cards).hp]
+		PendingChoice.KIND_TAKE_PRIZE:
+			return "Take Mercy Card #%d" % (int(value) + 1)
 		PendingChoice.KIND_SPARE_FIGHT:
 			var extra := int(details["extra_draws"])
 			if value == PendingChoice.SPARE:

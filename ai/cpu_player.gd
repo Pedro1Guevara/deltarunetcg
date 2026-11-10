@@ -692,6 +692,9 @@ func _answer(view: PlayerView) -> Dictionary:
 			index = _pick_card(view)
 		PendingChoice.KIND_CHOOSE_DARKNER:
 			index = _best_option(options, func(option: Dictionary) -> float: return _darkner_score(view, option))
+		PendingChoice.KIND_TAKE_PRIZE:
+			# Face down: any Mercy Card is as good as another.
+			index = 0
 		PendingChoice.KIND_SPARE_FIGHT:
 			index = _option_with_value(options, PendingChoice.FIGHT if _wants_to_fight(view) else PendingChoice.SPARE)
 	return _choose_action(view, index)

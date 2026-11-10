@@ -39,13 +39,17 @@ var spare_extra_draws: int = 0
 ## Extra cards each player draws at the start of their first turn of this game, by player index:
 ## what Spare and Fight gave them in the round before. Combat sets it for each game.
 var first_turn_extra_draws: Array[int] = [0, 0]
+## True: a player who knocks out a Darkner picks which of their face-down Mercy Cards to take,
+## one question per card (Design Document 4.4). False: the top card of the pile is taken at once
+## (legacy rule, and replays recorded before the choice existed).
+var choose_prizes: bool = false
 ## Whether winning this game wins the combat, by player index. Combat sets it for each game. A
 ## player at match point who takes their last Mercy Card wins at once, with no Spare or Fight:
 ## Spare would win the combat, and nothing would come of the extra cards.
 var match_point: Array[bool] = [false, false]
 
 ## Rules a replay recorded before they existed, with the value that plays it as it was played.
-const _ADDED_LATER := {"spare_fight": false, "spare_extra_draws": 0, "first_turn_extra_draws": [0, 0], "match_point": [false, false]}
+const _ADDED_LATER := {"spare_fight": false, "spare_extra_draws": 0, "first_turn_extra_draws": [0, 0], "match_point": [false, false], "choose_prizes": false}
 
 
 ## The rules the WOTC build used. Only for the legacy test data.
@@ -65,6 +69,7 @@ static func legacy() -> MatchRules:
 	rules.tp_recovery = 0
 	rules.tp_start = 0
 	rules.spare_fight = false
+	rules.choose_prizes = false
 	rules.spare_extra_draws = 0
 	rules.first_turn_extra_draws = [0, 0]
 	rules.match_point = [false, false]
@@ -88,6 +93,7 @@ static func deltarune() -> MatchRules:
 	rules.tp_recovery = 1
 	rules.tp_start = 4
 	rules.spare_fight = true
+	rules.choose_prizes = true
 	rules.spare_extra_draws = 3
 	rules.first_turn_extra_draws = [0, 0]
 	rules.match_point = [false, false]

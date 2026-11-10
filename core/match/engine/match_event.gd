@@ -80,7 +80,8 @@ const HAND_SHUFFLED_INTO_DECK := "hand_shuffled_into_deck"
 const HAND_TO_BOTTOM_OF_DECK := "hand_to_bottom_of_deck"
 const DECK_SHUFFLED := "deck_shuffled"
 const DREW := "drew"
-## Knockouts. knocked_out: {"darkner"}. prize_taken: {"left"}, private {"card"}. promoted:
+## Knockouts. knocked_out: {"darkner"}. prize_taken: {"left", "slot": the position in the pile
+## it was taken from, 0 first}, private {"card"}. promoted:
 ## {"darkner"}. won: {"winner", "after_deck_out": true when the legacy deck-out rule gave the
 ## last Mercy Card}. sudden_death: {}.
 ## Spare and Fight (Design Document 4.5), about the player who took their last Mercy Card.
