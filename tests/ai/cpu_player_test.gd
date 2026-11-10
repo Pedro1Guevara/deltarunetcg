@@ -5,7 +5,7 @@ extends TestCase
 
 const SEEDS := 10
 const MAX_STEPS := 3000
-const DECK_PAIRS := [["creative", "holy"], ["chaos", "holy"], ["creative", "chaos"], ["deltarune_chaos", "deltarune_holy"]]
+const DECK_PAIRS := [["creative", "holy"], ["chaos", "holy"], ["creative", "chaos"], ["deltarune_chaos", "deltarune_holy"], ["darkness", "chaos"]]
 ## The deck both players use in the scenarios below.
 const TEST_DECK := {"jevil": 4, "tenna": 4, "guei": 4, "chaos_energy": 18}
 

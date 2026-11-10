@@ -86,5 +86,29 @@
 			"attack": "Chaos Bomb",
 			"field": ["electro_dasher", "electro_dasher", "electro_dasher", "electro_dasher"]
 		}
+	},
+	"darkness": {
+		"name": "Darkness",
+		"cards": {
+			"titan_spawn": 4.0,
+			"titan": 2.0,
+			"addison": 3.0,
+			"dummy": 2.0,
+			"jevil": 2.0,
+			"darkness_energy": 20.0,
+			"temmie": 3.0,
+			"workshop": 4.0,
+			"kris": 1.0,
+			"napstablook": 2.0,
+			"cd_bagel": 2.0,
+			"petal_feather": 2.0,
+			"revive_song": 1.0,
+			"dark_zone": 2.0
+		},
+		"plan": {
+			"battle_zone": "titan",
+			"attack": "Reckless Shatter",
+			"field": ["titan_spawn", "titan_spawn", "titan_spawn", "dummy"]
+		}
 	}
 }
