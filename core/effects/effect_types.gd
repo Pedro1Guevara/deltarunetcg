@@ -9,10 +9,12 @@ const POKEMON := "pokemon"
 const PLAYER := "player"
 ## A list of CardFilter names, such as ["basic_energy", "pokemon"].
 const CARD_FILTER := "card_filter"
+## A list of DarknerFilter names, such as ["unevolved", "no_energy"].
+const DARKNER_FILTER := "darkner_filter"
 
-const ALL := [INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, POKEMON, PLAYER, CARD_FILTER]
+const ALL := [INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, POKEMON, PLAYER, CARD_FILTER, DARKNER_FILTER]
 ## Types a card effect can pass as a literal. Pokemon and players only exist during a match.
-const LITERAL := [INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, CARD_FILTER]
+const LITERAL := [INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, CARD_FILTER, DARKNER_FILTER]
 
 const ANY_ENERGY := "Any"
 ## Every type an effect may name: both type lists and the Colorless cost symbol.
@@ -51,6 +53,8 @@ static func literal_matches(type: String, value: Variant) -> bool:
 			return value is String and (ENERGY_TYPES.has(value) or value == ANY_ENERGY)
 		CARD_FILTER:
 			return CardFilter.is_valid(value)
+		DARKNER_FILTER:
+			return DarknerFilter.is_valid(value)
 	return false
 
 
@@ -62,7 +66,7 @@ static func assignable(from: String, to: String) -> bool:
 ## True when a runtime value has the declared type.
 static func runtime_matches(type: String, value: Variant) -> bool:
 	match type:
-		INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, CARD_FILTER:
+		INT, ENERGY_TYPE, ENERGY_TYPE_OR_ANY, CARD_FILTER, DARKNER_FILTER:
 			return literal_matches(type, value)
 		POKEMON:
 			return value is CardInPlay

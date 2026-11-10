@@ -59,12 +59,15 @@ const CHOICE_ANSWERED := "choice_answered"
 ## damage_prevented: {"darkner", "by": the Ability's name}. healed: {"darkner", "amount", "hp_left"}.
 ## tp_spent: {"amount", "tp"}. energy_discarded: {"darkner", "card"}. energy_shuffled_into_deck:
 ## {"darkner", "count"}. switched: {"in", "out"}. coin_flip: {"heads": bool}.
+## darkner_shuffled_into_deck: {"darkner", "count": cards that went into the deck, the Darkner's
+## own included}.
 const DAMAGE := "damage"
 const DAMAGE_PREVENTED := "damage_prevented"
 const HEALED := "healed"
 const TP_SPENT := "tp_spent"
 const ENERGY_DISCARDED := "energy_discarded"
 const ENERGY_SHUFFLED_INTO_DECK := "energy_shuffled_into_deck"
+const DARKNER_SHUFFLED_INTO_DECK := "darkner_shuffled_into_deck"
 const SWITCHED := "switched"
 const COIN_FLIP := "coin_flip"
 ## Cards. card_moved: {"card", "from", "to"} with zones; a card taken from the deck into the hand

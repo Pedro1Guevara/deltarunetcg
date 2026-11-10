@@ -327,6 +327,9 @@ func _attack_score(view: PlayerView, action: Dictionary) -> float:
 	var harm := _reader.self_harm(id, EffectLibrary.SECTION_ATTACKS, attack.name)
 	if harm > 0 and harm >= attacker.remaining_hp():
 		score -= 2000.0
+	# Taking its only Darkner out of play loses the round (Close Tab with an empty Field).
+	if me.bench.is_empty() and _reader.removes_self(id, EffectLibrary.SECTION_ATTACKS, attack.name):
+		score -= 2000.0
 	return score
 
 
@@ -386,9 +389,20 @@ func _effect_value(view: PlayerView, card_id: String, section: String, name: Str
 				delta = _best_worth(view, me.discard, args.get("filter", []) as Array, int(_amount(args, "count")), true)
 			ATTACH_FROM_DISCARD, "attach_from_hand_to_benched":
 				var pile := me.discard if step["call"] == ATTACH_FROM_DISCARD else hand
-				delta = _attach_from_value(view, pile, args.get("filter", []) as Array)
+				delta = _attach_from_value(view, pile, args.get("filter", []) as Array, args.get("target_filter", [DarknerFilter.ANY]) as Array)
 			"switch_in":
-				delta = _switch_value(view) if own else _opponent_switch_value(view)
+				if args.get("chooser") == EffectTypes.OPPONENT:
+					# The opponent picks what comes in: it only breaks up their board a little.
+					delta = 0.0 if own else 0.3
+				else:
+					delta = _switch_value(view) if own else _opponent_switch_value(view)
+			"discard_top_of_deck":
+				delta = (-0.2 if own else 0.3) * _amount(args, "count")
+			"shuffle_into_deck":
+				if args.get("target") == EffectTypes.SELF and me.active != null:
+					delta = -(1.5 + 0.5 * me.active.attached_energy.size())
+			"spend_tp":
+				delta = -TP_WORTH * _amount(args, "amount")
 			"heal_benched":
 				for darkner in me.bench:
 					if darkner.damage > 0:
@@ -533,13 +547,14 @@ func _average_unseen_worth(view: PlayerView) -> float:
 
 ## Attaching an Energy of pile to a Darkner on the Field: worth what it is worth on the best
 ## of them (_field_energy_value()).
-func _attach_from_value(view: PlayerView, pile: Array[CardData], filter: Array) -> float:
+func _attach_from_value(view: PlayerView, pile: Array[CardData], filter: Array, target_filter: Array) -> float:
 	var me := view.me()
 	var energies := pile.filter(func(card: CardData) -> bool: return CardFilter.matches(card, filter))
-	if energies.is_empty() or me.bench.is_empty():
+	var targets := me.bench.filter(func(darkner: CardInPlay) -> bool: return DarknerFilter.matches(darkner, target_filter))
+	if energies.is_empty() or targets.is_empty():
 		return 0.0
 	var best := 0.0
-	for darkner in me.bench:
+	for darkner: CardInPlay in targets:
 		for energy: CardData in energies:
 			best = maxf(best, _field_energy_value(view, darkner, energy))
 	return best

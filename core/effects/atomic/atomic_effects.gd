@@ -165,7 +165,22 @@ const DECLARATIONS := {
 		"role": ROLE_CHECK, "params": {"player": "player"}, "returns": "", "attack_only": true,
 	},
 	"attach_from_discard_to_benched": {
-		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter"}, "returns": "int", "attack_only": false,
+		"role": ROLE_EFFECT, "params": {"player": "player", "filter": "card_filter", "target_filter": "darkner_filter"}, "returns": "int", "attack_only": false,
+	},
+	"has_benched_matching": {
+		"role": ROLE_CHECK, "params": {"player": "player", "filter": "darkner_filter", "count": "int"}, "returns": "", "attack_only": false,
+	},
+	"discard_top_of_deck": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "count": "int"}, "returns": "int", "attack_only": false,
+	},
+	"shuffle_into_deck": {
+		"role": ROLE_EFFECT, "params": {"target": "pokemon"}, "returns": "int", "attack_only": false,
+	},
+	"has_tp": {
+		"role": ROLE_CHECK, "params": {"player": "player", "amount": "int"}, "returns": "", "attack_only": false,
+	},
+	"spend_tp": {
+		"role": ROLE_EFFECT, "params": {"player": "player", "amount": "int"}, "returns": "int", "attack_only": false,
 	},
 	"has_attached_energy_cards": {
 		"role": ROLE_CHECK, "params": {"target": "pokemon", "energy_type": "energy_type_or_any", "count": "int"},
@@ -246,10 +261,24 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 			return placed
 		"attach_from_discard_to_benched":
 			var owner := args["player"] as PlayerState
-			return CardMoves.attach_to_benched(context, owner, owner.discard, args["filter"] as Array, false)
+			return CardMoves.attach_to_benched(context, owner, owner.discard, args["filter"] as Array, args["target_filter"] as Array, false)
 		"attach_from_hand_to_benched":
 			var holder := args["player"] as PlayerState
-			return CardMoves.attach_to_benched(context, holder, holder.hand, args["filter"] as Array, true)
+			return CardMoves.attach_to_benched(context, holder, holder.hand, args["filter"] as Array, [DarknerFilter.ANY], true)
+		"discard_top_of_deck":
+			var milled := args["player"] as PlayerState
+			var top: Array[CardData] = []
+			for index in mini(maxi(int(args["count"]), 0), milled.deck.size()):
+				top.append(milled.deck[milled.deck.size() - 1 - index])
+			return operations.discard_from_deck(milled, top)
+		"shuffle_into_deck":
+			return operations.shuffle_into_deck(args["target"] as CardInPlay)
+		"spend_tp":
+			var spender := args["player"] as PlayerState
+			if not operations.can_spend_tp(spender, int(args["amount"])):
+				return 0
+			operations.spend_tp(spender, int(args["amount"]))
+			return 1
 		"count_types_on_bench":
 			var types: Array[String] = []
 			for darkner in (args["player"] as PlayerState).bench:
@@ -334,6 +363,10 @@ static func check(name: String, context: EffectContext, args: Dictionary) -> boo
 			return (args["player"] as PlayerState).turns_started > 1
 		"has_benched":
 			return (args["player"] as PlayerState).bench.size() >= int(args["count"])
+		"has_benched_matching":
+			return DarknerFilter.matching_slots((args["player"] as PlayerState).bench, args["filter"] as Array).size() >= int(args["count"])
+		"has_tp":
+			return context.operations.can_spend_tp(args["player"] as PlayerState, int(args["amount"]))
 		"has_cards_in_deck":
 			return (args["player"] as PlayerState).deck.size() >= int(args["count"])
 		"has_cards_in_discard":

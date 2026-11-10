@@ -155,5 +155,34 @@
       "timing": "on_put_onto_field",
       "per_turn": 0
     }
+  },
+  "temmie": {
+    "trainer": {"function": "draw", "args": {"count": 3}}
+  },
+  "workshop": {
+    "trainer": {"function": "attach_from_discard_to_benched_darkner", "args": {"filter": ["basic_energy"], "target_filter": ["unevolved", "no_abilities", "no_energy"]}}
+  },
+  "titan": {
+    "attacks": {
+      "Reckless Shatter": {"function": "damage_then_discard_top_of_both_decks", "args": {"own_count": 1, "opponent_count": 2}}
+    }
+  },
+  "titan_spawn": {
+    "attacks": {
+      "Bump": {"function": "damage_then_opponent_switches_active", "args": {}}
+    }
+  },
+  "addison": {
+    "attacks": {
+      "Close Tab": {"function": "damage_then_shuffle_self_into_deck", "args": {}}
+    },
+    "powers": {
+      "Click Here!": {
+        "function": "spend_tp_then_search_deck",
+        "args": {"tp": 1, "filter": ["supporter"], "count": 1},
+        "timing": "on_play_from_hand",
+        "per_turn": 1
+      }
+    }
   }
 }

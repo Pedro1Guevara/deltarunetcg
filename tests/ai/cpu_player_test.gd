@@ -417,6 +417,27 @@ func _run() -> void:
 	expect(spare_or_fight.call("jevil", ["chaos_energy"], 90) == PendingChoice.SPARE, "it Spares when the opponent could knock out one of its Darkners first")
 	expect(spare_or_fight.call("guei", [], 0) == PendingChoice.SPARE, "and when it could not knock out what they battle with next (Guei, 80 HP, against Showtime!'s 70)")
 
+	print("== new effects")
+	var tab_alone := battle("addison", ["chaos_energy", "chaos_energy", "chaos_energy"], "jevil")
+	expect(decide(tab_alone)["type"] != "attack", "it never uses Close Tab with an empty Field: Addison is its only Darkner in play")
+	var tab_backed := battle("addison", ["chaos_energy", "chaos_energy", "chaos_energy"], "jevil")
+	tab_backed.current_player().bench.append(in_play("guei", []))
+	tab_backed.opponent_player().active.damage = 40
+	expect(decide(tab_backed)["type"] == "attack", "with a Darkner on its Field it uses Close Tab for a knockout")
+	var bumped_cpu := battle("titan_spawn", ["darkness_energy"], "jevil")
+	bumped_cpu.opponent_player().bench.append_array([in_play("guei", []), in_play("jevil", ["chaos_energy"])])
+	bumped_cpu.opponent_player().bench[0].damage = 70
+	bumped_cpu.apply({"type": "attack", "attack_index": 0})
+	var bump_answer := decide(bumped_cpu)
+	expect(bumped_cpu.choice_kind() == PendingChoice.KIND_CHOOSE_DARKNER and bumped_cpu.choice_option(int(bump_answer["option"]))["value"] == 1,
+			"Bumped, it brings in the Darkner that can attack, not Guei at 10 HP")
+	var shop_cpu := battle("jevil", [], "guei")
+	shop_cpu.current_player().tp = 4
+	shop_cpu.current_player().hand.assign(cards(["workshop"]) as Array[CardData])
+	shop_cpu.current_player().discard.assign(cards(["chaos_energy"]) as Array[CardData])
+	shop_cpu.current_player().bench.append(in_play("jevil", []))
+	expect(decide(shop_cpu)["type"] == "play_trainer", "it casts Workshop to give a bare Jevil on its Field the Energy it lacks")
+
 	print("== a cheaper knockout")
 	var melt_or_overrun := func(holy: int, koody_damage: int) -> Dictionary:
 		var energy: Array = []

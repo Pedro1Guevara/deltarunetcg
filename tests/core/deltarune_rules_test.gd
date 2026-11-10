@@ -1259,6 +1259,108 @@ func _run() -> void:
 	var legacy_result := KnockoutResolver.new(legacy_last.players, legacy_last.match_log).resolve(1 - legacy_taker, MatchRules.legacy(), -1)
 	expect(legacy_result == legacy_taker, "legacy rules: the last Mercy Card wins at once")
 
+	print("== Temmie, Workshop, Reckless Shatter, Bump, Close Tab, Click Here!")
+	var g1_tem := battle("jevil", [], "guei")
+	var g1_temmer := g1_tem.current_player()
+	g1_temmer.hand.assign(cards(["temmie"]))
+	var g1_tem_deck := g1_temmer.deck.size()
+	expect(play(g1_tem, "Play Temmie (Lightner)") and g1_temmer.hand.size() == 3 and g1_temmer.deck.size() == g1_tem_deck - 3 and g1_temmer.discard.back().name == "Temmie",
+			"Temmie: draw 3 cards")
+
+	var g1_shop := battle("jevil", [], "guei")
+	var g1_shopper := g1_shop.current_player()
+	g1_shopper.tp = 4
+	g1_shopper.hand.assign(cards(["workshop"]))
+	g1_shopper.bench.append(in_play("cuptain", []))
+	g1_shopper.bench.append(in_play("guei", ["holy_energy"]))
+	g1_shopper.bench.append(in_play("hammer_of_justice", []))
+	g1_shopper.discard.assign(cards(["holy_energy"]))
+	expect(not has_label(g1_shop, "Cast Workshop (50% TP)"), "Workshop cannot be cast with no Darkner it may target: one has an Ability, one has Energy, one is an Evolution")
+	g1_shopper.discard.clear()
+	g1_shopper.bench.append(in_play("water_cooler", []))
+	expect(not has_label(g1_shop, "Cast Workshop (50% TP)"), "nor without a Basic Energy in the discard pile")
+	g1_shopper.discard.assign(cards(["holy_energy"]))
+	expect(play(g1_shop, "Cast Workshop (50% TP)") and g1_shopper.bench[3].attached_energy.size() == 1 and g1_shopper.discard.size() == 1 and g1_shopper.discard[0].name == "Workshop" and g1_shopper.tp == 2,
+			"the Energy goes to the only Darkner it may target, Water Cooler, for 50% TP")
+	var g1_shop_two := battle("jevil", [], "guei")
+	var g1_two_shopper := g1_shop_two.current_player()
+	g1_two_shopper.tp = 4
+	g1_two_shopper.hand.assign(cards(["workshop"]))
+	g1_two_shopper.discard.assign(cards(["holy_energy"]))
+	g1_two_shopper.bench.append_array([in_play("cuptain", []), in_play("water_cooler", []), in_play("dummy", [])])
+	play(g1_shop_two, "Cast Workshop (50% TP)")
+	var g1_shop_slots: Array = []
+	for option in g1_shop_two.view_for(g1_shop_two.current_index).choice_options:
+		g1_shop_slots.append(int((option as Dictionary)["value"]))
+	expect(g1_shop_two.choice_kind() == PendingChoice.KIND_CHOOSE_DARKNER and g1_shop_slots == [1, 2], "with two it may target, the choice offers those two only (%s)" % [g1_shop_slots])
+
+	var g1_shatter := battle("titan", ["darkness_energy", "darkness_energy"], "tenna")
+	var g1_shatterer := g1_shatter.current_player()
+	var g1_shattered := g1_shatter.opponent_player()
+	var g1_own_top := g1_shatterer.deck.back() as CardData
+	var g1_their_top: Array = [g1_shattered.deck[g1_shattered.deck.size() - 1], g1_shattered.deck[g1_shattered.deck.size() - 2]]
+	attack(g1_shatter, "Reckless Shatter")
+	expect(g1_shattered.active.damage == 80 and g1_shatterer.discard.has(g1_own_top) and g1_shattered.discard.has(g1_their_top[0]) and g1_shattered.discard.has(g1_their_top[1]) and g1_shattered.discard.size() == 2,
+			"Reckless Shatter: 80 damage, the top card of its owner's deck discarded, then the top 2 of the opponent's")
+	var g1_dry := battle("titan", ["darkness_energy", "darkness_energy"], "tenna")
+	g1_dry.current_player().deck.clear()
+	attack(g1_dry, "Reckless Shatter")
+	expect(g1_dry.opponent_player().discard.is_empty(), "with nothing to discard from its own deck, the opponent discards nothing")
+
+	var g1_bump := battle("titan_spawn", ["darkness_energy"], "jevil")
+	var g1_bumper := g1_bump.current_index
+	var g1_bumped := g1_bump.opponent_player()
+	g1_bumped.bench.append_array([in_play("guei", []), in_play("tenna", [])])
+	attack(g1_bump, "Bump")
+	expect(g1_bump.choice_kind() == PendingChoice.KIND_CHOOSE_DARKNER and g1_bump.choice_chooser() == 1 - g1_bumper and g1_bump.choice_details()["side"] == PendingChoice.SIDE_OWN,
+			"Bump: the opponent chooses their new Battling Darkner")
+	g1_bump.apply({"type": "choose", "option": 1})
+	expect(g1_bumped.active.card.name == "Tenna" and g1_bumped.bench.any(func(darkner: CardInPlay) -> bool: return darkner.card.name == "Jevil" and darkner.damage == 20)
+			and g1_bump.current_index != g1_bumper, "after 20 damage, Jevil goes to the Field and Tenna comes in; then the turn passes")
+	var g1_lone := battle("titan_spawn", ["darkness_energy"], "jevil")
+	var g1_lone_turn := g1_lone.turn
+	var g1_lone_side := g1_lone.opponent_player()
+	attack(g1_lone, "Bump")
+	expect(g1_lone_side.active.card.name == "Jevil" and g1_lone_side.active.damage == 20 and g1_lone.turn == g1_lone_turn + 1,
+			"with nothing on their Field the Darkner stays and the turn passes")
+
+	var g1_tab := battle("addison", ["chaos_energy", "chaos_energy", "chaos_energy"], "jevil")
+	var g1_tabber := g1_tab.current_player()
+	var g1_tab_index := g1_tab.current_index
+	g1_tabber.bench.append_array([in_play("guei", []), in_play("tenna", [])])
+	var g1_tab_cards := g1_tabber.deck.size()
+	attack(g1_tab, "Close Tab")
+	expect(g1_tab.opponent_player().active.damage == 50 and g1_tabber.active == null and g1_tabber.deck.size() == g1_tab_cards + 4 and g1_tab.players[1 - g1_tab_index].prizes.size() == 4,
+			"Close Tab: 50 damage, then Addison and its 3 Energy go into the deck; no Mercy Card for it")
+	expect(log_lines(g1_tab).has("  Addison goes back into the deck and 3 cards with it"), "the log says so (%s)" % [log_lines(g1_tab).slice(-4)])
+	expect(g1_tab.choice_kind() == PendingChoice.KIND_PROMOTE and g1_tab.choice_chooser() == g1_tab_index, "its owner then chooses their new Battling Darkner, as after a knockout")
+	play(g1_tab, "Promote Tenna (Field 2, 100/100 HP)")
+	expect(g1_tabber.active.card.name == "Tenna" and g1_tab.current_index != g1_tab_index, "and the turn passes")
+	var g1_tab_alone := battle("addison", ["chaos_energy", "chaos_energy", "chaos_energy"], "jevil")
+	var g1_tab_alone_index := g1_tab_alone.current_index
+	attack(g1_tab_alone, "Close Tab")
+	expect(g1_tab_alone.winner == 1 - g1_tab_alone_index, "with an empty Field its owner has no Darkner in play and loses the round")
+
+	var g1_click := battle("jevil", [], "guei")
+	var g1_clicker := g1_click.current_player()
+	g1_clicker.tp = 4
+	g1_clicker.hand.assign(cards(["addison", "addison"]))
+	g1_clicker.deck.assign(cards(["guei", "kris", "chaos_energy"]))
+	play(g1_click, "Put Addison on the Field")
+	expect(prompt_of(g1_click) == "Use Click Here!?", "Click Here!: its owner may use it when Addison is played (%s)" % prompt_of(g1_click))
+	play(g1_click, "Use Click Here! (Addison)")
+	var g1_click_labels := option_labels(g1_click)
+	expect(g1_clicker.tp == 3 and g1_click_labels.has("Take Kris") and not g1_click_labels.has("Take Guei"), "it costs 25%% TP and searches the deck for a Lightner (%s)" % [g1_click_labels])
+	pick(g1_click, "Take Kris")
+	expect(g1_clicker.hand.any(func(card: CardData) -> bool: return card.name == "Kris"), "Kris goes to the hand")
+	play(g1_click, "Put Addison on the Field")
+	expect(not g1_click.is_waiting_for_choice() and g1_clicker.bench.size() == 2, "only 1 Click Here! per turn")
+	var g1_broke := battle("jevil", [], "guei")
+	g1_broke.current_player().tp = 0
+	g1_broke.current_player().hand.assign(cards(["addison"]))
+	play(g1_broke, "Put Addison on the Field")
+	expect(not g1_broke.is_waiting_for_choice(), "without 25% TP it is not offered")
+
 	print("== picking Mercy Cards")
 	var mc_picked := battle("jevil", ["chaos_energy", "chaos_energy"], "koody")
 	var mc_picker := mc_picked.current_index

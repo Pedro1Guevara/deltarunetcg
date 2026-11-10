@@ -50,13 +50,17 @@ func resolve(defender_index: int, rules: MatchRules, fighting: int) -> int:
 	var lost_battling: Array[int] = []
 	for index: int in [defender_index, 1 - defender_index]:
 		var side := _players[index]
+		# A Battle Zone an effect emptied (Close Tab) is filled like one emptied by a knockout,
+		# with no Mercy Card for it.
+		if side.active == null:
+			lost_battling.append(index)
 		for darkner: CardInPlay in [side.active] + side.bench:
 			if darkner != null and darkner.is_knocked_out():
 				knocked_out.append(darkner)
 				owners.append(index)
 				if darkner == side.active:
 					lost_battling.append(index)
-	if knocked_out.is_empty():
+	if knocked_out.is_empty() and lost_battling.is_empty():
 		return MatchEngine.NO_WINNER
 
 	for position in knocked_out.size():
@@ -102,7 +106,7 @@ func settle(rules: MatchRules, fighting: int) -> int:
 		if _players[index].bench.is_empty():
 			ways[1 - index] = int(ways[1 - index]) + 1
 
-	if rules.spare_fight and fighting != -1:
+	if rules.spare_fight and fighting != -1 and not owners.is_empty():
 		return _end_fight(fighting, owners.has(1 - fighting), owners.has(fighting), rules)
 
 	if rules.spare_fight:

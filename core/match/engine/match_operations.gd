@@ -107,6 +107,30 @@ func shuffle_energy_into_deck(target: CardInPlay) -> int:
 	return count
 
 
+## Shuffles a Darkner in play into its owner's deck with every card under it and attached to it
+## (Close Tab). Its Battle Zone or Field slot is left empty; an empty Battle Zone is filled after
+## the effect, as after a knockout (KnockoutResolver). Returns how many cards went into the deck.
+func shuffle_into_deck(target: CardInPlay) -> int:
+	var owner := owner_of(target)
+	if owner == null:
+		return 0
+	var shuffled_ref := _log.darkner(target)
+	var cards: Array[CardData] = []
+	cards.append_array(target.evolved_from)
+	cards.append(target.card)
+	cards.append_array(target.attached_energy)
+	target.evolved_from.clear()
+	target.attached_energy.clear()
+	if owner.active == target:
+		owner.active = null
+	else:
+		owner.bench.erase(target)
+	owner.deck.append_array(cards)
+	_rng.shuffle(owner.deck)
+	_log.add(MatchEvent.DARKNER_SHUFFLED_INTO_DECK, int(shuffled_ref["side"]), {"darkner": shuffled_ref, "count": cards.size()})
+	return cards.size()
+
+
 ## An attack with no printed damage deals none, so nothing is logged for it.
 func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender

@@ -246,7 +246,7 @@
     ],
     "steps": [
       {"call": "place_damage_counters", "args": {"target": "$self", "count": "$counters"}},
-      {"call": "attach_from_discard_to_benched", "args": {"player": "$player", "filter": "$filter"}}
+      {"call": "attach_from_discard_to_benched", "args": {"player": "$player", "filter": "$filter", "target_filter": ["any"]}}
     ]
   },
     "counters_on_attack_damaged_on_heads": {
@@ -375,6 +375,50 @@
     "params": { "counters": "int" },
     "steps": [
       {"call": "place_damage_counters", "args": {"target": "$subject", "count": "$counters"}}
+    ]
+  },
+  "attach_from_discard_to_benched_darkner": {
+    "params": { "filter": "card_filter", "target_filter": "darkner_filter" },
+    "requires": [
+      {"check": "has_cards_in_discard", "args": {"player": "$player", "filter": "$filter", "count": 1}},
+      {"check": "has_benched_matching", "args": {"player": "$player", "filter": "$target_filter", "count": 1}}
+    ],
+    "steps": [
+      {"call": "attach_from_discard_to_benched", "args": {"player": "$player", "filter": "$filter", "target_filter": "$target_filter"}}
+    ]
+  },
+  "damage_then_discard_top_of_both_decks": {
+    "params": { "own_count": "int", "opponent_count": "int" },
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "discard_top_of_deck", "args": {"player": "$player", "count": "$own_count"}, "as": "discarded"},
+      {"call": "at_least", "args": {"a": "$discarded", "b": "$own_count"}, "as": "did"},
+      {"call": "discard_top_of_deck", "args": {"player": "$opponent", "count": "$opponent_count"}, "when": {"value": "$did", "eq": 1}}
+    ]
+  },
+  "damage_then_opponent_switches_active": {
+    "params": {},
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "switch_in", "args": {"player": "$opponent", "chooser": "$opponent"}}
+    ]
+  },
+  "damage_then_shuffle_self_into_deck": {
+    "params": {},
+    "steps": [
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}},
+      {"call": "shuffle_into_deck", "args": {"target": "$self"}}
+    ]
+  },
+  "spend_tp_then_search_deck": {
+    "params": { "tp": "int", "filter": "card_filter", "count": "int" },
+    "requires": [
+      {"check": "has_tp", "args": {"player": "$player", "amount": "$tp"}},
+      {"check": "has_cards_in_deck", "args": {"player": "$player", "count": 1}}
+    ],
+    "steps": [
+      {"call": "spend_tp", "args": {"player": "$player", "amount": "$tp"}},
+      {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
     ]
   }
 }
