@@ -98,21 +98,22 @@ func _run() -> void:
 
 	print("== Spare and Fight across rounds")
 	var spared := new_combat(11)
-	expect(spared.engine.match_point == [false, false] and spared.engine.rules.first_turn_extra_draws == [0, 0], "round 1: no match point, no extra cards")
+	expect(spared.engine.rules.match_point == [false, false] and spared.engine.rules.first_turn_extra_draws == [0, 0], "round 1: no match point, no extra cards")
 	finish_setup(spared.engine)
 	spared.engine.extra_draws_next_round = [0, 3]
 	spared.engine.winner = 0
 	spared.next_game()
 	expect(spared.engine.rules.first_turn_extra_draws == [0, 3] and spared.rules.first_turn_extra_draws == [0, 0],
 			"the extra cards a Spare gave reach the next round's rules; the combat's rules keep none")
-	expect(spared.engine.match_point == [true, false] and spared.engine.view_for(1).match_point == [true, false], "1-0: round 2 is match point for player 1, and both see it")
+	expect(spared.engine.rules.match_point == [true, false] and spared.engine.view_for(1).rules.match_point == [true, false] and spared.rules.match_point == [false, false],
+			"1-0: round 2 is match point for player 1, both see it, and the combat's rules keep none")
 	tie_game(spared)
 	spared.engine.extra_draws_next_round = [3, 0]
 	spared.next_game()
 	expect(spared.sudden_death and spared.engine.rules.first_turn_extra_draws == [0, 0], "a Sudden Death game gives and gets no extra cards")
 	win_game(spared, 1)
 	spared.next_game()
-	expect(spared.engine.match_point == [true, true] and spared.round_number == 3, "1-1: round 3 is match point for both")
+	expect(spared.engine.rules.match_point == [true, true] and spared.round_number == 3, "1-1: round 3 is match point for both")
 
 	print("== seeds")
 	var again := new_combat(7)

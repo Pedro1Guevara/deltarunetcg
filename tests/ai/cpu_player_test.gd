@@ -392,23 +392,41 @@ func _run() -> void:
 		discarder.apply(answer)
 	expect(discarded == ["hammer_of_justice", "sans"], "a discard starts with what it cannot use: an evolution with nothing to evolve, then the ACT card it holds most copies of (%s)" % [discarded])
 
-	var spare_or_fight := func(bench_id: String, bench_energy: Array, battling_damage: int, match_point: bool) -> String:
+	var spare_or_fight := func(bench_id: String, bench_energy: Array, battling_damage: int) -> String:
 		var engine := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
 		var taker := engine.current_index
 		engine.opponent_player().bench.append(in_play(bench_id, bench_energy))
 		engine.current_player().active.damage = battling_damage
-		engine.match_point[taker] = match_point
 		while engine.players[taker].prizes.size() > 1:
 			engine.players[taker].prizes.pop_back()
 		engine.apply({"type": "attack", "attack_index": 0})
 		if engine.choice_kind() != PendingChoice.KIND_SPARE_FIGHT:
 			return "no question"
 		return str(engine.choice_option(int(decide(engine)["option"]))["value"])
-	expect(spare_or_fight.call("koody", [], 0, false) == PendingChoice.FIGHT,
+	expect(spare_or_fight.call("koody", [], 0) == PendingChoice.FIGHT,
 			"it Fights when nothing the opponent has can knock out its Darkners next turn and it can knock out whatever they battle with")
-	expect(spare_or_fight.call("koody", [], 0, true) == PendingChoice.SPARE, "at match point it Spares: the round wins the combat and the extra cards never come")
-	expect(spare_or_fight.call("jevil", ["chaos_energy"], 90, false) == PendingChoice.SPARE, "it Spares when the opponent could knock out one of its Darkners first")
-	expect(spare_or_fight.call("guei", [], 0, false) == PendingChoice.SPARE, "and when it could not knock out what they battle with next (Guei, 80 HP, against Showtime!'s 70)")
+	expect(spare_or_fight.call("jevil", ["chaos_energy"], 90) == PendingChoice.SPARE, "it Spares when the opponent could knock out one of its Darkners first")
+	expect(spare_or_fight.call("guei", [], 0) == PendingChoice.SPARE, "and when it could not knock out what they battle with next (Guei, 80 HP, against Showtime!'s 70)")
+
+	print("== a cheaper knockout")
+	var melt_or_overrun := func(holy: int, koody_damage: int) -> Dictionary:
+		var energy: Array = []
+		for _i in holy:
+			energy.append("holy_energy")
+		var engine := battle("guei", energy, "koody")
+		engine.current_player().bench.append(in_play("cuptain", ["holy_energy"]))
+		engine.current_player().bench.append(in_play("cuptain", []))
+		engine.opponent_player().active.damage = koody_damage
+		return decide(engine)
+	var cheap_ko := melt_or_overrun.call(4, 30) as Dictionary
+	expect(cheap_ko["type"] == "retreat" and int(cheap_ko["slot"]) == 0,
+			"Guei would give up 4 Energy to knock out a Koody with 10 HP left: it flees (1 Energy) to the Cuptain that can pay Overrun, which knocks it out")
+	var melt := melt_or_overrun.call(4, 0) as Dictionary
+	expect(melt["type"] == "attack", "not when Overrun (20) cannot knock the Koody out: Flash Melt it is")
+	var two := melt_or_overrun.call(2, 30) as Dictionary
+	expect(two["type"] == "retreat", "with 2 Energy on Guei fleeing still gives up less")
+	expect(reader.energy_given_up(in_play("guei", ["holy_energy", "holy_energy", "holy_energy"]), db.make("guei").attacks[0]) == 3
+			and reader.energy_given_up(in_play("cuptain", ["holy_energy"]), db.make("cuptain").attacks[0]) == 0, "Flash Melt gives up every Energy on Guei; Overrun none")
 
 	print("== damage to its own Darkners")
 	var devoted := battle("jevil", [], "tenna")

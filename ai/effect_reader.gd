@@ -120,6 +120,16 @@ func self_harm(card_id: String, section: String, name: String) -> int:
 	return harm
 
 
+## How many Energy cards attacker gives up by using attack: those it shuffles into its deck
+## (Flash Melt) or discards from itself.
+func energy_given_up(attacker: CardInPlay, attack: AttackData) -> int:
+	var given := 0
+	for step in steps(attacker.card_with_attack(attack).id, EffectLibrary.SECTION_ATTACKS, attack.name):
+		if step["call"] == "shuffle_attached_energy_into_deck" and step["args"].get("target") == EffectTypes.SELF:
+			given = attacker.attached_energy.size()
+	return given
+
+
 ## What attack is expected to do when attacker uses it, with own as its owner's side and
 ## opponent as the other side, both as they would stand: {"active": damage to the opponent's
 ## Battling Darkner, "bench_each": damage to each Darkner on their Field, "bench_targets": how

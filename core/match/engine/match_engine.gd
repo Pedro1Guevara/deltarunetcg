@@ -49,9 +49,6 @@ var fighting: int = -1
 ## Extra cards each player draws at the start of their first turn of the next round, by player
 ## index: what a Spare or a lost Fight gave them. Combat hands it to the next round's rules.
 var extra_draws_next_round: Array[int] = [0, 0]
-## Whether winning this round wins the combat, by player index. Set by Combat; the engine never
-## reads it, and it is in each player's view, as the score is at the table.
-var match_point: Array[bool] = [false, false]
 
 ## What a round goes on with after a Spare or Fight question, once Fight is chosen.
 const _AFTER_BENCH := "bench"
@@ -129,7 +126,6 @@ func view_for(player_index: int) -> PlayerView:
 	view.is_over = is_over()
 	view.winner = winner
 	view.fighting = fighting
-	view.match_point = match_point.duplicate()
 	view.rules = MatchRules.from_dict(rules.to_dict())
 	view.stadium = stadium
 	view.stadium_owner = stadium_owner

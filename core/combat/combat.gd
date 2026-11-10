@@ -161,5 +161,5 @@ func _start_game(is_sudden_death: bool, extra_draws: Array[int]) -> void:
 	game_rules.first_turn_extra_draws = extra_draws.duplicate()
 	var won := score()
 	for player in won.size():
-		engine.match_point[player] = won[player] == ROUNDS_TO_WIN - 1
+		game_rules.match_point[player] = won[player] == ROUNDS_TO_WIN - 1
 	engine.start(handed[0] as Array[CardData], handed[1] as Array[CardData], game_rules, Rng.new(seed))

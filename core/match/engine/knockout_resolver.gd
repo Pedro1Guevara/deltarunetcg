@@ -28,7 +28,8 @@ func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
 ## round's rules as they are now.
 ##
 ## With Spare and Fight (Design Document 4.5): a player whose only win is their last Mercy Card
-## does not win yet; take_spare_fight_offer() names them, and they choose. fighting is the player
+## does not win yet, unless they are at match point; take_spare_fight_offer() names them, and
+## they choose. fighting is the player
 ## who chose to Fight, or -1: the next knockout decides the round. A Darkner of the opponent
 ## knocked out wins it for them; one of their own knocked out loses it; both at once is Sudden
 ## Death.
@@ -73,7 +74,7 @@ func resolve(defender_index: int, rules: MatchRules, fighting: int) -> int:
 	if rules.spare_fight:
 		for taker in 2:
 			var by_mercy_cards_only := int(ways[taker]) == 1 and owners.has(1 - taker) and _players[taker].prizes.is_empty()
-			if by_mercy_cards_only and int(ways[1 - taker]) == 0:
+			if by_mercy_cards_only and int(ways[1 - taker]) == 0 and not rules.match_point[taker]:
 				_spare_fight_offer = taker
 				_promotion_queue.assign(lost_battling)
 				return MatchEngine.NO_WINNER

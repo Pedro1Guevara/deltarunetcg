@@ -1194,6 +1194,16 @@ func _run() -> void:
 	expect(last_and_empty.winner == last_and_empty_taker and not last_and_empty.is_waiting_for_choice(),
 			"the last Mercy Card and an opponent with nothing to promote: the round ends at once, no Spare or Fight")
 
+	var at_match_point := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+	var match_point_taker := at_match_point.current_index
+	at_match_point.opponent_player().bench.append(in_play("guei", []))
+	at_match_point.rules.match_point[match_point_taker] = true
+	while at_match_point.players[match_point_taker].prizes.size() > 1:
+		at_match_point.players[match_point_taker].prizes.pop_back()
+	attack(at_match_point, "Showtime!")
+	expect(at_match_point.winner == match_point_taker and not at_match_point.is_waiting_for_choice() and at_match_point.extra_draws_next_round == [0, 0],
+			"at match point the last Mercy Card wins at once: Spare would win the combat, so there is nothing to choose")
+
 	print("== Fight")
 	var lost_fight := fight_round()
 	var fighter := lost_fight.fighting
@@ -1255,10 +1265,10 @@ func _run() -> void:
 	var later_extra := extra_round.events_for(0, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and bool(event.data["extra"]))
 	expect(later_extra.size() == 1, "only on the first turn")
 	var old_rules := MatchRules.deltarune().to_dict()
-	for added in ["spare_fight", "spare_extra_draws", "first_turn_extra_draws"]:
+	for added in ["spare_fight", "spare_extra_draws", "first_turn_extra_draws", "match_point"]:
 		old_rules.erase(added)
 	var read_old := MatchRules.from_dict(old_rules)
-	expect(read_old != null and not read_old.spare_fight and read_old.first_turn_extra_draws == [0, 0],
+	expect(read_old != null and not read_old.spare_fight and read_old.first_turn_extra_draws == [0, 0] and read_old.match_point == [false, false],
 			"rules recorded before Spare and Fight read back without them, so old replays play as they were played")
 
 	var empty_field := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")

@@ -207,6 +207,9 @@ func _pick_retreat(view: PlayerView, candidates: Array) -> Dictionary:
 			return _plan.is_support(darkner) and (_has_useful_attack(view, darkner) or bool(_reader.field_support(darkner)["protects"])))
 		if not supports.is_empty():
 			return supports[0]
+	var cheaper := _cheaper_knockout(view, candidates)
+	if not cheaper.is_empty():
+		return cheaper
 	var useful := view.legal_actions.any(func(action: Dictionary) -> bool: return action["type"] == "attack" and _attack_score(view, action) > 0.0)
 	if useful or _energy_distance(me.active) <= 1:
 		return {}
@@ -214,6 +217,44 @@ func _pick_retreat(view: PlayerView, candidates: Array) -> Dictionary:
 	if able.is_empty():
 		return {}
 	return _best(able, func(action: Dictionary) -> float: return _promote_score(view, me.bench[int(action["slot"])]))
+
+
+## A cheaper knockout: when the Battling Darkner's knockout attack gives up more Energy than
+## fleeing costs (Flash Melt shuffles every Energy away), it flees to a Darkner on the Field that
+## knocks out the opponent's Battling Darkner with an attack it can pay now, giving up less in
+## all. The Flee cost is the printed one, an estimate. {} when there is none.
+func _cheaper_knockout(view: PlayerView, candidates: Array) -> Dictionary:
+	var me := view.me()
+	var opponent := view.opponent()
+	if opponent.active == null:
+		return {}
+	var given_up := -1
+	for action in view.legal_actions:
+		if action["type"] == "attack" and _attack_score(view, action) >= 1000.0:
+			var lost := _reader.energy_given_up(me.active, me.active.attacks()[int(action["attack_index"])])
+			given_up = lost if given_up == -1 else mini(given_up, lost)
+	var flee_cost := me.active.base_card().retreat_cost
+	if given_up <= flee_cost:
+		return {}
+	var best := {}
+	var best_lost := given_up
+	for action: Dictionary in candidates:
+		var darkner := me.bench[int(action["slot"])]
+		var side := _with_battling(me, darkner)
+		for attack in darkner.attacks():
+			if not darkner.can_pay(attack.cost):
+				continue
+			var id := darkner.card_with_attack(attack).id
+			var harm := _reader.self_harm(id, EffectLibrary.SECTION_ATTACKS, attack.name)
+			if harm > 0 and harm >= darkner.remaining_hp():
+				continue
+			if float(_reader.estimate_attack(darkner, attack, side, opponent)["active"]) < opponent.active.remaining_hp():
+				continue
+			var lost := flee_cost + _reader.energy_given_up(darkner, attack)
+			if lost < best_lost:
+				best = action
+				best_lost = lost
+	return best
 
 
 ## Energy goes first where it lets the Battling Darkner attack, then to the support battling
@@ -658,14 +699,14 @@ func _answer(view: PlayerView) -> Dictionary:
 
 ## Spare or Fight, after taking the last Mercy Card (Design Document 4.5). Spare wins the round
 ## now; Fight wins it without giving the opponent extra cards next round, but the opponent plays
-## a turn first and losing any Darkner loses the round. At match point Spare costs nothing.
-## Otherwise the CPU Fights only when nothing the opponent could battle with can knock out any
+## a turn first and losing any Darkner loses the round (at match point the question is never
+## asked: the round, and the combat, are won at once). The CPU Fights only when nothing the opponent could battle with can knock out any
 ## of its Darkners next turn, and its Battling Darkner can knock out whichever they battle with.
 ## Attacks count when they can be paid or are one Energy from it.
 func _wants_to_fight(view: PlayerView) -> bool:
 	var me := view.me()
 	var opponent := view.opponent()
-	if view.match_point[view.viewer] or me.active == null:
+	if me.active == null:
 		return false
 	var theirs: Array[CardInPlay] = []
 	if opponent.active != null:

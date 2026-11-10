@@ -39,9 +39,13 @@ var spare_extra_draws: int = 0
 ## Extra cards each player draws at the start of their first turn of this game, by player index:
 ## what Spare and Fight gave them in the round before. Combat sets it for each game.
 var first_turn_extra_draws: Array[int] = [0, 0]
+## Whether winning this game wins the combat, by player index. Combat sets it for each game. A
+## player at match point who takes their last Mercy Card wins at once, with no Spare or Fight:
+## Spare would win the combat, and nothing would come of the extra cards.
+var match_point: Array[bool] = [false, false]
 
 ## Rules a replay recorded before they existed, with the value that plays it as it was played.
-const _ADDED_LATER := {"spare_fight": false, "spare_extra_draws": 0, "first_turn_extra_draws": [0, 0]}
+const _ADDED_LATER := {"spare_fight": false, "spare_extra_draws": 0, "first_turn_extra_draws": [0, 0], "match_point": [false, false]}
 
 
 ## The rules the WOTC build used. Only for the legacy test data.
@@ -63,6 +67,7 @@ static func legacy() -> MatchRules:
 	rules.spare_fight = false
 	rules.spare_extra_draws = 0
 	rules.first_turn_extra_draws = [0, 0]
+	rules.match_point = [false, false]
 	return rules
 
 
@@ -85,6 +90,7 @@ static func deltarune() -> MatchRules:
 	rules.spare_fight = true
 	rules.spare_extra_draws = 3
 	rules.first_turn_extra_draws = [0, 0]
+	rules.match_point = [false, false]
 	return rules
 
 
@@ -115,6 +121,11 @@ static func from_dict(values: Dictionary) -> MatchRules:
 			value = int(value)
 		elif current is bool:
 			value = bool(value)
+		elif current is Array and (current as Array).get_typed_builtin() == TYPE_BOOL:
+			var flags: Array[bool] = []
+			for flag: Variant in value as Array:
+				flags.append(bool(flag))
+			value = flags
 		elif current is Array:
 			var numbers: Array[int] = []
 			for number: Variant in value as Array:

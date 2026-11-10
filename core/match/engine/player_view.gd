@@ -38,8 +38,6 @@ var is_over: bool
 var winner: int
 ## The player who chose to Fight, or -1 (Design Document 4.5).
 var fighting: int = -1
-## Whether winning this round wins the combat, by player index: Spare then costs nothing.
-var match_point: Array[bool] = [false, false]
 ## A copy of the round's rules, as they stand now (effects can change some).
 var rules: MatchRules
 ## The Area in play and who played it, or null and -1.

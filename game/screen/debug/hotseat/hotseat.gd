@@ -7,14 +7,16 @@ const DEFAULT_DECKS: Array[String] = ["creative", "holy"]
 const DEFAULT_CPU_SEATS: Array[bool] = [false, true]
 ## Seconds between two CPU decisions, so each one can be followed on the board.
 const CPU_DELAY := 1.2
-## A CPU turn that takes more decisions than this is ended, as a safety net.
-const CPU_DECISIONS_PER_TURN := 300
 const FONT_SIZE := 22
 ## The ways to copy a replay, as ids of the Copy replay menu.
 const REPLAY_AS_TEXT := 0
 const REPLAY_AS_CODE := 1
 
-## The combat being played (best of three) and the engine of its game being played.
+## The session that drives the combat and its CPU seats (CombatSession); this screen shows it
+## and sends it the human's actions, as the board does.
+var _session: CombatSession = null
+## The combat being played (best of three) and the engine of its game being played: the
+## session's, read for display. A debug screen reads both players' cards.
 var _combat: Combat = null
 var _engine := MatchEngine.new()
 ## The cards of the combat, for the words of labels, prompts and the log (game/presentation).
@@ -36,14 +38,10 @@ var _deck_ids: Array[String] = DEFAULT_DECKS.duplicate()
 var _deck_names: Array[String] = []
 ## Whether the CPU plays each seat.
 var _cpu_seats: Array[bool] = DEFAULT_CPU_SEATS.duplicate()
-## One CPU per seat, since each remembers what it saw; made for each round with its deck.
-var _cpus: Array[CpuPlayer] = []
 ## A CPU decision is waiting for its pause to end.
 var _cpu_waiting := false
 ## Bumped by every new game, so a pause started in the previous game does nothing.
 var _game_number := 0
-var _cpu_turn := -1
-var _cpu_decisions := 0
 
 
 ## Called by the deck select screen before the scene enters the tree: each player's deck, and
@@ -161,59 +159,37 @@ func _make_panel() -> VBoxContainer:
 
 
 func _start_combat() -> void:
-	var database := DataLoader.load_card_database()
-	_database = database
 	var decks: Variant = DataLoader.read_json(DataLoader.DECKS_PATH)
-	if database.card_count() == 0 or not decks is Dictionary:
-		_show_error("Could not load data/cards.json or data/decks.json. See the Output panel.")
-		return
-
-	var deck_defs := decks as Dictionary
-	for id in _deck_ids:
-		if not deck_defs.has(id):
-			_show_error("decks.json has no deck '%s'." % id)
-			return
 	_deck_names.clear()
 	for id in _deck_ids:
-		_deck_names.append(str((deck_defs[id] as Dictionary).get("name", id)))
-
-	var rules := MatchRules.deltarune()
-	var deck_ids: Array[PackedStringArray] = []
-	for id in _deck_ids:
-		var deck := database.build_deck(deck_defs[id] as Dictionary)
-		# Test decks are smaller than the rules require on purpose: report, do not block.
-		for problem in DeckValidator.validate(deck, rules):
-			push_warning("Deck %s %s" % [id, problem])
-		var listed := PackedStringArray()
-		for card in deck:
-			listed.append(card.id)
-		deck_ids.append(listed)
-	var effects := DataLoader.load_effect_library(database, DataLoader.CARD_EFFECTS_PATH)
-	_combat = Combat.new(database, effects, deck_ids[0], deck_ids[1], rules, randi())
-	_combat.start()
-	_start_game()
+		var entry: Variant = (decks as Dictionary).get(id) if decks is Dictionary else null
+		_deck_names.append(str((entry as Dictionary).get("name", id)) if entry is Dictionary else id)
+	var seats: Array[String] = []
+	for cpu in _cpu_seats:
+		seats.append(CombatSession.CPU if cpu else CombatSession.HUMAN)
+	_session = CombatSession.new(_deck_ids, seats)
+	_session.updated.connect(_on_session_updated.bind(_session))
+	if not _session.start():
+		_show_error(_session.error)
 
 
-## Starts playing the game the combat just started: a new round or a Sudden Death game.
-func _start_game() -> void:
-	_engine = _combat.engine
-	_game_number += 1
-	_cpu_waiting = false
-	_cpu_turn = -1
-	_open_group = ""
-	# Each CPU gets its decklist and the deck's plan, if decks.json writes one, for every game.
-	var deck_defs := DataLoader.read_json(DataLoader.DECKS_PATH) as Dictionary
-	_cpus.clear()
-	for index in 2:
-		var plan_data := (deck_defs[_deck_ids[index]] as Dictionary).get("plan", {}) as Dictionary
-		_cpus.append(CpuPlayer.new(_engine.effects, _combat.decklist(index), plan_data))
+## The session changed the round: show it. A new game starts with nothing open.
+func _on_session_updated(_view: PlayerView, _events: Array[MatchEvent], session: CombatSession) -> void:
+	if session != _session:
+		return
+	_database = session.cards
+	_combat = session.combat
+	if _engine != _combat.engine:
+		_engine = _combat.engine
+		_game_number += 1
+		_cpu_waiting = false
+		_open_group = ""
 	_refresh()
 
 
 ## Ends the game that is over and plays the next one.
 func _next_game() -> void:
-	if _combat.next_game():
-		_start_game()
+	_session.next_game()
 
 
 ## A button that opens the two ways to copy the replay.
@@ -365,7 +341,7 @@ func _is_hidden(index: int) -> bool:
 
 ## Starts the pause before the CPU's next decision, once.
 func _schedule_cpu() -> void:
-	if _cpu_waiting or _engine.is_over() or not _cpu_seats[_actor()]:
+	if _cpu_waiting or not _session.is_waiting_for_resume():
 		return
 	_cpu_waiting = true
 	get_tree().create_timer(CPU_DELAY).timeout.connect(_play_cpu.bind(_game_number))
@@ -377,29 +353,20 @@ func _is_reading_a_card() -> bool:
 	return hovered != null and not hovered.tooltip_text.is_empty()
 
 
-## The CPU decides from its own view of the round (PlayerView) and its action is applied.
+## The pause is over: the session lets the CPU take its next decision.
 func _play_cpu(game_number: int) -> void:
 	if game_number != _game_number:
 		return
 	_cpu_waiting = false
-	if _engine.is_over() or not _cpu_seats[_actor()]:
+	if not _session.is_waiting_for_resume():
 		return
 	# While the mouse is on a card, the CPU waits: acting would rebuild the board and close
 	# the card's text.
 	if _is_reading_a_card():
 		_schedule_cpu()
 		return
-	if _engine.turn != _cpu_turn:
-		_cpu_turn = _engine.turn
-		_cpu_decisions = 0
-	_cpu_decisions += 1
-	var action := _cpus[_actor()].choose(_engine.view_for(_actor()))
-	if _cpu_decisions > CPU_DECISIONS_PER_TURN and _engine.is_legal({"type": "end_turn"}):
-		push_warning("Hotseat: the CPU took more than %d decisions this turn; ending it" % CPU_DECISIONS_PER_TURN)
-		action = {"type": "end_turn"}
 	_open_group = ""
-	_engine.apply(action)
-	_refresh()
+	_session.resume()
 
 
 ## Actions that share a first choice (which card) and differ in a second (which target)
@@ -480,8 +447,7 @@ func _on_group_pressed(key: String) -> void:
 
 func _on_action_pressed(action: Dictionary) -> void:
 	_open_group = ""
-	_engine.apply(action)
-	_refresh()
+	_session.submit(action)
 
 
 func _fill_player_panel(index: int) -> void:
