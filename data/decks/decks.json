@@ -56,6 +56,12 @@
 			"petal_feather": 3.0,
 			"recruit_manual": 4.0,
 			"napstablook": 4.0
+		},
+		"plan": {
+			"battle_zone": "guei",
+			"attack": "Flash Melt",
+			"field": ["miss_mizzle", "miss_mizzle", "cuptain", "cuptain"],
+			"support": "miss_mizzle"
 		}
 	},
 	"chaos": {

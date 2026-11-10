@@ -21,7 +21,7 @@ extends RefCounted
 ## discarded or discard what it just took back.
 
 ## Turn actions, most wanted first.
-const TURN_ORDER: Array[String] = ["bench", "evolve", "attach", "play_trainer", "use_power", "use_area", "retreat", "attack"]
+const TURN_ORDER: Array[String] = ["bench", "evolve", "attach", "play_trainer", "retreat", "use_power", "use_area", "attack"]
 ## The atomic effect that attaches an Energy from the discard pile to a Darkner on the Field.
 const ATTACH_FROM_DISCARD := "attach_from_discard_to_benched"
 ## What a card the plan still needs is worth on top of its own worth.
@@ -38,6 +38,11 @@ const WORTH_IT := 0.5
 
 ## Its memory of its deck. memory.memory_turns is a difficulty setting.
 var memory: DeckMemory
+## How many of its own turns ahead it looks, 0 for only this one. A difficulty setting. With 1
+## or more it holds an attack that would knock out next time (_worth_waiting()), heals Darkners
+## so they can use their Abilities again, and charges the plan's attacker on the Field while an
+## Ability there feeds it Energy.
+var foresight_turns: int = 2
 
 var _reader: EffectReader
 var _deck: Array[CardData] = []
@@ -50,6 +55,12 @@ var _sacrifice: Dictionary = {}
 ## decisions: {"turn", "discarded": {id: copies}, "retrieved": {id: copies}}.
 var _ledger: Dictionary = {"turn": -1, "discarded": {}, "retrieved": {}}
 var _last_discard: Dictionary = {}
+## The Energy types its deck provides, read from its decklist: an attack that asks for another
+## type can never be paid.
+var _deck_types: Dictionary = {}
+## Set while _has_useful_attack() values an attack's steps, so a step that values a switch does
+## not value attacks again.
+var _valuing_attack := false
 
 
 ## effects: the card effect data (may be null: it then reads nothing). deck: its decklist.
@@ -59,6 +70,10 @@ func _init(effects: EffectLibrary, deck: Array[CardData], plan_data: Dictionary)
 	_deck = deck.duplicate()
 	_plan_data = plan_data.duplicate(true)
 	memory = DeckMemory.new(_deck)
+	for card in _deck:
+		if card.is_energy():
+			for type in card.provides:
+				_deck_types[type] = true
 
 
 ## The plan it plays toward, built for a Field of bench_limit Darkners the first time.
@@ -117,7 +132,12 @@ func _pick_turn_action(view: PlayerView, type: String, candidates: Array) -> Dic
 		"retreat":
 			return _pick_retreat(view, candidates)
 		"attack":
-			return _best(candidates, func(action: Dictionary) -> float: return _attack_score(view, action))
+			# An attack worth nothing ends the turn all the same: passing at least refills TP.
+			var attack := _best(candidates, func(action: Dictionary) -> float: return _attack_score(view, action))
+			var score := _attack_score(view, attack)
+			if score <= 0.0 or (score < 1000.0 and _worth_waiting(view)):
+				return {}
+			return attack
 	return candidates[0]
 
 
@@ -162,23 +182,44 @@ func _pick_power(view: PlayerView, candidates: Array) -> Dictionary:
 	return {}
 
 
-## Flees only when its Battling Darkner cannot attack and is more than one Energy away from
-## every attack, so the Energy it would discard is not almost an attack; then to the Darkner
-## on the Field it would promote, among those that can attack.
+## The support flees for the plan's attacker once it is charged, and the attacker for the
+## support while it is still charging, unless it can knock out this turn. Otherwise it flees only when
+## its Battling Darkner has no attack worth using and is more than one Energy away from every
+## attack its deck can pay, so the Energy it would discard is not almost an
+## attack; then to the Darkner on the Field it would promote, among those with an attack worth
+## using.
 func _pick_retreat(view: PlayerView, candidates: Array) -> Dictionary:
 	var me := view.me()
-	if not _first_of_type(view.legal_actions, "attack").is_empty() or _energy_distance(me.active) <= 1:
+	# The support gives way to the attacker once it is charged.
+	if _plan.is_support(me.active) and not _plan.charging(me):
+		var ready := candidates.filter(func(action: Dictionary) -> bool:
+			var darkner := me.bench[int(action["slot"])]
+			return _plan.is_attacker(darkner) and _can_pay_plan_attack(darkner))
+		if not ready.is_empty():
+			return ready[0]
+	# An attacker still charging gives way to the support, to charge on the Field, unless it can
+	# knock out this turn.
+	if _plan.charging(me) and _plan.is_attacker(me.active) and not _knockout_attack_available(view):
+		var supports := candidates.filter(func(action: Dictionary) -> bool:
+			var darkner := me.bench[int(action["slot"])]
+			return _plan.is_support(darkner) and (_has_useful_attack(view, darkner) or bool(_reader.field_support(darkner)["protects"])))
+		if not supports.is_empty():
+			return supports[0]
+	var useful := view.legal_actions.any(func(action: Dictionary) -> bool: return action["type"] == "attack" and _attack_score(view, action) > 0.0)
+	if useful or _energy_distance(me.active) <= 1:
 		return {}
-	var able := candidates.filter(func(action: Dictionary) -> bool: return _can_pay_an_attack(me.bench[int(action["slot"])]))
+	var able := candidates.filter(func(action: Dictionary) -> bool: return _has_useful_attack(view, me.bench[int(action["slot"])]))
 	if able.is_empty():
 		return {}
-	return _best(able, func(action: Dictionary) -> float: return _promote_score(me.bench[int(action["slot"])]))
+	return _best(able, func(action: Dictionary) -> float: return _promote_score(view, me.bench[int(action["slot"])]))
 
 
-## Energy goes first where it lets the Battling Darkner attack, then to the plan's attacker
-## while it has fewer Energy than the plan wants on it (DeckPlan.energy_goal), then where it
-## makes or brings closer another attack, the Battle Zone before the Field; failing that, to
-## the Battle Zone.
+## Energy goes first where it lets the Battling Darkner attack, then to the support battling
+## while the plan charges until it can attack, then to the plan's attacker
+## while it has fewer Energy than the plan wants on it (DeckPlan.energy_goal), then to a
+## Battling Darkner with no attack its deck can pay while it cannot pay its Flee cost yet, so
+## it can flee, then where it makes or brings closer another attack, the Battle Zone before
+## the Field; failing that, to the Battle Zone.
 func _attach_score(view: PlayerView, action: Dictionary) -> float:
 	var me := view.me()
 	var slot := int(action["slot"])
@@ -191,6 +232,13 @@ func _attach_score(view: PlayerView, action: Dictionary) -> float:
 	# An attack this turn comes before the plan; the plan before any other progress.
 	if _payable_attacks(trial) > _payable_attacks(target):
 		score += 30.0 if in_battle_zone else 6.0
+	elif in_battle_zone and _plan.is_support(target) and _plan.charging(me) and not _can_pay_an_attack(target) and _energy_helps(target, energy):
+		# The support attacks while the attacker charges (Refreshing Splash heals the Cuptains
+		# that feed it): it gets the Energy first.
+		score += 20.0
+	elif in_battle_zone and _energy_distance(target) >= 99 and target.energy_pool().size() < target.base_card().retreat_cost:
+		# The printed Flee cost: an estimate, the engine decides the cost to pay.
+		score += 10.0
 	elif _energy_helps(target, energy):
 		score += 12.0 if in_battle_zone else 3.0
 	if _plan.wants_energy(target):
@@ -293,9 +341,11 @@ func _effect_value(view: PlayerView, card_id: String, section: String, name: Str
 				var pile := me.discard if step["call"] == ATTACH_FROM_DISCARD else hand
 				delta = _attach_from_value(me, pile, args.get("filter", []) as Array)
 			"switch_in":
-				delta = _switch_value(me) if own else _opponent_switch_value(opponent)
+				delta = _switch_value(view) if own else _opponent_switch_value(opponent)
 			"heal_benched":
-				delta = 0.5 * me.bench.filter(func(darkner: CardInPlay) -> bool: return darkner.damage > 0).size()
+				for darkner in me.bench:
+					if darkner.damage > 0:
+						delta += 0.5 + (_reenabled_value(view, darkner, _amount(args, "amount")) if foresight_turns > 0 else 0.0)
 			"discard_energy_in_play":
 				delta = 1.5 if not own else -1.5
 			"place_damage_counters":
@@ -308,9 +358,9 @@ func _effect_value(view: PlayerView, card_id: String, section: String, name: Str
 ## The worth of a card to it now: what its kind is worth (_keep_value()), more when the plan
 ## still needs it or it is Energy the plan's attacker lacks. Energy beyond what its Darkners
 ## still need, counting what it already holds, is worth little: it attaches one a turn.
-func _worth(view: PlayerView, card: CardData) -> float:
+func _worth(view: PlayerView, card: CardData, check_spare := true) -> float:
 	var me := view.me()
-	if card.is_energy():
+	if card.is_energy() and check_spare:
 		var held := me.hand.filter(func(held_card: CardData) -> bool: return held_card.is_energy()).size()
 		if me.hand.has(card):
 			held -= 1
@@ -334,7 +384,7 @@ func _energy_needed(me: PlayerView.SideView) -> int:
 	for darkner in _in_play(me):
 		if _plan.is_attacker(darkner):
 			needed += _plan.energy_short(darkner)
-		elif darkner == me.active:
+		elif darkner == me.active and _energy_distance(darkner) < 99:
 			needed += mini(_energy_distance(darkner), 5)
 	return maxi(needed, 1)
 
@@ -347,9 +397,10 @@ func _take_worth(view: PlayerView, card: CardData, from_discard: bool) -> float:
 	return worth
 
 
-## A card it took back this turn is kept.
-func _discard_worth(view: PlayerView, card: CardData) -> float:
-	var worth := _worth(view, card)
+## A card it took back from its discard pile this turn is kept. full: its worth even when it
+## is Energy beyond what its Darkners need (the caller counts the spare ones itself).
+func _discard_worth(view: PlayerView, card: CardData, full := false) -> float:
+	var worth := _worth(view, card, not full)
 	if int((_ledger["retrieved"] as Dictionary).get(card.id, 0)) > 0:
 		worth += LEDGER_BONUS
 	return worth
@@ -363,11 +414,22 @@ func _hand_worth(view: PlayerView, hand: Array[CardData]) -> float:
 
 
 ## The worth of the count cheapest cards of hand that match filter: what discarding them costs.
+## Energy is counted one card at a time: the copies beyond what its Darkners still need are
+## spare, the rest are worth their full worth, so it never counts every Energy as spare at once.
 func _cheapest_worth(view: PlayerView, hand: Array[CardData], filter: Array, count: int) -> float:
 	var worths: Array[float] = []
+	var spare := maxi(0, hand.filter(func(card: CardData) -> bool: return card.is_energy()).size() - _energy_needed(view.me()))
+	var energy_worths: Array[float] = []
 	for card in hand:
-		if CardFilter.matches(card, filter):
+		if not CardFilter.matches(card, filter):
+			continue
+		if card.is_energy():
+			energy_worths.append(_discard_worth(view, card, true))
+		else:
 			worths.append(_discard_worth(view, card))
+	energy_worths.sort()
+	for index in energy_worths.size():
+		worths.append(SPARE_ENERGY_WORTH if index < spare else energy_worths[index])
 	worths.sort()
 	var total := 0.0
 	for index in mini(count, worths.size()):
@@ -377,11 +439,27 @@ func _cheapest_worth(view: PlayerView, hand: Array[CardData], filter: Array, cou
 
 ## The worth of the count best cards of cards that match filter: what taking them brings.
 ## Never below 0.
+## Energy is counted one card at a time: once it would hold what its Darkners still need, the
+## next Energy it takes is spare.
 func _best_worth(view: PlayerView, cards: Array[CardData], filter: Array, count: int, from_discard: bool) -> float:
 	var worths: Array[float] = []
+	var energy_worths: Array[float] = []
 	for card in cards:
-		if CardFilter.matches(card, filter):
+		if not CardFilter.matches(card, filter):
+			continue
+		if card.is_energy():
+			var worth := _worth(view, card, false)
+			if from_discard and int((_ledger["discarded"] as Dictionary).get(card.id, 0)) > 0:
+				worth -= LEDGER_BONUS
+			energy_worths.append(worth)
+		else:
 			worths.append(_take_worth(view, card, from_discard))
+	energy_worths.sort()
+	energy_worths.reverse()
+	var me := view.me()
+	var room := maxi(0, _energy_needed(me) - me.hand.filter(func(card: CardData) -> bool: return card.is_energy()).size())
+	for index in energy_worths.size():
+		worths.append(energy_worths[index] if index < room else minf(SPARE_ENERGY_WORTH, energy_worths[index]))
 	worths.sort()
 	worths.reverse()
 	var total := 0.0
@@ -415,13 +493,14 @@ func _attach_from_value(me: PlayerView.SideView, pile: Array[CardData], filter: 
 
 ## Switching its own Battling Darkner: worth it when one on the Field would be promoted ahead
 ## of it.
-func _switch_value(me: PlayerView.SideView) -> float:
+func _switch_value(view: PlayerView) -> float:
+	var me := view.me()
 	if me.active == null or me.bench.is_empty():
 		return 0.0
 	var best := -INF
 	for darkner in me.bench:
-		best = maxf(best, _promote_score(darkner))
-	return 2.0 if best > _promote_score(me.active) else -1.0
+		best = maxf(best, _promote_score(view, darkner))
+	return 2.0 if best > _promote_score(view, me.active) else -1.0
 
 
 ## Switching the opponent's Battling Darkner: worth it when it can attack and one on their
@@ -500,7 +579,13 @@ func _answer(view: PlayerView) -> Dictionary:
 		PendingChoice.KIND_PAY_TP:
 			index = _option_with_value(options, 1)
 		PendingChoice.KIND_BATTLING_DARKNER:
-			index = _best_option(options, func(option: Dictionary) -> float: return (option["value"] as CardData).hp)
+			index = _best_option(options, func(option: Dictionary) -> float:
+				var card := option["value"] as CardData
+				var score := card.hp + (1000.0 if card.attacks.any(func(attack: AttackData) -> bool: return _reachable(attack.cost, [])) else 0.0)
+				# With a support, it starts the round and the attacker charges on the Field.
+				if not _plan.support_line.is_empty() and card.id == _plan.support_line[0]:
+					score += 500.0
+				return score)
 		PendingChoice.KIND_SETUP_BENCH:
 			index = _best_option(options, func(option: Dictionary) -> float: return 0.0 if option["value"] == null else 1.0)
 		PendingChoice.KIND_MULLIGAN_DRAWS:
@@ -508,7 +593,7 @@ func _answer(view: PlayerView) -> Dictionary:
 		PendingChoice.KIND_PROMOTE:
 			index = _best_option(options, func(option: Dictionary) -> float:
 				var slot := int(option["value"])
-				return 10000.0 if _sacrifice_slot() == slot else _promote_score(view.me().bench[slot]))
+				return 10000.0 if _sacrifice_slot() == slot else _promote_score(view, view.me().bench[slot]))
 		PendingChoice.KIND_PICK_CARDS:
 			index = _pick_card(view)
 		PendingChoice.KIND_CHOOSE_DARKNER:
@@ -563,7 +648,13 @@ func _pick_card(view: PlayerView) -> int:
 		var score := 0.0
 		if discarding:
 			var copies := me.hand.filter(func(held: CardData) -> bool: return held.id == card.id).size()
-			score = -_discard_worth(view, card) + 0.01 * copies
+			var worth := _discard_worth(view, card)
+			if card.is_energy():
+				# Energy one card at a time: spare while it would still hold what its Darkners need.
+				var held := me.hand.filter(func(held_card: CardData) -> bool: return held_card.is_energy()).size()
+				var gone := (details["picked"] as Array).filter(func(value: Variant) -> bool: return value is CardData and (value as CardData).is_energy()).size()
+				worth = SPARE_ENERGY_WORTH if held - gone - 1 >= _energy_needed(me) else _discard_worth(view, card, true)
+			score = -worth + 0.01 * copies
 		else:
 			score = _take_worth(view, card, from_discard)
 		if not _sacrifice.is_empty() and card.id == str(_sacrifice["energy"]) and from_discard:
@@ -613,14 +704,23 @@ func _keep_value(me: PlayerView.SideView, card: CardData) -> float:
 	return 1.0
 
 
-## The healthiest Darkner that can attack, one that can pay the plan's attack first; failing
-## that, the healthiest.
-func _promote_score(darkner: CardInPlay) -> float:
+## The healthiest Darkner with an attack worth using, one that can pay the plan's attack
+## first; failing that, the healthiest.
+## While the plan is charging its attacker (DeckPlan.charging()), the support comes first and
+## the attacker stays on the Field; with foresight, the attacker also stays there while it lacks
+## Energy and an Ability on its side feeds the Field (Selfless Devotion): it charges faster
+## there.
+func _promote_score(view: PlayerView, darkner: CardInPlay) -> float:
+	var me := view.me()
 	var score := float(darkner.remaining_hp())
-	if _can_pay_an_attack(darkner):
+	var useful := _has_useful_attack(view, darkner)
+	if useful:
 		score += 1000.0
 		if _plan != null and _plan.is_attacker(darkner) and _can_pay_plan_attack(darkner):
-			score += 500.0
+			var charging := _plan.energy_short(darkner) > 0 and (_plan.charging(me) or (foresight_turns > 0 and _field_is_fed(me)))
+			score += 0.0 if charging else 500.0
+	if _plan != null and _plan.is_support(darkner) and _plan.charging(me) and (useful or bool(_reader.field_support(darkner)["protects"])):
+		score += 600.0
 	return score
 
 
@@ -641,7 +741,7 @@ func _darkner_score(view: PlayerView, option: Dictionary) -> float:
 	match str(details.get("purpose", "")):
 		PendingChoice.PURPOSE_SWITCH_IN:
 			if own:
-				return _promote_score(darkner)
+				return _promote_score(view, darkner)
 			return (0.0 if _can_pay_an_attack(darkner) else 1000.0) - darkner.remaining_hp()
 		PendingChoice.PURPOSE_ATTACH:
 			if _sacrifice_slot() != -1 and int(option["value"]) == _sacrifice_slot():
@@ -664,17 +764,115 @@ func _power_knocks_out_user(me: PlayerView.SideView, action: Dictionary) -> bool
 
 # --- Helpers ----------------------------------------------------------------------------
 
-## How many Energy the Darkner lacks for its nearest attack: at least 1 when it has enough
-## Energy of the wrong types, 0 when it can attack, 99 without attacks.
+## How many Energy the Darkner lacks for its nearest attack its deck can pay: at least 1 when
+## it has enough Energy of the wrong types, 0 when it can attack, 99 without such attacks.
 func _energy_distance(darkner: CardInPlay) -> int:
 	var nearest := 99
 	var units := darkner.energy_pool().size()
 	for attack in darkner.attacks():
+		if not _reachable(attack.cost, darkner.energy_pool()):
+			continue
 		var missing := attack.cost.size() - units
 		if missing <= 0:
 			missing = 0 if darkner.can_pay(attack.cost) else 1
 		nearest = mini(nearest, missing)
 	return nearest
+
+
+## Whether a cost can ever be paid: every type it asks for, other than Colorless, is one its
+## deck provides or one already in pool.
+func _reachable(cost: Array[String], pool: Array[String]) -> bool:
+	for type in cost:
+		if type != CardTypes.COLORLESS and not _deck_types.has(type) and not pool.has(type):
+			return false
+	return true
+
+
+## Whether the Darkner can pay an attack that does something now, were it battling: damage
+## after effects or other steps worth something. Without an opponent's Battling Darkner to
+## read, any attack it can pay.
+func _has_useful_attack(view: PlayerView, darkner: CardInPlay) -> bool:
+	var opponent := view.opponent()
+	for attack in darkner.attacks():
+		if not darkner.can_pay(attack.cost):
+			continue
+		if opponent.active == null:
+			return true
+		var estimate := _reader.estimate_attack(darkner, attack, view.me(), opponent)
+		if float(estimate["total"]) > 0.0:
+			return true
+		if _valuing_attack:
+			continue
+		_valuing_attack = true
+		var value := _effect_value(view, darkner.card_with_attack(attack).id, EffectLibrary.SECTION_ATTACKS, attack.name, null)
+		_valuing_attack = false
+		if value > 0.0:
+			return true
+	return false
+
+
+## Whether holding the attack this turn is worth it, looking foresight_turns of its own turns
+## ahead: the plan's attacker, with the Energy in its hand attached one a turn, would knock out
+## the opponent's Battling Darkner with an attack it cannot knock it out with now, and the
+## opponent's Battling Darkner cannot knock it out in the meantime. Passing refills TP.
+func _worth_waiting(view: PlayerView) -> bool:
+	var me := view.me()
+	var opponent := view.opponent()
+	if foresight_turns <= 0 or opponent.active == null or not _plan.is_attacker(me.active):
+		return false
+	var energies := me.hand.filter(func(card: CardData) -> bool: return card.is_energy())
+	var threat := _opponent_threat(view)
+	for turns in range(1, foresight_turns + 1):
+		if energies.size() < turns or threat * turns >= me.active.remaining_hp():
+			return false
+		var trial := me.active.snapshot()
+		for index in turns:
+			trial.attached_energy.append(energies[index] as CardData)
+		for attack in trial.attacks():
+			if trial.can_pay(attack.cost) and float(_reader.estimate_attack(trial, attack, me, opponent)["active"]) >= opponent.active.remaining_hp():
+				return true
+	return false
+
+
+## The most damage the opponent's Battling Darkner can do to its Battling Darkner on their next
+## turn: their attacks it can pay, or is one Energy from paying.
+func _opponent_threat(view: PlayerView) -> float:
+	var me := view.me()
+	var opponent := view.opponent()
+	var most := 0.0
+	for attack in opponent.active.attacks():
+		if attack.cost.size() - opponent.active.energy_pool().size() > 1:
+			continue
+		most = maxf(most, float(_reader.estimate_attack(opponent.active, attack, opponent, me)["active"]))
+	return most
+
+
+## What healing heal damage from darkner brings next turn: an activated Ability it cannot use
+## now because it would knock darkner out, and could use once healed (Selfless Devotion on a
+## Cuptain with 20 HP left), is worth what it brings.
+func _reenabled_value(view: PlayerView, darkner: CardInPlay, heal: float) -> float:
+	var best := 0.0
+	for power in darkner.powers():
+		var id := darkner.card_with_power(power).id
+		if _reader.binding(id, EffectLibrary.SECTION_POWERS, power.name).get(EffectLibrary.TIMING_KEY) != EffectLibrary.TIMING_ACTIVATED:
+			continue
+		var harm := _reader.self_harm(id, EffectLibrary.SECTION_POWERS, power.name)
+		var healed := darkner.remaining_hp() + mini(int(heal), darkner.damage)
+		if harm > 0 and harm >= darkner.remaining_hp() and harm < healed:
+			best = maxf(best, _effect_value(view, id, EffectLibrary.SECTION_POWERS, power.name, null))
+	return best
+
+
+## Whether an activated Ability of one of its Darkners attaches Energy to the Field.
+func _field_is_fed(me: PlayerView.SideView) -> bool:
+	for darkner in _in_play(me):
+		for power in darkner.powers():
+			var id := darkner.card_with_power(power).id
+			if _reader.binding(id, EffectLibrary.SECTION_POWERS, power.name).get(EffectLibrary.TIMING_KEY) != EffectLibrary.TIMING_ACTIVATED:
+				continue
+			if _reader.steps(id, EffectLibrary.SECTION_POWERS, power.name).any(func(step: Dictionary) -> bool: return step["call"] == ATTACH_FROM_DISCARD):
+				return true
+	return false
 
 
 func _payable_attacks(darkner: CardInPlay) -> int:

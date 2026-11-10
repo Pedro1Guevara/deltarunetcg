@@ -1,7 +1,8 @@
 class_name DeckPlan
 extends RefCounted
 ## The board a CPU deck aims for (Design Document 8.7): one attacker in the Battle Zone using
-## one attack, and the Darkners it wants on the Field. Built from the decklist before the
+## one attack, the Darkners it wants on the Field and, when the deck has one, a support: a
+## Darkner of the Field that battles while the attacker charges on the Field. Built from the decklist before the
 ## round, either from a plan written for the deck in decks.json (bosses) or automatically, by
 ## estimating each attack's damage after its effects on the board that makes it hit hardest.
 ## The CPU reads what is still missing from it to decide what to play, keep and fetch.
@@ -12,6 +13,9 @@ const SOURCE_PREDEFINED := "predefined"
 ## last card of its evolution line), the attack's printed name, and the card ids wanted on
 ## the Field.
 const DATA_KEYS: Array[String] = ["battle_zone", "attack", "field"]
+## The optional key of a written plan: the support's card id (the last card of its line), one
+## of the Darkners of field.
+const SUPPORT_KEY := "support"
 ## How many Darkners the automatic plan assumes on the opponent's Field, for attacks that
 ## damage it.
 const ASSUMED_OPPONENT_FIELD := 3
@@ -32,6 +36,10 @@ var expected_damage: float = 0.0
 ## How many Energy units the attacker wants: its attack's cost, or more when more Energy makes
 ## the attack hit harder (Flash Melt: 80 more with 5). The fewest that give the most damage.
 var energy_goal: int = 0
+## The support's evolution line, Basic first, one of field_lines; empty when the deck has none.
+## It battles while the attacker lacks Energy, protecting, healing or feeding the Field, and
+## gives way to the attacker once it is charged (charging()).
+var support_line: Array[String] = []
 ## Problems with a written plan, which then gave way to the automatic one.
 var warnings: Array[String] = []
 
@@ -48,14 +56,69 @@ static func build(deck: Array[CardData], reader: EffectReader, bench_limit: int,
 			written.source = SOURCE_PREDEFINED
 			written.expected_damage = written._estimate(reader, by_id)
 			written._set_energy_goal(reader, by_id, deck)
+			if not data.has(SUPPORT_KEY):
+				written._set_support(reader, by_id, deck)
 			return written
 		var fallback := _automatic(lines, counts, by_id, reader, bench_limit, deck)
 		fallback.warnings = problems
 		fallback._set_energy_goal(reader, by_id, deck)
+		fallback._set_support(reader, by_id, deck)
 		return fallback
 	var automatic := _automatic(lines, counts, by_id, reader, bench_limit, deck)
 	automatic._set_energy_goal(reader, by_id, deck)
+	automatic._set_support(reader, by_id, deck)
 	return automatic
+
+
+## Whether darkner is, or will evolve into, the support.
+func is_support(darkner: CardInPlay) -> bool:
+	for card in [darkner.card] + darkner.evolved_from:
+		if support_line.has((card as CardData).id):
+			return true
+	return false
+
+
+## Whether side is still charging its attacker: the plan has a support and no attacker of
+## side's in play has all the Energy the plan wants on it.
+func charging(side: PlayerView.SideView) -> bool:
+	if support_line.is_empty():
+		return false
+	for darkner in _in_play(side):
+		if is_attacker(darkner) and energy_short(darkner) == 0:
+			return false
+	return true
+
+
+## The automatic support: among the Darkners of the Field, the one that does most for the Field
+## while it battles (protects it 3, feeds it Energy 2, heals it 1; the sturdiest among equals),
+## when the plan has something to charge (the attacker wants more Energy than one attachment)
+## and something on the Field or the support feeds it. It must protect the Field or have an
+## attack the deck can pay. None otherwise.
+func _set_support(reader: EffectReader, by_id: Dictionary, deck: Array[CardData]) -> void:
+	support_line.clear()
+	if energy_goal < 2:
+		return
+	var energies := _energy_by_type(deck)
+	var fed := false
+	for line: Array in [attacker_line] + field_lines:
+		if bool(reader.field_support(_chain(line, by_id))["feeds"]):
+			fed = true
+	if not fed:
+		return
+	var best_score := 0.0
+	for line: Array in field_lines:
+		var chain := _chain(line, by_id)
+		var traits := reader.field_support(chain)
+		var score := (3.0 if traits["protects"] else 0.0) + (2.0 if traits["feeds"] else 0.0) + (1.0 if traits["heals"] else 0.0)
+		if score <= 0.0:
+			continue
+		var can_attack := chain.attacks().any(func(attack: AttackData) -> bool: return _paid(chain, attack, energies) != null)
+		if not traits["protects"] and not can_attack:
+			continue
+		score += chain.card.hp / 1000.0
+		if score > best_score:
+			best_score = score
+			support_line.assign(line)
 
 
 ## Whether darkner is the plan's attacker (or will evolve into it) and has fewer Energy units
@@ -162,6 +225,13 @@ func _read(data: Dictionary, lines: Dictionary, counts: Dictionary, by_id: Dicti
 	for id: String in wanted():
 		if int(wanted()[id]) > int(counts.get(id, 0)):
 			problems.append("plan wants more copies of %s than the deck has" % id)
+	if data.has(SUPPORT_KEY):
+		var support := str(data[SUPPORT_KEY])
+		var line: Variant = lines.get(support)
+		if line == null or not field_lines.has(line):
+			problems.append("plan support '%s' is not one of the plan's field" % support)
+		else:
+			support_line.assign(line as Array)
 	return problems
 
 

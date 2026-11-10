@@ -221,6 +221,15 @@ func _run() -> void:
 	expect(holy_plan.attacker_line == ["guei"] and holy_plan.attack_name == "Flash Melt", "Holy, automatic: Guei's Flash Melt (%s %s)" % [holy_plan.attacker_line, holy_plan.attack_name])
 	expect(holy_plan.energy_goal == 5 and creative_plan.energy_goal == 3 and chaos_written.energy_goal == 2,
 			"the Energy the attacker wants: 5 for Flash Melt, whose 80 more comes with 5 Energy; the cost for the others (%d, %d, %d)" % [holy_plan.energy_goal, creative_plan.energy_goal, chaos_written.energy_goal])
+	expect(holy_plan.support_line == ["water_cooler", "miss_mizzle"] and creative_plan.support_line == ["dummy"] and chaos_written.support_line.is_empty(),
+			"the support, automatic: Miss Mizzle for Holy (protects and heals the Field, where Selfless Devotion feeds Guei), Dummy for Creative (Helpful Training feeds the Field), none for Chaos (%s, %s, %s)" % [holy_plan.support_line, creative_plan.support_line, chaos_written.support_line])
+	var holy_written := DeckPlan.build(deck_cards("holy"), reader, 4, plan_data("holy"))
+	expect(holy_written.source == DeckPlan.SOURCE_PREDEFINED and holy_written.support_line == ["water_cooler", "miss_mizzle"],
+			"Holy, written in decks.json: Guei's Flash Melt with Miss Mizzle as the support (%s)" % [holy_written.support_line])
+	var off_field := DeckPlan.build(deck_cards("holy"), reader, 4, {"battle_zone": "guei", "attack": "Flash Melt", "field": ["cuptain", "cuptain"], "support": "miss_mizzle"})
+	expect(off_field.source == DeckPlan.SOURCE_AUTOMATIC and off_field.warnings == ["plan support 'miss_mizzle' is not one of the plan's field"],
+			"a written support that is not on the plan's Field gives way to the automatic plan (%s)" % [off_field.warnings])
+
 	var view_round := battle("jevil", [], "tenna")
 	var missing := chaos_written.missing(view_round.view_for(view_round.current_index).me())
 	expect(missing == {"electro_dasher": 4}, "what the plan lacks: Jevil is in play, the four Electro-Dasher are not (%s)" % missing)
@@ -258,10 +267,54 @@ func _run() -> void:
 	var idle := battle("koody", [], "tenna")
 	expect(decide(idle)["type"] == "end_turn", "with nothing to do, the turn ends")
 
-	var fleer := battle("tenna", ["chaos_energy", "chaos_energy"], "guei")
+	var fleer := battle("tenna", ["chaos_energy", "chaos_energy"], "koody")
 	fleer.current_player().bench.append(in_play("jevil", ["chaos_energy"]))
 	fleer.current_player().energy_attached_this_turn = true
 	expect(decide(fleer)["type"] == "retreat", "a Battling Darkner far from attacking flees to one that can (Tenna, 3 Energy short)")
+	var stranded := battle("guei", ["chaos_energy", "chaos_energy"], "koody")
+	stranded.current_player().bench.append(in_play("jevil", ["chaos_energy"]))
+	stranded.current_player().energy_attached_this_turn = true
+	expect(decide(stranded)["type"] == "retreat",
+			"Energy of a type its deck never gives is not almost an attack: Guei, with 2 Chaos Energy for Flash Melt (Holy), flees")
+	var resisted := battle("tenna", ["chaos_energy", "chaos_energy"], "guei")
+	resisted.current_player().bench.append(in_play("jevil", ["chaos_energy"]))
+	resisted.current_player().energy_attached_this_turn = true
+	expect(decide(resisted)["type"] == "end_turn", "it does not flee to a Darkner whose attack would do nothing: Slash against Guei, which resists Chaos")
+	var empty_training := battle("dummy", ["chaos_energy"], "koody")
+	empty_training.current_player().bench.append(in_play("jevil", []))
+	expect(decide(empty_training)["type"] == "end_turn",
+			"an attack that would do nothing is not used, the turn ends instead: Helpful Training with no Energy in hand")
+	empty_training.current_player().hand.assign(cards(["chaos_energy"]))
+	empty_training.current_player().energy_attached_this_turn = true
+	expect(decide(empty_training) == {"type": "attack", "attack_index": 0}, "with an Energy in hand to attach, Helpful Training is used")
+	print("== the support")
+	var support_cpu := CpuPlayer.new(library, deck_cards("holy"), plan_data("holy"))
+	var to_charge := battle("guei", ["holy_energy", "holy_energy"], "jevil")
+	var mizzle := in_play("water_cooler", ["holy_energy"])
+	mizzle.evolve(db.make("miss_mizzle"), 0)
+	to_charge.current_player().bench.append_array([in_play("cuptain", []), mizzle])
+	to_charge.current_player().energy_attached_this_turn = true
+	expect(decide_with(to_charge, support_cpu) == {"type": "retreat", "slot": 1},
+			"Guei, charging (2 of 5 Energy) and with no knockout this turn, flees to Miss Mizzle to charge on the Field")
+	support_cpu = CpuPlayer.new(library, deck_cards("holy"), plan_data("holy"))
+	var feeding := battle("water_cooler", [], "jevil")
+	feeding.current_player().active.evolve(db.make("miss_mizzle"), 0)
+	feeding.current_player().bench.append(in_play("guei", ["holy_energy", "holy_energy"]))
+	feeding.current_player().hand.assign(cards(["holy_energy"]))
+	expect(decide_with(feeding, support_cpu) == {"type": "attach", "hand_index": 0, "slot": -1},
+			"while Guei charges, the Energy goes first to Miss Mizzle, battling, so she can attack and heal the Field")
+	support_cpu = CpuPlayer.new(library, deck_cards("holy"), plan_data("holy"))
+	var charged := battle("water_cooler", ["holy_energy", "holy_energy"], "jevil")
+	charged.current_player().active.evolve(db.make("miss_mizzle"), 0)
+	charged.current_player().bench.append_array([in_play("cuptain", []), in_play("guei", ["holy_energy", "holy_energy", "holy_energy", "holy_energy", "holy_energy"])])
+	charged.current_player().energy_attached_this_turn = true
+	expect(decide_with(charged, support_cpu) == {"type": "retreat", "slot": 1}, "once Guei has its 5 Energy, Miss Mizzle flees for it")
+
+	var lunger := battle("koody", ["chaos_energy"], "cuptain")
+	var lunge_view := lunger.view_for(lunger.current_index)
+	var lunge_estimate := EffectReader.new(library).estimate_attack(lunge_view.me().active, lunge_view.me().active.attacks()[0], lunge_view.me(), lunge_view.opponent())
+	expect(is_equal_approx(float(lunge_estimate["active"]), 5.0) and decide(lunger)["type"] == "attack",
+			"Resistance applies to the damage of a heads, not to the average: Lunge against Cuptain is 10 on heads, 5 expected, and is used (%s)" % lunge_estimate)
 	var stayer := battle("guei", ["holy_energy"], "tenna")
 	stayer.current_player().bench.append(in_play("cuptain", ["holy_energy"]))
 	stayer.current_player().energy_attached_this_turn = true

@@ -16,6 +16,8 @@ const SELF_HARM := {
 const DECK_SEARCHES: Array[String] = ["search_deck", "search_deck_to_discard", "search_deck_to_bench"]
 ## The atomic effect a continuous Ability names to prevent attack damage to its owner's Field.
 const PREVENT_BENCH_DAMAGE := "prevent_attack_damage_to_bench"
+## Atomic effects that attach Energy to Darkners on the Field.
+const FIELD_FEEDING: Array[String] = ["attach_from_discard_to_benched", "attach_from_hand_to_benched"]
 
 var _effects: EffectLibrary
 var _scopes: int = 0
@@ -143,10 +145,18 @@ func estimate_attack(attacker: CardInPlay, attack: AttackData, own: PlayerView.S
 		var args := step["args"] as Dictionary
 		match str(step["call"]):
 			"attack_damage":
-				var raw := attack.damage * _number(args.get("times"), vars) + _number(args.get("plus"), vars)
+				var times := _number(args.get("times"), vars)
+				var plus := _number(args.get("plus"), vars)
+				var raw := attack.damage * times + plus
 				var dealt := float(raw)
 				if defender != null:
-					dealt = Damage.apply_modifiers(attacker.card, defender.base_card(), int(round(raw)))
+					# Times counted from coins is an expected value: Weakness and Resistance apply to
+					# the damage of the flips that hit, not to the average.
+					var whole := ceilf(times)
+					if whole > times:
+						dealt = Damage.apply_modifiers(attacker.card, defender.base_card(), int(round(attack.damage * whole + plus))) * times / whole
+					else:
+						dealt = Damage.apply_modifiers(attacker.card, defender.base_card(), int(round(raw)))
 				result["active"] = float(result["active"]) + weight * dealt
 			"attack_damage_to_benched":
 				if args.get("player") == EffectTypes.OPPONENT and not bench_protected:
@@ -279,6 +289,29 @@ static func _darkner(reference: Variant, user: CardInPlay, opponent: PlayerView.
 	if reference == EffectTypes.DEFENDER:
 		return opponent.active
 	return null
+
+
+## What a Darkner does for its own Field, read from its Abilities and attacks: "protects" (a
+## continuous Ability that prevents attack damage to the Field while it battles, Vow of
+## Majesty), "heals" (an attack that heals the Field, Refreshing Splash) and "feeds" (an
+## Ability or attack that attaches Energy to the Field, Selfless Devotion, Helpful Training).
+func field_support(darkner: CardInPlay) -> Dictionary:
+	var traits := {"protects": false, "heals": false, "feeds": false}
+	for power in darkner.powers():
+		var id := darkner.card_with_power(power).id
+		var timing: Variant = binding(id, EffectLibrary.SECTION_POWERS, power.name).get(EffectLibrary.TIMING_KEY)
+		for step in steps(id, EffectLibrary.SECTION_POWERS, power.name):
+			if timing == EffectLibrary.TIMING_CONTINUOUS and step["call"] == PREVENT_BENCH_DAMAGE:
+				traits["protects"] = true
+			if FIELD_FEEDING.has(step["call"]):
+				traits["feeds"] = true
+	for attack in darkner.attacks():
+		for step in steps(darkner.card_with_attack(attack).id, EffectLibrary.SECTION_ATTACKS, attack.name):
+			if step["call"] == "heal_benched":
+				traits["heals"] = true
+			if FIELD_FEEDING.has(step["call"]):
+				traits["feeds"] = true
+	return traits
 
 
 func _prevents_bench_damage(side: PlayerView.SideView) -> bool:
