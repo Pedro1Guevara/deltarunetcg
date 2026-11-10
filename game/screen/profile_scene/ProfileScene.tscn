@@ -1,0 +1,276 @@
+[gd_scene format=3 uid="uid://dtdis628eqku6"]
+
+[ext_resource type="Script" uid="uid://bvixsjg5jnxvr" path="res://game/screen/profile_scene/profile_scene.gd" id="1_6435u"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="2_5i8h1"]
+[ext_resource type="Texture2D" uid="uid://bsehum4eyh8p6" path="res://assets/ui/Avatars/RedSoul.png" id="3_qqiee"]
+[ext_resource type="Texture2D" uid="uid://c48yi4x6y3kbm" path="res://assets/ui/ui_assets/BasicFrame.png" id="4_f4uru"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8htv4"]
+corner_radius_top_left = 350
+corner_radius_top_right = 350
+corner_radius_bottom_right = 350
+corner_radius_bottom_left = 350
+
+[node name="ProfileScene" type="Control" unique_id=1686389517]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_6435u")
+metadata/_edit_use_anchors_ = true
+
+[node name="BackgroundColor" type="ColorRect" parent="." unique_id=567325554]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 1)
+
+[node name="ScrollContainer" type="ScrollContainer" parent="." unique_id=2016085553]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ScrollContainer" unique_id=1383821188]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+
+[node name="TopHeaderBar" type="Control" parent="ScrollContainer/VBoxContainer" unique_id=1495284153]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="ScrollContainer/VBoxContainer/TopHeaderBar" unique_id=965280981]
+layout_mode = 0
+offset_left = -960.0
+offset_top = -536.0
+offset_right = -677.0
+offset_bottom = -412.0
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 60
+text = "Back"
+
+[node name="ProfileHeaderBox" type="Control" parent="ScrollContainer/VBoxContainer" unique_id=857038005]
+layout_mode = 2
+
+[node name="LeftIdentificationColumn" type="Control" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox" unique_id=714001759]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -144.5
+offset_top = -467.0
+offset_right = 144.5
+offset_bottom = -192.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ProfileCut" type="Panel" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn" unique_id=941263365]
+clip_children = 1
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -160.5
+offset_right = 118.0
+offset_bottom = 77.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_8htv4")
+
+[node name="ProfilePicButton" type="TextureButton" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut" unique_id=1774199522]
+custom_minimum_size = Vector2(190, 190)
+layout_mode = 0
+offset_left = 24.5
+offset_top = 23.0
+offset_right = 214.5
+offset_bottom = 213.0
+size_flags_horizontal = 4
+size_flags_vertical = 2
+texture_normal = ExtResource("3_qqiee")
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="Frame" type="TextureRect" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton" unique_id=824580585]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -135.0
+offset_top = -135.0
+offset_right = 135.0
+offset_bottom = 135.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_f4uru")
+expand_mode = 1
+
+[node name="NameButton" type="Button" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn" unique_id=735846004]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 0
+offset_top = 225.0
+offset_right = 289.0
+offset_bottom = 275.0
+theme_override_font_sizes/font_size = 40
+flat = true
+
+[node name="NameLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/NameButton" unique_id=1277980196]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 55
+text = "Player"
+horizontal_alignment = 1
+
+[node name="TitleName" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn" unique_id=1912780081]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -163.0
+offset_top = 143.5
+offset_right = 161.0
+offset_bottom = 180.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 35
+horizontal_alignment = 1
+
+[node name="StatsColumn" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox" unique_id=1754171890]
+layout_mode = 0
+offset_left = -898.0
+offset_top = -141.0
+offset_right = 58.0
+offset_bottom = 336.0
+theme_override_constants/separation = 14
+
+[node name="BattlesLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=947978141]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "Battles Won: "
+
+[node name="CardsLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=1355876245]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "Cards Owned: "
+
+[node name="AchievementsLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=782083048]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "Achievements: "
+
+[node name="TitlesLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=1033101311]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "Titles: "
+
+[node name="StoryLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn" unique_id=1428422092]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "Story: "
+
+[node name="FavoriteCardBox" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox" unique_id=646433151]
+layout_mode = 0
+offset_left = 303.0
+offset_top = -279.0
+offset_right = 820.0
+offset_bottom = 342.0
+alignment = 1
+
+[node name="FavTitleLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox" unique_id=888382017]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 55
+text = "Favorite Card"
+horizontal_alignment = 1
+
+[node name="FavoriteCardTexture" type="TextureButton" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox" unique_id=2064207414]
+custom_minimum_size = Vector2(0, 520)
+layout_mode = 2
+offset_transform_enabled = true
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="ChangeHintLabel" type="Label" parent="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox" unique_id=714067077]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 24
+text = "Click on the box to change"
+horizontal_alignment = 1
+
+[node name="Help" type="Control" parent="ScrollContainer/VBoxContainer" unique_id=308334441]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AchievementsSection" type="VBoxContainer" parent="ScrollContainer/VBoxContainer/Help" unique_id=1544835923]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -958.0
+offset_top = 369.0
+offset_right = 955.0
+offset_bottom = 536.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CompleteHeader" type="Label" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1961102260]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "  Complete Achievements"
+
+[node name="Complete Grid" type="GridContainer" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1717729290]
+layout_mode = 2
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 0
+columns = 4
+
+[node name="PendingHeader" type="Label" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1556257046]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_5i8h1")
+theme_override_font_sizes/font_size = 65
+text = "  Achievements"
+
+[node name="PendingGrid" type="GridContainer" parent="ScrollContainer/VBoxContainer/Help/AchievementsSection" unique_id=1127317635]
+layout_mode = 2
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 0
+columns = 4
+
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/TopHeaderBar/BackButton" to="." method="_on_back_button_pressed"]
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton" to="." method="_on_profilepic_button_pressed"]
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton" to="." method="_on_profile_pic_button_pressed"]
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/NameButton" to="." method="_on_name_button_pressed"]
+[connection signal="pressed" from="ScrollContainer/VBoxContainer/ProfileHeaderBox/FavoriteCardBox/FavoriteCardTexture" to="." method="_on_favorite_card_texture_pressed"]

@@ -1,0 +1,271 @@
+[gd_scene format=3 uid="uid://cpuodim48ti2s"]
+
+[ext_resource type="Script" uid="uid://cfbeqg2hbptio" path="res://game/screen/starting_scene/starting_scene.gd" id="1_ogc2t"]
+[ext_resource type="Texture2D" uid="uid://bvn7h1060mgr7" path="res://assets/ui/ui_assets/GameTitleTransparent.png" id="2_5hqqx"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="2_ogc2t"]
+[ext_resource type="Texture2D" uid="uid://b3ix7knarbuxo" path="res://assets/ui/ui_assets/Base.png" id="3_gaw06"]
+[ext_resource type="Texture2D" uid="uid://b73l8hmne83tb" path="res://assets/ui/ui_assets/BaseSelect.png" id="4_ve2en"]
+[ext_resource type="Texture2D" uid="uid://cuxntcbj5ruhc" path="res://assets/ui/ui_assets/YouTubeLogo.png" id="6_x2lv2"]
+[ext_resource type="Script" uid="uid://bvm0snq81toxt" path="res://game/screen/starting_scene/ExternalLinks/youtube_link.gd" id="7_5hqqx"]
+[ext_resource type="Texture2D" uid="uid://cdxyeoaf3mcv8" path="res://assets/ui/ui_assets/DiscordLogo.png" id="7_vx54s"]
+[ext_resource type="Texture2D" uid="uid://bilnt138tmc51" path="res://assets/ui/ui_assets/TwitterXLogo.jpg" id="8_kku1n"]
+[ext_resource type="Script" uid="uid://dygpfax4n2mx5" path="res://game/screen/starting_scene/ExternalLinks/discord_link.gd" id="9_5ayw8"]
+[ext_resource type="Script" uid="uid://deiy7ws5un6dj" path="res://game/screen/starting_scene/ExternalLinks/twitter_link.gd" id="11_wjucs"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_033pi"]
+texture = ExtResource("3_gaw06")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_8htv4"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3gsa5"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_yo1j3"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_rutrf"]
+texture = ExtResource("3_gaw06")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_tvdex"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7063l"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_pissf"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_dxg5c"]
+texture = ExtResource("3_gaw06")
+expand_margin_left = 10.0
+expand_margin_top = 5.0
+expand_margin_right = 10.0
+expand_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ki5vh"]
+texture = ExtResource("4_ve2en")
+expand_margin_left = 10.0
+expand_margin_top = 5.0
+expand_margin_right = 10.0
+expand_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b4ck3"]
+texture = ExtResource("4_ve2en")
+expand_margin_left = 10.0
+expand_margin_top = 5.0
+expand_margin_right = 10.0
+expand_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_lwosr"]
+texture = ExtResource("4_ve2en")
+expand_margin_left = 10.0
+expand_margin_top = 5.0
+expand_margin_right = 10.0
+expand_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_qu24l"]
+texture = ExtResource("6_x2lv2")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_01eag"]
+texture = ExtResource("6_x2lv2")
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_5hqqx"]
+load_path = "res://.godot/imported/YouTubeLogo.png-adf564a9816cecf818a179f37bdff199.ctex"
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_yx1ua"]
+texture = SubResource("CompressedTexture2D_5hqqx")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_lwsg2"]
+texture = ExtResource("6_x2lv2")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_lxcmx"]
+texture = ExtResource("7_vx54s")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_mc31w"]
+texture = ExtResource("7_vx54s")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_we0ic"]
+texture = ExtResource("7_vx54s")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_8elbw"]
+texture = ExtResource("7_vx54s")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_eq77e"]
+content_margin_left = 0.0
+texture = ExtResource("8_kku1n")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7gbrq"]
+texture = ExtResource("8_kku1n")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_a8u6p"]
+texture = ExtResource("8_kku1n")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7o16j"]
+texture = ExtResource("8_kku1n")
+
+[node name="StartingScene" type="Control" unique_id=627057487]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ogc2t")
+
+[node name="Background" type="ColorRect" parent="." unique_id=513842695]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="GameTitle" type="TextureRect" parent="." unique_id=1102272399]
+layout_mode = 0
+offset_left = 394.0
+offset_top = -324.0
+offset_right = 1574.0
+offset_bottom = 811.0
+texture = ExtResource("2_5hqqx")
+expand_mode = 1
+
+[node name="MidButtons" type="VBoxContainer" parent="." unique_id=1238456098]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -263.0
+offset_top = -43.0
+offset_right = 267.0
+offset_bottom = 355.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlayButton" type="Button" parent="MidButtons" unique_id=1359242132]
+layout_mode = 2
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 110
+theme_override_styles/normal = SubResource("StyleBoxTexture_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_8htv4")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
+text = "PLAY"
+
+[node name="ExitButton" type="Button" parent="MidButtons" unique_id=312740949]
+layout_mode = 2
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 90
+theme_override_styles/normal = SubResource("StyleBoxTexture_rutrf")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_tvdex")
+theme_override_styles/hover = SubResource("StyleBoxTexture_7063l")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_pissf")
+text = "EXIT"
+
+[node name="Version" type="Label" parent="." unique_id=1261925538]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -162.0
+offset_top = -41.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 35
+text = "Ver. 1.0"
+
+[node name="CreditsButton" type="Button" parent="." unique_id=1694677999]
+layout_mode = 0
+offset_left = 26.0
+offset_top = 13.0
+offset_right = 236.0
+offset_bottom = 68.0
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 45
+theme_override_styles/normal = SubResource("StyleBoxTexture_dxg5c")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_ki5vh")
+theme_override_styles/hover = SubResource("StyleBoxTexture_b4ck3")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_lwosr")
+text = "Credits"
+
+[node name="LearnMoreStuff" type="HBoxContainer" parent="." unique_id=995788226]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 13.0
+offset_top = -72.0
+offset_right = 1344.0
+offset_bottom = -8.0
+grow_vertical = 0
+
+[node name="ProjectPromo" type="Label" parent="LearnMoreStuff" unique_id=340220477]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 35
+text = "Learn more about the project:"
+
+[node name="YoutubeLink" type="Button" parent="LearnMoreStuff" unique_id=1476939377]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxTexture_qu24l")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_01eag")
+theme_override_styles/hover = SubResource("StyleBoxTexture_yx1ua")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_lwsg2")
+text = "                "
+script = ExtResource("7_5hqqx")
+
+[node name="DiscordLink" type="Button" parent="LearnMoreStuff" unique_id=1347238188]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxTexture_lxcmx")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_mc31w")
+theme_override_styles/hover = SubResource("StyleBoxTexture_we0ic")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_8elbw")
+text = "                "
+script = ExtResource("9_5ayw8")
+
+[node name="TwitterLink" type="Button" parent="LearnMoreStuff" unique_id=2093625275]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxTexture_eq77e")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_7gbrq")
+theme_override_styles/hover = SubResource("StyleBoxTexture_a8u6p")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_7o16j")
+text = "                "
+script = ExtResource("11_wjucs")
+
+[connection signal="pressed" from="MidButtons/PlayButton" to="." method="_on_play_button_pressed"]
+[connection signal="pressed" from="MidButtons/ExitButton" to="." method="_on_exit_button_pressed"]
+[connection signal="pressed" from="CreditsButton" to="." method="_on_credits_button_pressed"]
+[connection signal="button_down" from="LearnMoreStuff/YoutubeLink" to="LearnMoreStuff/YoutubeLink" method="_on_button_down"]
+[connection signal="button_down" from="LearnMoreStuff/DiscordLink" to="LearnMoreStuff/DiscordLink" method="_on_button_down"]
+[connection signal="button_down" from="LearnMoreStuff/TwitterLink" to="LearnMoreStuff/TwitterLink" method="_on_button_down"]

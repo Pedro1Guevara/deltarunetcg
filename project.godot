@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="deltarunetcg"
-run/main_scene="uid://d3rvj1r6d53j8"
+run/main_scene="uid://cpuodim48ti2s"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
@@ -39,9 +39,27 @@ folder_colors={
 "res://Avatars/": "green",
 "res://SCRIPT/": "green",
 "res://UI Assets/": "green",
-"res://game/ui/Avatars/": "pink",
-"res://game/ui/Cenas/": "green",
-"res://game/ui/FontesTEXT/": "pink",
-"res://game/ui/SCRIPT/": "green",
-"res://game/ui/UI Assets/": "pink"
+"res://addons/": "orange",
+"res://ai/": "red",
+"res://assets/": "green",
+"res://assets/cards/energy/": "gray",
+"res://assets/ui/": "green",
+"res://assets/ui/Avatars/": "green",
+"res://core/": "red",
+"res://data/": "orange",
+"res://docs/": "orange",
+"res://example1/": "orange",
+"res://freecell/": "orange",
+"res://game/": "green",
+"res://game/app/": "yellow",
+"res://game/presentation/": "yellow",
+"res://game/screen/": "green",
+"res://game/screen/avatar_popup/": "green",
+"res://game/screen/battle_page/": "green",
+"res://game/screen/debug/": "teal",
+"res://game/screen/main_scene/": "green",
+"res://game/screen/main_ui/": "green",
+"res://game/screen/profile_scene/": "green",
+"res://game/screen/starting_scene/": "green",
+"res://game/services/": "yellow"
 }
