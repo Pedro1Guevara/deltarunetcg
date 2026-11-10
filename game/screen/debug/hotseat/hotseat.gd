@@ -251,12 +251,18 @@ func _refresh() -> void:
 	var score := _combat.score()
 	var game := "Round %d%s  |  Score %d-%d  |  Turn %d  |  Seed %d" % [_combat.round_number, " (Sudden Death)" if _combat.sudden_death else "",
 			score[0], score[1], _engine.turn, _combat.combat_seed]
+	if _engine.fighting != -1 and not _engine.is_over():
+		game += "  |  Player %d is fighting" % (_engine.fighting + 1)
+	var extra_note := ""
+	for player in _engine.extra_draws_next_round.size():
+		if _engine.extra_draws_next_round[player] > 0:
+			extra_note += "  |  Player %d draws %d extra cards next round" % [player + 1, _engine.extra_draws_next_round[player]]
 	if _combat.is_over():
 		_status_label.text = "%s  |  Player %d wins the combat %d-%d" % [game, _combat.winner() + 1, score[_combat.winner()], score[1 - _combat.winner()]]
 	elif _engine.winner == MatchEngine.SUDDEN_DEATH:
 		_status_label.text = "%s  |  Both players won: Sudden Death decides the round" % game
 	elif _engine.is_over():
-		_status_label.text = "%s  |  Player %d wins round %d" % [game, _engine.winner + 1, _combat.round_number]
+		_status_label.text = "%s  |  Player %d wins round %d%s" % [game, _engine.winner + 1, _combat.round_number, extra_note]
 	elif _engine.is_waiting_for_choice() and _is_hidden(_engine.choice_chooser()):
 		_status_label.text = "%s  |  Player %d (CPU) is choosing" % [game, _engine.choice_chooser() + 1]
 	elif _engine.is_waiting_for_choice():

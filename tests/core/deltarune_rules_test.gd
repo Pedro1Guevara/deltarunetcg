@@ -67,6 +67,35 @@ func pick(engine: MatchEngine, label: String) -> bool:
 	return play(engine, label) and play(engine, "Confirm")
 
 
+## A round where the player to act took their last Mercy Card with Tenna's Showtime! and chose
+## to Fight; their opponent promoted Guei and is taking their turn.
+func fight_round() -> MatchEngine:
+	var engine := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+	engine.opponent_player().bench.append(in_play("guei", []))
+	var taker := engine.current_index
+	while engine.players[taker].prizes.size() > 1:
+		engine.players[taker].prizes.pop_back()
+	attack(engine, "Showtime!")
+	choose_label(engine, "Fight")
+	return engine
+
+
+func option_labels(engine: MatchEngine) -> Array[String]:
+	var labels: Array[String] = []
+	for action in labeled(engine):
+		labels.append(str(action["label"]))
+	return labels
+
+
+## Answers the open question with the option whose label begins with prefix.
+func choose_label(engine: MatchEngine, prefix: String) -> void:
+	for action in labeled(engine):
+		if str(action["label"]).begins_with(prefix):
+			engine.apply(action)
+			return
+	push_error("no option begins with %s" % prefix)
+
+
 func attack(engine: MatchEngine, name: String) -> bool:
 	for action in labeled(engine):
 		if action["type"] == "attack" and str(action["label"]).begins_with("Attack: %s " % name):
@@ -982,7 +1011,7 @@ func _run() -> void:
 	expect(lines_match.call(watched), "every event has a line in the log, but a turn's draw")
 	var turn_draws := watched.events_for(actor_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and bool(event.data["at_turn_start"]))
 	var opponent_draws := watched.events_for(opponent_index, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and event.player == actor_index and bool(event.data["at_turn_start"]))
-	expect(not turn_draws.is_empty() and (turn_draws.back() as MatchEvent).data["cards"].size() == 1 and (opponent_draws.back() as MatchEvent).data == {"count": 1, "at_turn_start": true},
+	expect(not turn_draws.is_empty() and (turn_draws.back() as MatchEvent).data["cards"].size() == 1 and (opponent_draws.back() as MatchEvent).data == {"count": 1, "at_turn_start": true, "extra": false},
 			"a turn's draw is an event without a line: the player sees the card, the opponent only that one was drawn")
 	watched.opponent_player().active.damage = 20
 	var before_attack := watched.match_log.entries.size()
@@ -1144,7 +1173,93 @@ func _run() -> void:
 	while last.players[last_taker].prizes.size() > 1:
 		last.players[last_taker].prizes.pop_back()
 	attack(last, "Showtime!")
-	expect(last.winner == last_taker, "taking the last Mercy Card wins the round")
+	expect(not last.is_over() and last.choice_kind() == PendingChoice.KIND_SPARE_FIGHT and last.choice_chooser() == last_taker,
+			"taking the last Mercy Card does not end the round: its taker chooses to Spare or to Fight")
+	var spare_labels := option_labels(last)
+	expect(spare_labels == ["Spare: win the round; your opponent draws 3 extra cards next round",
+			"Fight: knock out a Darkner to win with no extra cards; lose one and you lose the round"], "Spare or Fight, worded for the taker (%s)" % [spare_labels])
+	expect(ActionText.prompt(last.view_for(last_taker), db) == "You took your last Mercy Card: Spare or Fight?" and ActionText.prompt(last.view_for(1 - last_taker), db).is_empty()
+			and last.view_for(1 - last_taker).choice_kind == PendingChoice.KIND_SPARE_FIGHT, "the opponent sees that the question is open, but not its options")
+	choose_label(last, "Spare")
+	expect(last.winner == last_taker and last.extra_draws_next_round[1 - last_taker] == 3 and last.extra_draws_next_round[last_taker] == 0,
+			"Spare wins the round; the opponent will draw 3 extra cards next round")
+	expect(log_lines(last).has("Player %d spares the opponent, who draws 3 extra cards next round" % (last_taker + 1)) and log_lines(last).back() == "Player %d wins" % (last_taker + 1),
+			"the log says who spared and who won")
+
+	var last_and_empty := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+	var last_and_empty_taker := last_and_empty.current_index
+	while last_and_empty.players[last_and_empty_taker].prizes.size() > 1:
+		last_and_empty.players[last_and_empty_taker].prizes.pop_back()
+	attack(last_and_empty, "Showtime!")
+	expect(last_and_empty.winner == last_and_empty_taker and not last_and_empty.is_waiting_for_choice(),
+			"the last Mercy Card and an opponent with nothing to promote: the round ends at once, no Spare or Fight")
+
+	print("== Fight")
+	var lost_fight := fight_round()
+	var fighter := lost_fight.fighting
+	expect(fighter != -1 and not lost_fight.is_over() and lost_fight.current_index == 1 - fighter and lost_fight.turn == 3,
+			"Fight: the round goes on, the opponent promotes and takes their turn")
+	expect(lost_fight.view_for(1 - fighter).fighting == fighter and log_lines(lost_fight).has("Player %d chooses to Fight: the next knockout decides the round" % (fighter + 1)),
+			"both players see who is fighting")
+	lost_fight.current_player().active = in_play("jevil", ["chaos_energy"])
+	lost_fight.players[fighter].active.damage = 90
+	attack(lost_fight, "Slash")
+	expect(lost_fight.winner == 1 - fighter and lost_fight.extra_draws_next_round[1 - fighter] == 3 and lost_fight.extra_draws_next_round[fighter] == 0,
+			"one of the fighter's Darkners knocked out: the opponent wins the round and still draws 3 extra cards next round")
+	expect(log_lines(lost_fight).has("Player %d loses the Fight; the opponent draws 3 extra cards next round" % (fighter + 1)), "the log says the Fight was lost")
+
+	var won_fight := fight_round()
+	var winner_fighter := won_fight.fighting
+	won_fight.apply({"type": "end_turn", "label": "End turn"})
+	won_fight.current_player().active = in_play("jevil", ["chaos_energy", "chaos_energy"])
+	won_fight.opponent_player().bench.append(in_play("koody", []))
+	won_fight.opponent_player().bench[0].damage = 30
+	attack(won_fight, "Chaos Bomb")
+	expect(won_fight.current_index == winner_fighter and won_fight.winner == winner_fighter and won_fight.extra_draws_next_round == [0, 0],
+			"a Darkner of the opponent knocked out, even on their Field: the fighter wins the round, and no one draws extra")
+	expect(log_lines(won_fight).has("Player %d wins the Fight" % (winner_fighter + 1)), "the log says the Fight was won")
+
+	var both := fight_round()
+	var both_fighter := both.fighting
+	both.players[both_fighter].active.damage = 100
+	both.players[1 - both_fighter].active.damage = 80
+	var both_result := KnockoutResolver.new(both.players, both.match_log).resolve(both.current_index, both.rules, both_fighter)
+	expect(both_result == MatchEngine.SUDDEN_DEATH, "a Darkner on each side knocked out during a Fight: Sudden Death")
+
+	var legacy_last := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+	var legacy_taker := legacy_last.current_index
+	legacy_last.opponent_player().bench.append(in_play("guei", []))
+	legacy_last.players[legacy_taker].prizes.resize(0)
+	legacy_last.opponent_player().active.damage = 80
+	var legacy_result := KnockoutResolver.new(legacy_last.players, legacy_last.match_log).resolve(1 - legacy_taker, MatchRules.legacy(), -1)
+	expect(legacy_result == legacy_taker, "legacy rules: the last Mercy Card wins at once")
+
+	print("== extra cards after a Spare")
+	var extra_rules := MatchRules.deltarune()
+	var extra_round := start_round(extra_rules, 3)
+	extra_round.rules.first_turn_extra_draws = [3, 0]
+	finish_setup(extra_round)
+	var extra_first := extra_round.current_index
+	var extra_draws := extra_round.events_for(0, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and bool(event.data["extra"]))
+	expect(extra_draws.size() == (1 if extra_first == 0 else 0), "player 1 draws their extra cards at the start of their first turn, not before")
+	if extra_first != 0:
+		extra_round.apply({"type": "end_turn", "label": "End turn"})
+		extra_draws = extra_round.events_for(0, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and bool(event.data["extra"]))
+	expect(extra_draws.size() == 1 and int((extra_draws[0] as MatchEvent).data["count"]) == 3 and ((extra_draws[0] as MatchEvent).data["cards"] as Array).size() == 3,
+			"three extra cards, after the turn's draw")
+	expect(log_lines(extra_round).has("Player 1 draws 3 extra cards"), "the log says so")
+	var hidden_extra := extra_round.events_for(1, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and bool(event.data["extra"]))
+	expect(hidden_extra.size() == 1 and not (hidden_extra[0] as MatchEvent).data.has("cards"), "the opponent sees how many, not which")
+	extra_round.apply({"type": "end_turn", "label": "End turn"})
+	extra_round.apply({"type": "end_turn", "label": "End turn"})
+	var later_extra := extra_round.events_for(0, 0).filter(func(event: MatchEvent) -> bool: return event.type == MatchEvent.DREW and bool(event.data["extra"]))
+	expect(later_extra.size() == 1, "only on the first turn")
+	var old_rules := MatchRules.deltarune().to_dict()
+	for added in ["spare_fight", "spare_extra_draws", "first_turn_extra_draws"]:
+		old_rules.erase(added)
+	var read_old := MatchRules.from_dict(old_rules)
+	expect(read_old != null and not read_old.spare_fight and read_old.first_turn_extra_draws == [0, 0],
+			"rules recorded before Spare and Fight read back without them, so old replays play as they were played")
 
 	var empty_field := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
 	var empty_taker := empty_field.current_index

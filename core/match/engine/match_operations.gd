@@ -293,7 +293,7 @@ func draw_cards(player: PlayerState, count: int) -> int:
 		if not player.draw_card():
 			break
 		drawn.append(player.hand.back())
-	_log.add_private(MatchEvent.DREW, _players.find(player), {"count": drawn.size(), "cards": MatchLog.ids(drawn), "at_turn_start": false}, {"count": drawn.size(), "at_turn_start": false})
+	_log.add_private(MatchEvent.DREW, _players.find(player), {"count": drawn.size(), "cards": MatchLog.ids(drawn), "at_turn_start": false, "extra": false}, {"count": drawn.size(), "at_turn_start": false, "extra": false})
 	return drawn.size()
 
 

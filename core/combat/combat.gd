@@ -56,7 +56,7 @@ func _init(cards: CardDatabase, effects: EffectLibrary, deck_a: PackedStringArra
 func start() -> void:
 	games.clear()
 	round_number = 1
-	_start_game(false)
+	_start_game(false, [0, 0])
 
 
 ## Whether the game being played has ended.
@@ -101,9 +101,13 @@ func next_game() -> bool:
 		return false
 	var again := next_is_sudden_death()
 	games.append({"round": round_number, "sudden_death": sudden_death, "winner": engine.winner, "replay": engine.replay()})
+	# A Spare or a lost Fight gives extra cards in the next round, never in a Sudden Death game.
+	var extra_draws: Array[int] = [0, 0]
+	if not again:
+		extra_draws.assign(engine.extra_draws_next_round)
 	if not again:
 		round_number += 1
-	_start_game(again)
+	_start_game(again, extra_draws)
 	return true
 
 
@@ -134,7 +138,8 @@ func use_seeds(seeds: Array[int]) -> void:
 	_seed_queue = seeds.duplicate()
 
 
-func _start_game(is_sudden_death: bool) -> void:
+## extra_draws: each player's extra cards on their first turn (Design Document 4.5).
+func _start_game(is_sudden_death: bool, extra_draws: Array[int]) -> void:
 	sudden_death = is_sudden_death
 	var seed := _seeds.next_seed()
 	if not _seed_queue.is_empty():
@@ -153,4 +158,8 @@ func _start_game(is_sudden_death: bool) -> void:
 	engine.effects = _effects
 	# A copy, so nothing a game changes in its rules reaches the next one.
 	var game_rules := rules.with_prize_count(SUDDEN_DEATH_PRIZE_COUNT) if is_sudden_death else MatchRules.from_dict(rules.to_dict())
+	game_rules.first_turn_extra_draws = extra_draws.duplicate()
+	var won := score()
+	for player in won.size():
+		engine.match_point[player] = won[player] == ROUNDS_TO_WIN - 1
 	engine.start(handed[0] as Array[CardData], handed[1] as Array[CardData], game_rules, Rng.new(seed))

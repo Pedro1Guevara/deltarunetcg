@@ -651,7 +651,71 @@ func _answer(view: PlayerView) -> Dictionary:
 			index = _pick_card(view)
 		PendingChoice.KIND_CHOOSE_DARKNER:
 			index = _best_option(options, func(option: Dictionary) -> float: return _darkner_score(view, option))
+		PendingChoice.KIND_SPARE_FIGHT:
+			index = _option_with_value(options, PendingChoice.FIGHT if _wants_to_fight(view) else PendingChoice.SPARE)
 	return _choose_action(view, index)
+
+
+## Spare or Fight, after taking the last Mercy Card (Design Document 4.5). Spare wins the round
+## now; Fight wins it without giving the opponent extra cards next round, but the opponent plays
+## a turn first and losing any Darkner loses the round. At match point Spare costs nothing.
+## Otherwise the CPU Fights only when nothing the opponent could battle with can knock out any
+## of its Darkners next turn, and its Battling Darkner can knock out whichever they battle with.
+## Attacks count when they can be paid or are one Energy from it.
+func _wants_to_fight(view: PlayerView) -> bool:
+	var me := view.me()
+	var opponent := view.opponent()
+	if view.match_point[view.viewer] or me.active == null:
+		return false
+	var theirs: Array[CardInPlay] = []
+	if opponent.active != null:
+		theirs.append(opponent.active)
+	theirs.append_array(opponent.bench)
+	if theirs.is_empty():
+		return false
+	for attacker in theirs:
+		var side := _with_battling(opponent, attacker)
+		for attack in attacker.attacks():
+			if attack.cost.size() - attacker.energy_pool().size() > 1:
+				continue
+			var hit := _reader.estimate_attack(attacker, attack, side, me)
+			if float(hit["active"]) >= me.active.remaining_hp():
+				return false
+			for mine in me.bench:
+				if float(hit["bench_each"]) >= mine.remaining_hp():
+					return false
+	for defender in theirs:
+		var target := _with_battling(opponent, defender)
+		var knocks_out := false
+		for attack in me.active.attacks():
+			if attack.cost.size() - me.active.energy_pool().size() > 1:
+				continue
+			var hit := _reader.estimate_attack(me.active, attack, me, target)
+			if float(hit["active"]) >= defender.remaining_hp():
+				knocks_out = true
+			for benched in target.bench:
+				if float(hit["bench_each"]) > 0.0 and float(hit["bench_each"]) >= benched.remaining_hp():
+					knocks_out = true
+		if not knocks_out:
+			return false
+	return true
+
+
+## A copy of side with darkner as its Battling Darkner and the rest on its Field.
+static func _with_battling(side: PlayerView.SideView, darkner: CardInPlay) -> PlayerView.SideView:
+	var copy := PlayerView.SideView.new()
+	copy.index = side.index
+	copy.hand = side.hand
+	copy.hand_size = side.hand_size
+	copy.deck_size = side.deck_size
+	copy.prize_count = side.prize_count
+	copy.discard = side.discard
+	copy.tp = side.tp
+	copy.active = darkner
+	for other: CardInPlay in ([side.active] + side.bench):
+		if other != null and other != darkner:
+			copy.bench.append(other)
+	return copy
 
 
 ## Uses an Ability offered when its Darkner is played when it is worth it, never when it would

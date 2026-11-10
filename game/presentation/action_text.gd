@@ -101,6 +101,8 @@ static func prompt(view: PlayerView, cards: CardDatabase) -> String:
 				PendingChoice.PURPOSE_ATTACH:
 					return "Choose a Darkner on your Field to attach %s to" % _name(details["card"], cards)
 			return "Choose one of %s Darkners" % ("your" if details["side"] == PendingChoice.SIDE_OWN else "your opponent's")
+		PendingChoice.KIND_SPARE_FIGHT:
+			return "You took your last Mercy Card: Spare or Fight?"
 	return ""
 
 
@@ -177,6 +179,11 @@ static func option_label(kind: String, details: Dictionary, option: Dictionary, 
 				PendingChoice.PURPOSE_ATTACH:
 					return "Attach %s to %s (%s)" % [_name(details["card"], cards), _name(shown, cards), slot_name(slot)]
 			return "Choose %s (%s, %d/%d HP)" % [_name(shown, cards), slot_name(slot), _hp_left(shown), _card(shown, cards).hp]
+		PendingChoice.KIND_SPARE_FIGHT:
+			var extra := int(details["extra_draws"])
+			if value == PendingChoice.SPARE:
+				return "Spare: win the round; your opponent draws %d extra card%s next round" % [extra, _plural(extra)]
+			return "Fight: knock out a Darkner to win with no extra cards; lose one and you lose the round"
 	return str(value)
 
 

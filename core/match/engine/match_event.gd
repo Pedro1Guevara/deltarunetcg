@@ -70,8 +70,8 @@ const COIN_FLIP := "coin_flip"
 ## Cards. card_moved: {"card", "from", "to"} with zones; a card taken from the deck into the hand
 ## is private when the search could find any card (hidden {"from", "to"}). put_on_field:
 ## {"darkner", "from"}. nothing_found: {}. nothing_discarded: {}. hand_shuffled_into_deck /
-## hand_to_bottom_of_deck: {"count"}. deck_shuffled: {}. drew: {"count", "at_turn_start"},
-## private {"cards"}.
+## hand_to_bottom_of_deck: {"count"}. deck_shuffled: {}. drew: {"count", "at_turn_start",
+## "extra": true for the extra cards of the first turn after a Spare or a Fight}, private {"cards"}.
 const CARD_MOVED := "card_moved"
 const PUT_ON_FIELD := "put_on_field"
 const NOTHING_FOUND := "nothing_found"
@@ -83,11 +83,17 @@ const DREW := "drew"
 ## Knockouts. knocked_out: {"darkner"}. prize_taken: {"left"}, private {"card"}. promoted:
 ## {"darkner"}. won: {"winner", "after_deck_out": true when the legacy deck-out rule gave the
 ## last Mercy Card}. sudden_death: {}.
+## Spare and Fight (Design Document 4.5), about the player who took their last Mercy Card.
+## spared: {"extra_draws": the opponent's extra cards next round}. fight_chosen: {}.
+## fight_ended: {"won": bool, "extra_draws": the opponent's extra cards next round, 0 when won}.
 const KNOCKED_OUT := "knocked_out"
 const PRIZE_TAKEN := "prize_taken"
 const PROMOTED := "promoted"
 const WON := "won"
 const SUDDEN_DEATH := "sudden_death"
+const SPARED := "spared"
+const FIGHT_CHOSEN := "fight_chosen"
+const FIGHT_ENDED := "fight_ended"
 ## An effect's data could not be used as written (EffectResolver). {"message"}.
 const EFFECT_WARNING := "effect_warning"
 

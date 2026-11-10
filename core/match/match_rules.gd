@@ -30,7 +30,18 @@ var tp_max: int = 0
 var tp_recovery: int = 0
 ## TP each player holds when the round starts, in quarters.
 var tp_start: int = 0
+## True: the player who takes their last Mercy Card chooses to Spare or to Fight (Design Document
+## 4.5). False: taking the last Mercy Card wins the round at once (legacy rule).
+var spare_fight: bool = false
+## Extra cards the opponent draws at the start of their first turn of the next round when a
+## player Spares them, or when they win against a player who chose to Fight. Effects may change it.
+var spare_extra_draws: int = 0
+## Extra cards each player draws at the start of their first turn of this game, by player index:
+## what Spare and Fight gave them in the round before. Combat sets it for each game.
+var first_turn_extra_draws: Array[int] = [0, 0]
 
+## Rules a replay recorded before they existed, with the value that plays it as it was played.
+const _ADDED_LATER := {"spare_fight": false, "spare_extra_draws": 0, "first_turn_extra_draws": [0, 0]}
 
 
 ## The rules the WOTC build used. Only for the legacy test data.
@@ -49,6 +60,9 @@ static func legacy() -> MatchRules:
 	rules.tp_max = 0
 	rules.tp_recovery = 0
 	rules.tp_start = 0
+	rules.spare_fight = false
+	rules.spare_extra_draws = 0
+	rules.first_turn_extra_draws = [0, 0]
 	return rules
 
 
@@ -68,6 +82,9 @@ static func deltarune() -> MatchRules:
 	rules.tp_max = 4
 	rules.tp_recovery = 1
 	rules.tp_start = 4
+	rules.spare_fight = true
+	rules.spare_extra_draws = 3
+	rules.first_turn_extra_draws = [0, 0]
 	return rules
 
 
@@ -75,22 +92,34 @@ static func deltarune() -> MatchRules:
 func to_dict() -> Dictionary:
 	var values := {}
 	for property in _rule_names():
-		values[property] = get(property)
+		var value: Variant = get(property)
+		values[property] = (value as Array).duplicate() if value is Array else value
 	return values
 
 
-## The rules to_dict() wrote, or null when a rule is missing. Numbers read back from JSON are
-## turned back into whole numbers.
+## The rules to_dict() wrote, or null when a rule is missing. A rule added after a replay was
+## recorded takes the value that plays it as it was played (_ADDED_LATER). Numbers read back
+## from JSON are turned back into whole numbers.
 static func from_dict(values: Dictionary) -> MatchRules:
 	var rules := MatchRules.new()
 	for property in rules._rule_names():
-		if not values.has(property):
+		var value: Variant
+		if values.has(property):
+			value = values[property]
+		elif _ADDED_LATER.has(property):
+			value = _ADDED_LATER[property]
+		else:
 			return null
-		var value: Variant = values[property]
-		if rules.get(property) is int:
+		var current: Variant = rules.get(property)
+		if current is int:
 			value = int(value)
-		elif rules.get(property) is bool:
+		elif current is bool:
 			value = bool(value)
+		elif current is Array:
+			var numbers: Array[int] = []
+			for number: Variant in value as Array:
+				numbers.append(int(number))
+			value = numbers
 		rules.set(property, value)
 	return rules
 
@@ -105,18 +134,6 @@ func _rule_names() -> Array[String]:
 
 ## The same rules with a different prize count, for Sudden Death.
 func with_prize_count(count: int) -> MatchRules:
-	var copy := MatchRules.new()
-	copy.hand_size = hand_size
-	copy.bench_limit = bench_limit
+	var copy := MatchRules.from_dict(to_dict())
 	copy.prize_count = count
-	copy.prizes_per_knockout = prizes_per_knockout
-	copy.deck_out_loses = deck_out_loses
-	copy.first_player_can_attack = first_player_can_attack
-	copy.first_player_can_play_supporter = first_player_can_play_supporter
-	copy.random_first_player = random_first_player
-	copy.deck_size = deck_size
-	copy.max_copies = max_copies
-	copy.tp_max = tp_max
-	copy.tp_recovery = tp_recovery
-	copy.tp_start = tp_start
 	return copy

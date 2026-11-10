@@ -44,6 +44,20 @@ var _turn_ends_after_promotions: bool = false
 ## This round so far, to play it again (MatchReplay).
 var _replay: MatchReplay = null
 
+## The player who chose to Fight after taking their last Mercy Card, or -1 (Design Document 4.5).
+var fighting: int = -1
+## Extra cards each player draws at the start of their first turn of the next round, by player
+## index: what a Spare or a lost Fight gave them. Combat hands it to the next round's rules.
+var extra_draws_next_round: Array[int] = [0, 0]
+## Whether winning this round wins the combat, by player index. Set by Combat; the engine never
+## reads it, and it is in each player's view, as the score is at the table.
+var match_point: Array[bool] = [false, false]
+
+## What a round goes on with after a Spare or Fight question, once Fight is chosen.
+const _AFTER_BENCH := "bench"
+const _AFTER_POWER := "power"
+const _AFTER_ATTACK := "attack"
+
 ## Every round rule comes from match_rules (MatchRules), never from constants. rng must be
 ## fresh: the replay records only its seed.
 func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchRules, rng: Rng) -> void:
@@ -68,6 +82,8 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	_on_play_user = null
 	_on_play_queue.clear()
 	_turn_ends_after_promotions = false
+	fighting = -1
+	extra_draws_next_round = [0, 0]
 	match_log = MatchLog.new(players)
 	operations = MatchOperations.new(players, _rng, match_log)
 	_knockouts = KnockoutResolver.new(players, match_log)
@@ -112,6 +128,8 @@ func view_for(player_index: int) -> PlayerView:
 	view.current = current_index
 	view.is_over = is_over()
 	view.winner = winner
+	view.fighting = fighting
+	view.match_point = match_point.duplicate()
 	view.rules = MatchRules.from_dict(rules.to_dict())
 	view.stadium = stadium
 	view.stadium_owner = stadium_owner
@@ -333,7 +351,18 @@ func _begin_turn(player_index: int) -> void:
 		_set_tp(player, mini(player.tp + rules.tp_recovery, rules.tp_max))
 	player.draw_card()
 	# The board shows the turn's draw; the log does not. The player sees the card.
-	match_log.add_private(MatchEvent.DREW, current_index, {"count": 1, "cards": [player.hand.back().id], "at_turn_start": true}, {"count": 1, "at_turn_start": true})
+	match_log.add_private(MatchEvent.DREW, current_index, {"count": 1, "cards": [player.hand.back().id], "at_turn_start": true, "extra": false}, {"count": 1, "at_turn_start": true, "extra": false})
+	# What a Spare or a lost Fight gave this player in the round before (Design Document 4.5):
+	# as many as the deck still holds; running out here loses nothing.
+	var extra := rules.first_turn_extra_draws[current_index] if player.turns_started == 1 else 0
+	if extra > 0:
+		var drawn: Array[CardData] = []
+		for _i in extra:
+			if not player.draw_card():
+				break
+			drawn.append(player.hand.back())
+		match_log.add_private(MatchEvent.DREW, current_index, {"count": drawn.size(), "cards": MatchLog.ids(drawn), "at_turn_start": true, "extra": true},
+				{"count": drawn.size(), "at_turn_start": true, "extra": true})
 
 
 ## TP recovery (Design Document 5): 25% at the start of each turn, 100% when a player passes.
@@ -347,8 +376,13 @@ func _set_tp(player: PlayerState, quarters: int) -> void:
 func _do_bench(hand_index: int) -> void:
 	var player := current_player()
 	var darkner := operations.put_on_bench_from_hand(player, player.hand[hand_index], turn)
-	_resolve_knockouts()
-	if is_over() or not player.bench.has(darkner):
+	if _resolve_knockouts({"then": _AFTER_BENCH, "darkner": darkner}):
+		_after_bench(darkner)
+
+
+## Offers the on-play Abilities of the Darkner just put on the Field, if it is still there.
+func _after_bench(darkner: CardInPlay) -> void:
+	if not current_player().bench.has(darkner):
 		return
 	_on_play_user = darkner
 	_on_play_queue = EffectBindings.on_play_powers(self, darkner)
@@ -494,9 +528,11 @@ func _do_use_power(slot: int, power_name: String) -> void:
 ## opponent takes the Mercy Card, a knocked out Battling Darkner is replaced, and the turn goes
 ## on.
 func _finish_power() -> void:
-	_resolve_knockouts()
-	if is_over():
-		return
+	if _resolve_knockouts({"then": _AFTER_POWER}):
+		_after_power()
+
+
+func _after_power() -> void:
 	if _advance_promotions():
 		_offer_on_play()
 
@@ -558,6 +594,8 @@ func _do_choose(option: int) -> void:
 			if _advance_promotions() and _turn_ends_after_promotions:
 				_turn_ends_after_promotions = false
 				_end_turn(true)
+		PendingChoice.RESUME_SPARE_FIGHT:
+			_answer_spare_fight(choice.chooser, picked["value"] == PendingChoice.SPARE, choice.data)
 		PendingChoice.RESUME_RETREAT:
 			_complete_retreat(int(choice.data["slot"]), picked["value"] as Array)
 		PendingChoice.RESUME_ON_PLAY:
@@ -614,9 +652,11 @@ func _continue_attack() -> void:
 		_pending = EffectBindings.run(self, binding, EffectBindings.power_context(self, user, EffectContext.KIND_TRIGGER))
 		if _pending != null:
 			return
-	_resolve_knockouts()
-	if is_over():
-		return
+	if _resolve_knockouts({"then": _AFTER_ATTACK}):
+		_after_attack()
+
+
+func _after_attack() -> void:
 	# Attacking passes priority, once every knocked out Pokemon has been replaced.
 	if _advance_promotions():
 		_end_turn(true)
@@ -658,12 +698,45 @@ func _resolve_field_entries() -> void:
 
 
 ## Resolves what Darkners put onto a Field set off, then knockouts, after an attack, an Ability,
-## an Area action or a Darkner put onto the Field (KnockoutResolver.resolve()).
-func _resolve_knockouts() -> void:
+## an Area action or a Darkner put onto the Field (KnockoutResolver.resolve()). True when the
+## turn goes on at once; false when the round is over or the player who took their last Mercy
+## Card must choose to Spare or to Fight. then says how the turn goes on if they Fight.
+func _resolve_knockouts(then: Dictionary) -> bool:
 	_resolve_field_entries()
-	var result := _knockouts.resolve(_opponent_index(), rules)
+	var fighter := fighting
+	var result := _knockouts.resolve(_opponent_index(), rules, fighting)
 	if result != NO_WINNER:
 		winner = result
+		if fighter != -1 and result == 1 - fighter:
+			# A lost Fight: the winner still draws the extra cards (Design Document 4.5).
+			extra_draws_next_round[result] = rules.spare_extra_draws
+		return false
+	var taker := _knockouts.take_spare_fight_offer()
+	if taker != -1:
+		_pending = PendingChoice.new(taker, PendingChoice.KIND_SPARE_FIGHT, {"extra_draws": rules.spare_extra_draws},
+				[{"value": PendingChoice.SPARE}, {"value": PendingChoice.FIGHT}], PendingChoice.RESUME_SPARE_FIGHT, then)
+		return false
+	return true
+
+
+## Spare wins the round, and the opponent draws the extra cards next round. Fight goes on with
+## the turn: the next knockout decides the round (KnockoutResolver.resolve()).
+func _answer_spare_fight(chooser: int, spared: bool, then: Dictionary) -> void:
+	if spared:
+		extra_draws_next_round[1 - chooser] = rules.spare_extra_draws
+		match_log.add(MatchEvent.SPARED, chooser, {"extra_draws": rules.spare_extra_draws})
+		winner = chooser
+		match_log.add(MatchEvent.WON, winner, {"winner": winner, "after_deck_out": false})
+		return
+	fighting = chooser
+	match_log.add(MatchEvent.FIGHT_CHOSEN, chooser, {})
+	match str(then["then"]):
+		_AFTER_BENCH:
+			_after_bench(then["darkner"] as CardInPlay)
+		_AFTER_POWER:
+			_after_power()
+		_AFTER_ATTACK:
+			_after_attack()
 
 
 # --- Effective costs --------------------------------------------------------------------

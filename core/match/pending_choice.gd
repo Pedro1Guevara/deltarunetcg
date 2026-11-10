@@ -10,6 +10,7 @@ const RESUME_PROMOTE := "promote"
 const RESUME_RETREAT := "retreat"
 const RESUME_EFFECT := "effect"
 const RESUME_ON_PLAY := "on_play"
+const RESUME_SPARE_FIGHT := "spare_fight"
 
 ## What the question is about, as data: the engine holds no words (Design Document 8.4). The
 ## kind, its details and its options are all a player needs to answer it, and all the game
@@ -45,6 +46,12 @@ const KIND_PICK_CARDS := "pick_cards"
 ## details {"side": SIDE_OWN or SIDE_OPPONENT, "purpose": PURPOSE_SWITCH_IN, PURPOSE_ATTACH
 ## (with "card": the Energy's card id) or PURPOSE_TARGET}.
 const KIND_CHOOSE_DARKNER := "choose_darkner"
+## spare_fight: the player who took their last Mercy Card Spares (wins the round) or Fights
+## (Design Document 4.5). Values SPARE and FIGHT. details {"extra_draws": the cards the opponent
+## draws next round if spared}.
+const KIND_SPARE_FIGHT := "spare_fight"
+const SPARE := "spare"
+const FIGHT := "fight"
 
 const PICK_ADD := "add"
 const PICK_UNDO := "undo"

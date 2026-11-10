@@ -52,6 +52,16 @@ static func line(event: MatchEvent, cards: CardDatabase) -> String:
 			return "Player %d wins" % (int(data["winner"]) + 1)
 		MatchEvent.SUDDEN_DEATH:
 			return "Both players win at the same time: Sudden Death"
+		MatchEvent.SPARED:
+			var extra := int(data["extra_draws"])
+			return "%s spares the opponent, who draws %d extra card%s next round" % [who, extra, _plural(extra)]
+		MatchEvent.FIGHT_CHOSEN:
+			return "%s chooses to Fight: the next knockout decides the round" % who
+		MatchEvent.FIGHT_ENDED:
+			if bool(data["won"]):
+				return "%s wins the Fight" % who
+			var extra := int(data["extra_draws"])
+			return "%s loses the Fight; the opponent draws %d extra card%s next round" % [who, extra, _plural(extra)]
 		MatchEvent.EVOLVED:
 			return "%s evolves %s into %s" % [who, _name(data["from"], cards), _name(data["into"], cards)]
 		MatchEvent.ENERGY_ATTACHED:
@@ -131,6 +141,9 @@ static func line(event: MatchEvent, cards: CardDatabase) -> String:
 		MatchEvent.DECK_SHUFFLED:
 			return INDENT + "%s shuffles their deck" % who
 		MatchEvent.DREW:
+			if bool(data["extra"]):
+				var extra := int(data["count"])
+				return "%s draws %d extra card%s" % [who, extra, _plural(extra)]
 			if bool(data["at_turn_start"]):
 				return ""
 			var count := int(data["count"])

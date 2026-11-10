@@ -11,7 +11,7 @@ If a rule is not in the Design Document, it has not been decided. Ask; do not as
 
 ## Status
 
-The repository was a Pokémon TCG roguelite (WOTC cards). In October 2026 it pivoted to Deltarune TCG, reusing the build. Section 10 of the Design Document lists every difference between the current code and the new rules. The roguelite structure and Spare/Fight are **frozen**: do not implement them.
+The repository was a Pokémon TCG roguelite (WOTC cards). In October 2026 it pivoted to Deltarune TCG, reusing the build. Section 10 of the Design Document lists every difference between the current code and the new rules. The roguelite structure is **frozen**: do not implement it. Spare/Fight was unfrozen in November 2026 and is built (Design Document 4.5).
 
 The first Deltarune prototype is defined after the documents are approved. Do not plan stages beyond the current one.
 
@@ -55,7 +55,7 @@ Layers are top-level folders (Design Document 8.2). Dependencies point one way: 
 - `view_for(player)` (`PlayerView`) is what one player can see. A CPU decides from its view, its decklist and the effect data only, never from the engine, and never from card text.
 - Legality never reads a printed cost. Spell TP costs, attack Energy costs and Flee costs are computed as effective costs through one continuous-effects layer (`ContinuousEffects`), which also filters `legal_actions()`. Continuous Abilities name modifiers, a third kind of atomic besides effects and checks, which the layer reads and never runs as steps.
 - TP is an integer number of quarters, 0 to 4.
-- The number of Mercy Cards taken per knockout and the round-start draw advantage are values effects can modify, never constants.
+- The number of Mercy Cards taken per knockout and the extra cards a Spare or a lost Fight gives (`MatchRules.spare_extra_draws`) are values effects can modify, never constants.
 
 ## Card effects
 

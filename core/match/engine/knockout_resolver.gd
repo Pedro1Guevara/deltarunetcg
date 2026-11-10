@@ -8,6 +8,9 @@ var _players: Array[PlayerState]
 var _log: MatchLog
 ## The players whose Battling Darkner was knocked out and still has to be replaced, in order.
 var _promotion_queue: Array[int] = []
+## The player who took their last Mercy Card in the last resolve() and chooses to Spare or to
+## Fight, or -1 (Design Document 4.5). Read once with take_spare_fight_offer().
+var _spare_fight_offer: int = -1
 
 
 func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
@@ -23,7 +26,13 @@ func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
 ## the winner (MatchEngine.NO_WINNER, a player index or MatchEngine.SUDDEN_DEATH). With no
 ## winner, the players who lost their Battling Darkner are queued to promote. rules are the
 ## round's rules as they are now.
-func resolve(defender_index: int, rules: MatchRules) -> int:
+##
+## With Spare and Fight (Design Document 4.5): a player whose only win is their last Mercy Card
+## does not win yet; take_spare_fight_offer() names them, and they choose. fighting is the player
+## who chose to Fight, or -1: the next knockout decides the round. A Darkner of the opponent
+## knocked out wins it for them; one of their own knocked out loses it; both at once is Sudden
+## Death.
+func resolve(defender_index: int, rules: MatchRules, fighting: int) -> int:
 	var knocked_out: Array[CardInPlay] = []
 	var owners: Array[int] = []
 	var lost_battling: Array[int] = []
@@ -58,6 +67,17 @@ func resolve(defender_index: int, rules: MatchRules) -> int:
 		if _players[index].bench.is_empty():
 			ways[1 - index] = int(ways[1 - index]) + 1
 
+	if rules.spare_fight and fighting != -1:
+		return _end_fight(fighting, owners.has(1 - fighting), owners.has(fighting), rules)
+
+	if rules.spare_fight:
+		for taker in 2:
+			var by_mercy_cards_only := int(ways[taker]) == 1 and owners.has(1 - taker) and _players[taker].prizes.is_empty()
+			if by_mercy_cards_only and int(ways[1 - taker]) == 0:
+				_spare_fight_offer = taker
+				_promotion_queue.assign(lost_battling)
+				return MatchEngine.NO_WINNER
+
 	if int(ways[0]) > 0 or int(ways[1]) > 0:
 		if int(ways[0]) == int(ways[1]):
 			_log.add(MatchEvent.SUDDEN_DEATH, -1, {})
@@ -68,6 +88,25 @@ func resolve(defender_index: int, rules: MatchRules) -> int:
 
 	_promotion_queue.assign(lost_battling)
 	return MatchEngine.NO_WINNER
+
+
+## The player who chooses to Spare or to Fight after the last resolve(), or -1. Reading it clears it.
+func take_spare_fight_offer() -> int:
+	var taker := _spare_fight_offer
+	_spare_fight_offer = -1
+	return taker
+
+
+## The winner of a fight the knockouts just ended: the fighter when only the opponent lost a
+## Darkner, the opponent when only the fighter did, Sudden Death when both did.
+func _end_fight(fighter: int, fighter_won: bool, fighter_lost: bool, rules: MatchRules) -> int:
+	if fighter_won and fighter_lost:
+		_log.add(MatchEvent.SUDDEN_DEATH, -1, {})
+		return MatchEngine.SUDDEN_DEATH
+	var winner := fighter if fighter_won else 1 - fighter
+	_log.add(MatchEvent.FIGHT_ENDED, fighter, {"won": fighter_won, "extra_draws": 0 if fighter_won else rules.spare_extra_draws})
+	_log.add(MatchEvent.WON, winner, {"winner": winner, "after_deck_out": false})
+	return winner
 
 
 ## Moves count Mercy Cards from the taker's pile to their hand, stopping when the pile is empty.

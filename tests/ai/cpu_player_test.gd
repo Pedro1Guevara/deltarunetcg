@@ -103,6 +103,7 @@ func _run() -> void:
 	var finished := 0
 	var wins := [0, 0]
 	var longest := 0
+	var answers := {PendingChoice.SPARE: 0, PendingChoice.FIGHT: 0}
 	for pair: Array in DECK_PAIRS:
 		for seed in SEEDS:
 			var engine := MatchEngine.new()
@@ -122,11 +123,14 @@ func _run() -> void:
 					break
 				if action["type"] == "choose" and engine.choice_option(int(action["option"])).get("pick") == PendingChoice.PICK_UNDO:
 					undone = "%s seed %d step %d" % [pair, seed, step]
+				if engine.choice_kind() == PendingChoice.KIND_SPARE_FIGHT:
+					answers[engine.choice_option(int(action["option"]))["value"]] += 1
 				engine.apply(action)
 	var rounds := DECK_PAIRS.size() * SEEDS
 	expect(illegal.is_empty(), "the CPU only answers with legal actions: %s" % illegal)
 	expect(undone.is_empty(), "and never undoes a pick: %s" % undone)
-	expect(finished == rounds, "CPU against CPU finishes every round (%d of %d; wins %s; longest %d turns)" % [finished, rounds, wins, longest])
+	expect(finished == rounds, "CPU against CPU finishes every round (%d of %d; wins %s; longest %d turns; Spare %d, Fight %d)" % [finished, rounds, wins, longest,
+			int(answers[PendingChoice.SPARE]), int(answers[PendingChoice.FIGHT])])
 
 	print("== CPU against CPU in combats")
 	var combats_over := 0
@@ -387,6 +391,24 @@ func _run() -> void:
 			discarded.append((shown as CardData).id)
 		discarder.apply(answer)
 	expect(discarded == ["hammer_of_justice", "sans"], "a discard starts with what it cannot use: an evolution with nothing to evolve, then the ACT card it holds most copies of (%s)" % [discarded])
+
+	var spare_or_fight := func(bench_id: String, bench_energy: Array, battling_damage: int, match_point: bool) -> String:
+		var engine := battle("tenna", ["fun_energy", "fun_energy", "fun_energy", "fun_energy", "fun_energy"], "jevil")
+		var taker := engine.current_index
+		engine.opponent_player().bench.append(in_play(bench_id, bench_energy))
+		engine.current_player().active.damage = battling_damage
+		engine.match_point[taker] = match_point
+		while engine.players[taker].prizes.size() > 1:
+			engine.players[taker].prizes.pop_back()
+		engine.apply({"type": "attack", "attack_index": 0})
+		if engine.choice_kind() != PendingChoice.KIND_SPARE_FIGHT:
+			return "no question"
+		return str(engine.choice_option(int(decide(engine)["option"]))["value"])
+	expect(spare_or_fight.call("koody", [], 0, false) == PendingChoice.FIGHT,
+			"it Fights when nothing the opponent has can knock out its Darkners next turn and it can knock out whatever they battle with")
+	expect(spare_or_fight.call("koody", [], 0, true) == PendingChoice.SPARE, "at match point it Spares: the round wins the combat and the extra cards never come")
+	expect(spare_or_fight.call("jevil", ["chaos_energy"], 90, false) == PendingChoice.SPARE, "it Spares when the opponent could knock out one of its Darkners first")
+	expect(spare_or_fight.call("guei", [], 0, false) == PendingChoice.SPARE, "and when it could not knock out what they battle with next (Guei, 80 HP, against Showtime!'s 70)")
 
 	print("== damage to its own Darkners")
 	var devoted := battle("jevil", [], "tenna")
