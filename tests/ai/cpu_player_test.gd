@@ -310,6 +310,39 @@ func _run() -> void:
 	charged.current_player().energy_attached_this_turn = true
 	expect(decide_with(charged, support_cpu) == {"type": "retreat", "slot": 1}, "once Guei has its 5 Energy, Miss Mizzle flees for it")
 
+	print("== Holy against Chaos")
+	support_cpu = CpuPlayer.new(library, deck_cards("holy"), plan_data("holy"))
+	var gust := battle("guei", ["holy_energy", "holy_energy"], "jevil")
+	var hurt := in_play("electro_dasher", [])
+	hurt.damage = 30
+	gust.opponent_player().bench.append_array([in_play("electro_dasher", []), hurt])
+	gust.current_player().hand.assign(cards(["susie"]))
+	gust.current_player().energy_attached_this_turn = true
+	var play_susie := decide_with(gust, support_cpu)
+	expect(play_susie["type"] == "play_trainer", "Susie is played when Flash Melt can knock out a Darkner of the opponent's Field once it is switched in (%s)" % play_susie)
+	gust.apply(play_susie)
+	var pulled := decide_with(gust, support_cpu)
+	expect(pulled["type"] == "choose" and gust.view_for(gust.current_index).choice_options[int(pulled["option"])]["shows"].damage == 30,
+			"and it switches in the Electro-Dasher with 30 HP left, the one Flash Melt knocks out")
+	support_cpu = CpuPlayer.new(library, deck_cards("holy"), plan_data("holy"))
+	var exposed := battle("guei", ["holy_energy"], "jevil")
+	exposed.opponent_player().active.attached_energy.assign(cards(["chaos_energy", "chaos_energy"]))
+	exposed.current_player().bench.append(in_play("cuptain", []))
+	exposed.current_player().discard.assign(cards(["holy_energy"]))
+	exposed.current_player().energy_attached_this_turn = true
+	var devotion := exposed.view_for(exposed.current_index).legal_actions.filter(func(action: Dictionary) -> bool: return action["type"] == "use_power")
+	expect(not devotion.is_empty() and decide_with(exposed, support_cpu)["type"] != "use_power",
+			"with no Miss Mizzle battling, Selfless Devotion is not used: it would leave Cuptain at 20 HP, which Chaos Bomb knocks out")
+	exposed.current_player().active = in_play("water_cooler", ["holy_energy"])
+	exposed.current_player().active.evolve(db.make("miss_mizzle"), 0)
+	exposed.current_player().bench.append(in_play("guei", []))
+	support_cpu = CpuPlayer.new(library, deck_cards("holy"), plan_data("holy"))
+	var feed := decide_with(exposed, support_cpu)
+	expect(feed["type"] == "use_power", "with Miss Mizzle battling, Selfless Devotion is used to charge Guei on the Field (%s)" % feed)
+	exposed.apply(feed)
+	var fed_darkner := decide_with(exposed, support_cpu)
+	expect(exposed.view_for(exposed.current_index).choice_options[int(fed_darkner["option"])]["shows"].card.id == "guei", "and its Energy goes to Guei, not to Cuptain")
+
 	var lunger := battle("koody", ["chaos_energy"], "cuptain")
 	var lunge_view := lunger.view_for(lunger.current_index)
 	var lunge_estimate := EffectReader.new(library).estimate_attack(lunge_view.me().active, lunge_view.me().active.attacks()[0], lunge_view.me(), lunge_view.opponent())
