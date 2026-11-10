@@ -1,0 +1,766 @@
+[gd_scene format=3 uid="uid://b7axl08e0012e"]
+
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="1_8gbse"]
+[ext_resource type="Script" uid="uid://bt0a64gptmeqs" path="res://game/screen/battle_page/battle_page.gd" id="1_w3dwf"]
+[ext_resource type="Texture2D" uid="uid://b3ix7knarbuxo" path="res://assets/ui/ui_assets/Base.png" id="2_hqq55"]
+[ext_resource type="Texture2D" uid="uid://b73l8hmne83tb" path="res://assets/ui/ui_assets/BaseSelect.png" id="3_76xq2"]
+[ext_resource type="Texture2D" uid="uid://bfx532jhit5mr" path="res://assets/ui/ui_assets/PlayerVsPlayerDisabled.png" id="5_0y7i8"]
+[ext_resource type="Texture2D" uid="uid://kqrdl7fbpggt" path="res://assets/ui/ui_assets/LongBaseH_GTop.png" id="5_5ynt7"]
+[ext_resource type="Texture2D" uid="uid://bjv6petxkbgy1" path="res://assets/ui/ui_assets/BaseDisabled.png" id="6_oxfba"]
+[ext_resource type="Texture2D" uid="uid://d1bg07r7wck2d" path="res://assets/ui/ui_assets/DeckSelectHigh.png" id="8_qj8wl"]
+[ext_resource type="Texture2D" uid="uid://2ouo24qt68bw" path="res://assets/ui/ui_assets/DeckSelectHighSelect.png" id="9_1dgel"]
+[ext_resource type="Texture2D" uid="uid://bombpbgxnbcfq" path="res://assets/ui/ui_assets/DeckSelectHighDisabled.png" id="10_habrc"]
+[ext_resource type="Texture2D" uid="uid://db0nkqijnot43" path="res://assets/ui/ui_assets/SquareFrame.png" id="11_c5oqe"]
+[ext_resource type="Texture2D" uid="uid://cpiq1bg5jsfgr" path="res://assets/ui/ui_assets/PlayerVsCPU.png" id="12_0tfea"]
+[ext_resource type="Texture2D" uid="uid://2tajhfowd4gf" path="res://assets/ui/ui_assets/LongBaseHorizontal.png" id="12_oyat6"]
+[ext_resource type="Texture2D" uid="uid://cl2fciq6fmhnx" path="res://assets/ui/ui_assets/SandboxDisabled.png" id="13_w3dwf"]
+[ext_resource type="Texture2D" uid="uid://l28kknrp4dbc" path="res://assets/ui/ui_assets/BattleRecordingDisabled.png" id="14_ihxai"]
+[ext_resource type="Texture2D" uid="uid://cxahyuhcdg4m7" path="res://assets/ui/ui_assets/LongBaseH_GBottom.png" id="15_fcb8d"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_y6665"]
+texture = ExtResource("2_hqq55")
+expand_margin_left = 10.0
+expand_margin_top = 10.0
+expand_margin_right = 25.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_gip1u"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 10.0
+expand_margin_top = 10.0
+expand_margin_right = 25.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_or47v"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 10.0
+expand_margin_top = 10.0
+expand_margin_right = 25.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_orywu"]
+texture = ExtResource("3_76xq2")
+texture_margin_left = 10.0
+texture_margin_top = 10.0
+texture_margin_right = 25.0
+texture_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ynrh3"]
+texture = ExtResource("2_hqq55")
+expand_margin_left = 55.0
+expand_margin_top = 10.0
+expand_margin_right = 55.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_qg3ii"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 55.0
+expand_margin_top = 10.0
+expand_margin_right = 55.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ohigt"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 55.0
+expand_margin_top = 10.0
+expand_margin_right = 55.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_88aex"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 55.0
+expand_margin_top = 10.0
+expand_margin_right = 55.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_oxfba"]
+texture = ExtResource("2_hqq55")
+expand_margin_left = 30.0
+expand_margin_top = 10.0
+expand_margin_right = 30.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_0y7i8"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 30.0
+expand_margin_top = 10.0
+expand_margin_right = 30.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_0tfea"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 30.0
+expand_margin_top = 10.0
+expand_margin_right = 30.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_w3dwf"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 30.0
+expand_margin_top = 10.0
+expand_margin_right = 30.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ihxai"]
+texture = ExtResource("2_hqq55")
+expand_margin_left = 40.0
+expand_margin_top = 10.0
+expand_margin_right = 40.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_6retf"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 40.0
+expand_margin_top = 10.0
+expand_margin_right = 40.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_0ejk4"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 40.0
+expand_margin_top = 10.0
+expand_margin_right = 40.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_485oq"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 40.0
+expand_margin_top = 10.0
+expand_margin_right = 40.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_r501u"]
+texture = ExtResource("2_hqq55")
+expand_margin_left = 25.0
+expand_margin_top = 10.0
+expand_margin_right = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_rdksc"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 25.0
+expand_margin_top = 10.0
+expand_margin_right = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_73sr1"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 25.0
+expand_margin_top = 10.0
+expand_margin_right = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_bs6ma"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 25.0
+expand_margin_top = 10.0
+expand_margin_right = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_033pi"]
+texture = ExtResource("2_hqq55")
+expand_margin_left = 12.0
+expand_margin_top = 6.0
+expand_margin_right = 12.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_8htv4"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 12.0
+expand_margin_top = 6.0
+expand_margin_right = 12.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3gsa5"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 12.0
+expand_margin_top = 6.0
+expand_margin_right = 12.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_yo1j3"]
+texture = ExtResource("3_76xq2")
+expand_margin_left = 12.0
+expand_margin_top = 6.0
+expand_margin_right = 12.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_6pjs5"]
+texture = ExtResource("6_oxfba")
+expand_margin_left = 12.0
+expand_margin_top = 6.0
+expand_margin_right = 12.0
+expand_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6pjs5"]
+bg_color = Color(0, 0, 0, 1)
+
+[node name="BattlePage" type="Control" unique_id=304195183]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 1
+script = ExtResource("1_w3dwf")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1021330906]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 1)
+
+[node name="BottomNav" type="HBoxContainer" parent="." unique_id=588227140]
+custom_minimum_size = Vector2(1600, 0)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -20.0
+offset_top = -235.0
+offset_right = 23.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 0
+
+[node name="HomeButton" type="Button" parent="BottomNav" unique_id=482039530]
+custom_minimum_size = Vector2(45, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_constants/h_separation = 30
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 101
+theme_override_styles/normal = SubResource("StyleBoxTexture_y6665")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_gip1u")
+theme_override_styles/hover = SubResource("StyleBoxTexture_or47v")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_orywu")
+text = " HOME "
+
+[node name="DexButton" type="Button" parent="BottomNav" unique_id=1798910931]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 101
+theme_override_styles/normal = SubResource("StyleBoxTexture_ynrh3")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_qg3ii")
+theme_override_styles/hover = SubResource("StyleBoxTexture_ohigt")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_88aex")
+text = " RECRUITS "
+
+[node name="TradeButton" type="Button" parent="BottomNav" unique_id=1261561396]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 101
+theme_override_styles/normal = SubResource("StyleBoxTexture_oxfba")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_0y7i8")
+theme_override_styles/hover = SubResource("StyleBoxTexture_0tfea")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_w3dwf")
+text = " TRADE "
+
+[node name="BattleButton" type="Button" parent="BottomNav" unique_id=1444564202]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 101
+theme_override_styles/normal = SubResource("StyleBoxTexture_ihxai")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_6retf")
+theme_override_styles/hover = SubResource("StyleBoxTexture_0ejk4")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_485oq")
+text = " BATTLE "
+
+[node name="StoryButton" type="Button" parent="BottomNav" unique_id=58886414]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 101
+theme_override_styles/normal = SubResource("StyleBoxTexture_r501u")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_rdksc")
+theme_override_styles/hover = SubResource("StyleBoxTexture_73sr1")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_bs6ma")
+text = " STORY "
+
+[node name="ScrollContainer" type="ScrollContainer" parent="." unique_id=1218812107]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 58.0
+offset_right = 2035.0
+offset_bottom = 1063.8694
+scale = Vector2(0.9033726, 0.78240335)
+
+[node name="Modos" type="VBoxContainer" parent="ScrollContainer" unique_id=1475050752]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Categorias" type="VBoxContainer" parent="ScrollContainer/Modos" unique_id=1157048167]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="PlayerVsPlayer" type="TextureRect" parent="ScrollContainer/Modos/Categorias" unique_id=1100394672]
+custom_minimum_size = Vector2(0, 350)
+layout_mode = 2
+texture = ExtResource("5_5ynt7")
+expand_mode = 1
+
+[node name="TopPVP" type="HBoxContainer" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer" unique_id=360836153]
+layout_mode = 0
+offset_left = 11.0696335
+offset_top = 15.966245
+offset_right = 1125.9253
+offset_bottom = 118.96625
+scale = Vector2(0.99192744, 1.2099632)
+
+[node name="Space" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer/TopPVP" unique_id=1582975231]
+layout_mode = 2
+text = "   "
+
+[node name="PVPLabel" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer/TopPVP" unique_id=1443487930]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 100
+text = "PLAYER VS. PLAYER"
+
+[node name="PVPIMG" type="TextureRect" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer/TopPVP" unique_id=284147287]
+layout_mode = 2
+texture = ExtResource("5_0y7i8")
+expand_mode = 3
+
+[node name="InviteButton" type="Button" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer" unique_id=1113702042]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 84.12918
+offset_top = -162.11737
+offset_right = 292.12918
+offset_bottom = -102.11737
+grow_vertical = 0
+scale = Vector2(1.3844496, 1.8943584)
+offset_transform_enabled = true
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxTexture_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_8htv4")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
+theme_override_styles/disabled = SubResource("StyleBoxTexture_6pjs5")
+disabled = true
+text = " Invite "
+
+[node name="DeckSelectionPVP" type="VBoxContainer" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer" unique_id=710720051]
+layout_mode = 0
+offset_left = 1476.6886
+offset_top = 19.171703
+offset_right = 1709.4424
+offset_bottom = 334.86566
+
+[node name="SelectDeckLabel" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer/DeckSelectionPVP" unique_id=536509825]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 30
+text = "Select Deck"
+horizontal_alignment = 1
+
+[node name="DeckImageSelect" type="TextureButton" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer" unique_id=1303947386]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 0
+offset_left = 1476.6887
+offset_top = 56.44983
+offset_right = 1708.6887
+offset_bottom = 327.19696
+size_flags_vertical = 3
+offset_transform_enabled = true
+mouse_filter = 1
+disabled = true
+texture_normal = ExtResource("8_qj8wl")
+texture_pressed = ExtResource("9_1dgel")
+texture_hover = ExtResource("9_1dgel")
+texture_disabled = ExtResource("10_habrc")
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="DeckSelectBorder" type="TextureRect" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer/DeckImageSelect" unique_id=2079503395]
+layout_mode = 0
+offset_top = -0.2128601
+offset_right = 232.0
+offset_bottom = 277.13773
+texture = ExtResource("11_c5oqe")
+expand_mode = 1
+
+[node name="DeckName" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsPlayer/DeckImageSelect/DeckSelectBorder" unique_id=701905529]
+custom_minimum_size = Vector2(207.553, 84.355)
+custom_maximum_size = Vector2(207.553, 84.355)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.176636
+offset_top = 181.49236
+offset_right = -12.2703705
+offset_bottom = -11.503235
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxFlat_6pjs5")
+text = "DECK NAME"
+horizontal_alignment = 1
+autowrap_mode = 3
+autowrap_trim_flags = 0
+clip_text = true
+
+[node name="PlayerVsCPU" type="TextureRect" parent="ScrollContainer/Modos/Categorias" unique_id=1284766041]
+custom_minimum_size = Vector2(0, 350)
+layout_mode = 2
+texture = ExtResource("12_oyat6")
+expand_mode = 1
+
+[node name="TopVsCPU" type="HBoxContainer" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU" unique_id=922347199]
+layout_mode = 0
+offset_left = 11.0696335
+offset_top = 15.966245
+offset_right = 1125.9253
+offset_bottom = 118.96625
+scale = Vector2(0.99192744, 1.2099632)
+
+[node name="Space" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU/TopVsCPU" unique_id=1020852800]
+layout_mode = 2
+text = "   "
+
+[node name="PVsCPULabel" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU/TopVsCPU" unique_id=595501830]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 100
+text = "PLAYER VS. CPU"
+
+[node name="PVsCPUIMG" type="TextureRect" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU/TopVsCPU" unique_id=989225898]
+layout_mode = 2
+texture = ExtResource("12_0tfea")
+expand_mode = 3
+
+[node name="PlayButtonCPU" type="Button" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU" unique_id=980234407]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 84.12918
+offset_top = -162.11737
+offset_right = 292.12918
+offset_bottom = -102.11737
+grow_vertical = 0
+scale = Vector2(1.3844496, 1.8943584)
+offset_transform_enabled = true
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxTexture_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_8htv4")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
+theme_override_styles/disabled = SubResource("StyleBoxTexture_6pjs5")
+text = " Play "
+
+[node name="DeckSelectVsCPU" type="VBoxContainer" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU" unique_id=53380425]
+layout_mode = 0
+offset_left = 1476.6886
+offset_top = 19.171703
+offset_right = 1709.4424
+offset_bottom = 334.86566
+
+[node name="SelectDeckLabel" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU/DeckSelectVsCPU" unique_id=1815328522]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 30
+text = "Select Deck"
+horizontal_alignment = 1
+
+[node name="DeckImageCPUSelect" type="TextureButton" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU" unique_id=1035809605]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 0
+offset_left = 1476.6887
+offset_top = 56.44983
+offset_right = 1708.6887
+offset_bottom = 327.19696
+size_flags_vertical = 3
+offset_transform_enabled = true
+mouse_filter = 1
+texture_normal = ExtResource("8_qj8wl")
+texture_pressed = ExtResource("9_1dgel")
+texture_hover = ExtResource("9_1dgel")
+texture_disabled = ExtResource("10_habrc")
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="DeckSelectCPUBorder" type="TextureRect" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU/DeckImageCPUSelect" unique_id=1076519502]
+layout_mode = 0
+offset_top = -0.2128601
+offset_right = 232.0
+offset_bottom = 277.13773
+texture = ExtResource("11_c5oqe")
+expand_mode = 1
+
+[node name="DeckName" type="Label" parent="ScrollContainer/Modos/Categorias/PlayerVsCPU/DeckImageCPUSelect/DeckSelectCPUBorder" unique_id=1919063828]
+custom_minimum_size = Vector2(207.553, 84.355)
+custom_maximum_size = Vector2(207.553, 84.355)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.176636
+offset_top = 181.49236
+offset_right = -12.2703705
+offset_bottom = -11.503235
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxFlat_6pjs5")
+text = "DECK NAME"
+horizontal_alignment = 1
+autowrap_mode = 3
+autowrap_trim_flags = 0
+clip_text = true
+
+[node name="Sandbox" type="TextureRect" parent="ScrollContainer/Modos/Categorias" unique_id=1446673562]
+custom_minimum_size = Vector2(0, 350)
+layout_mode = 2
+texture = ExtResource("12_oyat6")
+expand_mode = 1
+
+[node name="TopSandbox" type="HBoxContainer" parent="ScrollContainer/Modos/Categorias/Sandbox" unique_id=648649524]
+layout_mode = 0
+offset_left = 11.0696335
+offset_top = 15.966245
+offset_right = 1125.9253
+offset_bottom = 118.96625
+scale = Vector2(0.99192744, 1.2099632)
+
+[node name="Space" type="Label" parent="ScrollContainer/Modos/Categorias/Sandbox/TopSandbox" unique_id=2035507970]
+layout_mode = 2
+text = "   "
+
+[node name="SandboxIMG" type="TextureRect" parent="ScrollContainer/Modos/Categorias/Sandbox/TopSandbox" unique_id=573931064]
+layout_mode = 2
+texture = ExtResource("13_w3dwf")
+expand_mode = 3
+
+[node name="SandboxLabel" type="Label" parent="ScrollContainer/Modos/Categorias/Sandbox/TopSandbox" unique_id=1664823231]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 100
+text = "SANDBOX"
+
+[node name="PlayButtonSandbox" type="Button" parent="ScrollContainer/Modos/Categorias/Sandbox" unique_id=1635850317]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 84.12918
+offset_top = -162.11737
+offset_right = 292.12918
+offset_bottom = -102.11737
+grow_vertical = 0
+scale = Vector2(1.3844496, 1.8943584)
+offset_transform_enabled = true
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxTexture_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_8htv4")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
+theme_override_styles/disabled = SubResource("StyleBoxTexture_6pjs5")
+disabled = true
+text = " Play "
+
+[node name="DeckSelectSandbox" type="VBoxContainer" parent="ScrollContainer/Modos/Categorias/Sandbox" unique_id=743040589]
+layout_mode = 0
+offset_left = 1476.6886
+offset_top = 19.171703
+offset_right = 1709.4424
+offset_bottom = 334.86566
+
+[node name="SelectDeckLabel" type="Label" parent="ScrollContainer/Modos/Categorias/Sandbox/DeckSelectSandbox" unique_id=1717271434]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 30
+text = "Select Deck"
+horizontal_alignment = 1
+
+[node name="DeckImageSandboxSelect" type="TextureButton" parent="ScrollContainer/Modos/Categorias/Sandbox" unique_id=1902818740]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 0
+offset_left = 1476.6887
+offset_top = 56.44983
+offset_right = 1708.6887
+offset_bottom = 327.19696
+size_flags_vertical = 3
+offset_transform_enabled = true
+mouse_filter = 1
+disabled = true
+texture_normal = ExtResource("8_qj8wl")
+texture_pressed = ExtResource("9_1dgel")
+texture_hover = ExtResource("9_1dgel")
+texture_disabled = ExtResource("10_habrc")
+ignore_texture_size = true
+stretch_mode = 0
+
+[node name="DeckSelectSandboxBorder" type="TextureRect" parent="ScrollContainer/Modos/Categorias/Sandbox/DeckImageSandboxSelect" unique_id=172883140]
+layout_mode = 0
+offset_top = -0.2128601
+offset_right = 232.0
+offset_bottom = 277.13773
+texture = ExtResource("11_c5oqe")
+expand_mode = 1
+
+[node name="DeckName" type="Label" parent="ScrollContainer/Modos/Categorias/Sandbox/DeckImageSandboxSelect/DeckSelectSandboxBorder" unique_id=625356007]
+custom_minimum_size = Vector2(207.553, 84.355)
+custom_maximum_size = Vector2(207.553, 84.355)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.176636
+offset_top = 181.49236
+offset_right = -12.2703705
+offset_bottom = -11.503235
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxFlat_6pjs5")
+text = "DECK NAME"
+horizontal_alignment = 1
+autowrap_mode = 3
+autowrap_trim_flags = 0
+clip_text = true
+
+[node name="BattleRecording" type="TextureRect" parent="ScrollContainer/Modos/Categorias" unique_id=1308055865]
+custom_minimum_size = Vector2(0, 350)
+layout_mode = 2
+texture = ExtResource("15_fcb8d")
+expand_mode = 1
+
+[node name="TopRecording" type="HBoxContainer" parent="ScrollContainer/Modos/Categorias/BattleRecording" unique_id=655367010]
+layout_mode = 0
+offset_left = 11.0696335
+offset_top = 15.966245
+offset_right = 1125.9253
+offset_bottom = 118.96625
+scale = Vector2(0.99192744, 1.2099632)
+
+[node name="Space" type="Label" parent="ScrollContainer/Modos/Categorias/BattleRecording/TopRecording" unique_id=1748448848]
+layout_mode = 2
+text = "   "
+
+[node name="RecordingLabel" type="Label" parent="ScrollContainer/Modos/Categorias/BattleRecording/TopRecording" unique_id=46638454]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49803922, 0.49803922, 0.49803922, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 100
+text = "BATTLE RECORDING"
+
+[node name="RecordingIMG" type="TextureRect" parent="ScrollContainer/Modos/Categorias/BattleRecording/TopRecording" unique_id=865509679]
+layout_mode = 2
+texture = ExtResource("14_ihxai")
+expand_mode = 3
+
+[node name="ViewButtonRecording" type="Button" parent="ScrollContainer/Modos/Categorias/BattleRecording" unique_id=589602694]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 84.12918
+offset_top = -162.11737
+offset_right = 292.12918
+offset_bottom = -102.11737
+grow_vertical = 0
+scale = Vector2(1.3844496, 1.8943584)
+offset_transform_enabled = true
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxTexture_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_8htv4")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
+theme_override_styles/disabled = SubResource("StyleBoxTexture_6pjs5")
+disabled = true
+text = " View "
+
+[node name="ShareButtonRecording" type="Button" parent="ScrollContainer/Modos/Categorias/BattleRecording" unique_id=1875610025]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 423.3015
+offset_top = -162.11737
+offset_right = 623.6743
+offset_bottom = -102.11737
+grow_vertical = 0
+scale = Vector2(1.3844496, 1.8943584)
+offset_transform_enabled = true
+mouse_filter = 1
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("1_8gbse")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxTexture_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_8htv4")
+theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
+theme_override_styles/disabled = SubResource("StyleBoxTexture_6pjs5")
+disabled = true
+text = " Share "
+
+[connection signal="pressed" from="BottomNav/HomeButton" to="." method="_on_home_button_pressed"]
+[connection signal="pressed" from="BottomNav/DexButton" to="." method="_on_dex_button_pressed"]
+[connection signal="pressed" from="BottomNav/TradeButton" to="." method="_on_trade_button_pressed"]
+[connection signal="pressed" from="BottomNav/BattleButton" to="." method="_on_battle_button_pressed"]
+[connection signal="pressed" from="BottomNav/StoryButton" to="." method="_on_story_button_pressed"]

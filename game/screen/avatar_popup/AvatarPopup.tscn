@@ -1,0 +1,107 @@
+[gd_scene format=3 uid="uid://c8v52gm8kaxk0"]
+
+[ext_resource type="Script" uid="uid://dd3cw21ojdhn2" path="res://game/screen/avatar_popup/AvatarPopup.gd" id="1_osrge"]
+[ext_resource type="Texture2D" uid="uid://cuwx0ruq3msso" path="res://assets/ui/ui_assets/AvatarSelectBorder.png" id="1_ymbbp"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="2_wf2p2"]
+[ext_resource type="Texture2D" uid="uid://bsehum4eyh8p6" path="res://assets/ui/Avatars/RedSoul.png" id="3_fu4oy"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8htv4"]
+bg_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[node name="AvatarPopup" type="Control" unique_id=73837007]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_osrge")
+
+[node name="BackgroundDimmer" type="ColorRect" parent="." unique_id=1081540470]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.3137255)
+
+[node name="PopupPanelContainer" type="PanelContainer" parent="BackgroundDimmer" unique_id=725686609]
+layout_mode = 0
+offset_left = 1128.0
+offset_top = 82.0
+offset_right = 1843.0
+offset_bottom = 789.0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_8htv4")
+
+[node name="VBoxContainer" type="Control" parent="BackgroundDimmer/PopupPanelContainer" unique_id=343810202]
+clip_contents = true
+layout_mode = 2
+mouse_filter = 1
+
+[node name="TitleLable" type="Label" parent="BackgroundDimmer/PopupPanelContainer/VBoxContainer" unique_id=2037473117]
+layout_mode = 0
+offset_right = 286.0
+offset_bottom = 59.0
+size_flags_horizontal = 0
+size_flags_vertical = 2
+mouse_filter = 1
+theme_override_fonts/font = ExtResource("2_wf2p2")
+theme_override_font_sizes/font_size = 26
+text = "
+    Choose your avatar"
+
+[node name="Frame" type="ColorRect" parent="BackgroundDimmer/PopupPanelContainer/VBoxContainer" unique_id=1236050967]
+custom_minimum_size = Vector2(8.3, 8.3)
+layout_mode = 0
+offset_top = 726.0
+offset_right = 7.8
+offset_bottom = 733.8
+size_flags_horizontal = 0
+size_flags_vertical = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(165, -540)
+offset_transform_scale = Vector2(30, 30)
+mouse_filter = 1
+
+[node name="CurrentAvatarPreview" type="TextureRect" parent="BackgroundDimmer/PopupPanelContainer/VBoxContainer" unique_id=826178698]
+custom_minimum_size = Vector2(7.8, 7.8)
+layout_mode = 0
+offset_top = 726.0
+offset_right = 7.8
+offset_bottom = 733.8
+size_flags_horizontal = 0
+size_flags_vertical = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(165, -540)
+offset_transform_scale = Vector2(30, 30)
+texture = ExtResource("3_fu4oy")
+expand_mode = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="BackgroundDimmer/PopupPanelContainer/VBoxContainer" unique_id=221763618]
+layout_mode = 0
+offset_left = 52.0
+offset_top = 331.0
+offset_right = 654.0
+offset_bottom = 689.0
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 2
+
+[node name="GridContainer" type="GridContainer" parent="BackgroundDimmer/PopupPanelContainer/VBoxContainer/ScrollContainer" unique_id=650933379]
+layout_mode = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 4
+columns = 3
+
+[node name="TextureRect" type="TextureRect" parent="BackgroundDimmer/PopupPanelContainer" unique_id=72370777]
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("1_ymbbp")
+expand_mode = 1
