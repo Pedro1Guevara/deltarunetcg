@@ -12,6 +12,7 @@ const RESUME_EFFECT := "effect"
 const RESUME_ON_PLAY := "on_play"
 const RESUME_SPARE_FIGHT := "spare_fight"
 const RESUME_TAKE_PRIZE := "take_prize"
+const RESUME_KNOCKOUT_POWER := "knockout_power"
 
 ## What the question is about, as data: the engine holds no words (Design Document 8.4). The
 ## kind, its details and its options are all a player needs to answer it, and all the game

@@ -27,13 +27,20 @@ const BINDING_KEYS := ["function", "args"]
 ## way, nor during setup.
 ## continuous: it applies while its function's requirements hold. Its function only names
 ## modifiers, which the engine reads when it needs to (ContinuousEffects).
+## play_condition: its owner may play the Darkner from their hand, or place it during setup, only
+## while its modifiers allow it (Pure Darkness). Its function only names modifiers
+## (PlayConditions).
+## on_knocked_out: when the Darkner is knocked out during its owner's opponent's turn, its owner
+## is asked whether to use it, before the knockout is resolved (Hazy Memory).
 ## Other timings are added when a card first needs one.
 const TIMING_KEY := "timing"
 const TIMING_ACTIVATED := "activated"
 const TIMING_ON_ATTACK_DAMAGE := "on_attack_damage"
 const TIMING_ON_PLAY := "on_play_from_hand"
 const TIMING_CONTINUOUS := "continuous"
-const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY, TIMING_CONTINUOUS]
+const TIMING_PLAY_CONDITION := "play_condition"
+const TIMING_ON_KNOCKED_OUT := "on_knocked_out"
+const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY, TIMING_CONTINUOUS, TIMING_PLAY_CONDITION, TIMING_ON_KNOCKED_OUT]
 ## When the effect of an Area applies. Every Area binding declares it, with per_turn.
 ## area_action: the player taking the turn may use it as an action ("Once during each player's
 ## turn, that player may...").
@@ -440,7 +447,7 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 		errors.append("%s: timing must be one of %s" % [where, TIMINGS])
 	if is_area and not AREA_TIMINGS.has(binding.get(TIMING_KEY)):
 		errors.append("%s: timing must be one of %s" % [where, AREA_TIMINGS])
-	var continuous: bool = (section == SECTION_POWERS or is_area) and binding.get(TIMING_KEY) == TIMING_CONTINUOUS
+	var continuous: bool = (section == SECTION_POWERS or is_area) and [TIMING_CONTINUOUS, TIMING_PLAY_CONDITION].has(binding.get(TIMING_KEY))
 	if timed:
 		var per_turn: Variant = binding.get(PER_TURN_KEY)
 		if not EffectTypes.literal_matches(EffectTypes.INT, per_turn) or int(per_turn) < 0:

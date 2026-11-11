@@ -1452,6 +1452,86 @@ func _run() -> void:
 	attack(g2_bench_swap, "Chaos Bomb")
 	expect(g2_bench_side.bench[0].damage == 20, "only Battling Darkners swap: Chaos Bomb's 20 on the Field are untouched")
 
+	print("== Pure Darkness, Hazy Memory")
+	var g3_titan := battle("titan_spawn", [], "jevil")
+	var g3_titaner := g3_titan.current_player()
+	g3_titaner.hand.assign(cards(["titan", "titan_spawn"]))
+	g3_titaner.bench.append(in_play("titan_spawn", []))
+	expect(not has_label(g3_titan, "Put Titan on the Field") and has_label(g3_titan, "Put Titan Spawn on the Field"), "Pure Darkness: with 2 Titan Spawn in play Titan cannot be played")
+	play(g3_titan, "Put Titan Spawn on the Field")
+	expect(play(g3_titan, "Put Titan on the Field") and g3_titaner.bench.back().card.name == "Titan", "with 3 in play, Battle Zone and Field together, it can")
+	var g3_setup := MatchEngine.new()
+	g3_setup.effects = library
+	g3_setup.start(deck({"titan": 4, "titan_spawn": 4, "darkness_energy": 22}), deck({"titan": 4, "titan_spawn": 4, "darkness_energy": 22}), rules, Rng.new(9))
+	var g3_never_first := true
+	var g3_bench_ok := true
+	while g3_setup.is_waiting_for_choice() and g3_setup.turn == 0:
+		var g3_chooser := g3_setup.players[g3_setup.choice_chooser()]
+		var g3_labels := option_labels(g3_setup)
+		if g3_setup.choice_kind() == PendingChoice.KIND_BATTLING_DARKNER and g3_labels.has("Make Titan the Battling Darkner"):
+			g3_never_first = false
+		if g3_setup.choice_kind() == PendingChoice.KIND_SETUP_BENCH:
+			var g3_spawns := ([g3_chooser.active] + g3_chooser.bench).filter(func(darkner: Variant) -> bool: return darkner != null and (darkner as CardInPlay).card.id == "titan_spawn").size()
+			if g3_labels.has("Put Titan on the Field") != (g3_spawns >= 3 and g3_chooser.hand.any(func(card: CardData) -> bool: return card.id == "titan")):
+				g3_bench_ok = false
+		var g3_pick := 0
+		for g3_index in g3_labels.size():
+			if g3_labels[g3_index] == "Put Titan Spawn on the Field":
+				g3_pick = g3_index
+				break
+			if g3_labels[g3_index].begins_with("Finish") or g3_labels[g3_index].begins_with("Draw 0"):
+				g3_pick = g3_index
+		g3_setup.apply({"type": "choose", "option": g3_pick})
+	expect(g3_never_first, "Titan is never offered as the Battling Darkner at setup")
+	expect(g3_bench_ok, "during setup it may go onto the Field only once 3 Titan Spawn are in play")
+	var g3_mulligan := MatchEngine.new()
+	g3_mulligan.effects = library
+	g3_mulligan.start(deck({"titan": 4, "titan_spawn": 1, "darkness_energy": 25}), test_deck(), rules, Rng.new(4))
+	var g3_mulligan_hand := g3_mulligan.players[0].hand
+	expect(g3_mulligan_hand.any(func(card: CardData) -> bool: return card.id == "titan_spawn"), "a hand whose only Basic Darkners are Titans is a mulligan: the hand kept has the Titan Spawn")
+
+	var g3_hazy := battle("jevil", ["chaos_energy"], "titan_spawn")
+	var g3_hazy_owner := 1 - g3_hazy.current_index
+	var g3_hazy_side := g3_hazy.opponent_player()
+	g3_hazy_side.tp = 4
+	g3_hazy_side.active.attached_energy.assign(cards(["darkness_energy"]))
+	g3_hazy_side.active.damage = 50
+	g3_hazy_side.bench.append_array([in_play("guei", []), in_play("koody", [])])
+	g3_hazy.apply({"type": "attack", "attack_index": 0})
+	expect(g3_hazy.choice_kind() == PendingChoice.KIND_USE_ABILITY and g3_hazy.choice_chooser() == g3_hazy_owner and prompt_of(g3_hazy) == "Use Hazy Memory?",
+			"Hazy Memory: knocked out during the opponent's turn, its owner is asked (%s)" % prompt_of(g3_hazy))
+	play(g3_hazy, "Use Hazy Memory (Titan Spawn)")
+	expect(g3_hazy_side.hand.any(func(card: CardData) -> bool: return card.id == "titan_spawn") and g3_hazy_side.tp == 3 and g3_hazy_side.discard.size() == 1 and g3_hazy_side.discard[0].id == "darkness_energy",
+			"for 25% TP Titan Spawn goes to the hand and its Energy to the discard pile")
+	expect(g3_hazy.players[1 - g3_hazy_owner].prizes.size() == 3, "it is still a knockout: the attacker took a Mercy Card")
+	expect(g3_hazy.choice_kind() == PendingChoice.KIND_PROMOTE and g3_hazy.choice_chooser() == g3_hazy_owner, "and its owner promotes a new Battling Darkner")
+	var g3_hazy_lines := log_lines(g3_hazy)
+	expect(g3_hazy_lines.has("Titan Spawn is knocked out") and g3_hazy_lines.has("  Titan Spawn goes back to its owner's hand; 1 attached card to the discard pile")
+			and g3_hazy_lines.count("Titan Spawn is knocked out") == 1, "the log tells the knockout once, then where it went")
+	var g3_declined := battle("jevil", ["chaos_energy"], "titan_spawn")
+	var g3_declined_side := g3_declined.opponent_player()
+	g3_declined_side.tp = 4
+	g3_declined_side.active.damage = 50
+	g3_declined_side.bench.append(in_play("guei", []))
+	g3_declined.apply({"type": "attack", "attack_index": 0})
+	play(g3_declined, "Don't use Hazy Memory")
+	expect(g3_declined_side.discard.any(func(card: CardData) -> bool: return card.id == "titan_spawn") and g3_declined_side.tp == 4, "declined, it is discarded as usual")
+	var g3_broke := battle("jevil", ["chaos_energy"], "titan_spawn")
+	g3_broke.opponent_player().tp = 0
+	g3_broke.opponent_player().active.damage = 50
+	g3_broke.opponent_player().bench.append(in_play("guei", []))
+	g3_broke.apply({"type": "attack", "attack_index": 0})
+	expect(g3_broke.choice_kind() != PendingChoice.KIND_USE_ABILITY, "without 25% TP it is not offered")
+	var g3_own := battle("titan_spawn", [], "jevil")
+	var g3_own_side := g3_own.current_player()
+	g3_own_side.tp = 4
+	g3_own_side.active.damage = 70
+	g3_own_side.bench.append(in_play("guei", []))
+	g3_own_side.hand.assign(cards(["koody"]))
+	play(g3_own, "Put Koody on the Field")
+	expect(g3_own.choice_kind() != PendingChoice.KIND_USE_ABILITY and g3_own_side.discard.any(func(card: CardData) -> bool: return card.id == "titan_spawn"),
+			"knocked out during its owner's own turn, it is not offered")
+
 	print("== picking Mercy Cards")
 	var mc_picked := battle("jevil", ["chaos_energy", "chaos_energy"], "koody")
 	var mc_picker := mc_picked.current_index

@@ -15,15 +15,19 @@ var _players: Array[PlayerState]
 var _rules: MatchRules
 var _rng: Rng
 var _log: MatchLog
+var _effects: EffectLibrary = null
 ## Remaining steps, in order: {"player": int, "step": "coin_call" | "active" | "bench" | "compensation", ...}
 var _steps: Array[Dictionary] = []
 
 
-func _init(players: Array[PlayerState], rules: MatchRules, rng: Rng, match_log: MatchLog) -> void:
+## effects: the card effects, for Darkners that can only be placed under a condition (Pure
+## Darkness), or null.
+func _init(players: Array[PlayerState], rules: MatchRules, rng: Rng, match_log: MatchLog, effects: EffectLibrary) -> void:
 	_players = players
 	_rules = rules
 	_rng = rng
 	_log = match_log
+	_effects = effects
 
 
 ## Deals both players from their decks and lays out the steps that will need answers.
@@ -58,7 +62,7 @@ func advance() -> PendingChoice:
 			"coin_call":
 				return _ask(index, PendingChoice.KIND_COIN_CALL, {}, [{"value": true}, {"value": false}])
 			"active":
-				var options := _basic_options(player.hand)
+				var options := _basic_options(player, player.hand)
 				if options.is_empty():
 					_steps.pop_front()
 					continue
@@ -70,7 +74,7 @@ func advance() -> PendingChoice:
 					for card: Variant in step["cards"] as Array:
 						if player.hand.has(card):
 							allowed.append(card as CardData)
-				var options := _basic_options(allowed)
+				var options := _basic_options(player, allowed)
 				if options.is_empty() or player.bench.size() >= _rules.bench_limit:
 					_steps.pop_front()
 					continue
@@ -131,14 +135,14 @@ func _deal_player(index: int, deck: Array[CardData]) -> PlayerState:
 		_rng.shuffle(player.deck)
 		for _i in _rules.hand_size:
 			player.draw_card()
-		if player.first_basic_pokemon_in_hand() != -1:
+		if not _basic_options(player, player.hand).is_empty():
 			break
 		player.mulligans += 1
 		_log.add(MatchEvent.MULLIGAN, index, {"attempt": attempt + 1})
 		player.deck.append_array(player.hand)
 		player.hand.clear()
 
-	if player.first_basic_pokemon_in_hand() == -1:
+	if _basic_options(player, player.hand).is_empty():
 		push_error("MatchSetup: player %d has no Basic Pokemon after %d attempts" % [index + 1, MAX_ATTEMPTS])
 
 	# Prizes come off the deck, so dealing them before the Active Pokemon is chosen from the
@@ -151,11 +155,13 @@ func _deal_player(index: int, deck: Array[CardData]) -> PlayerState:
 	return player
 
 
-func _basic_options(cards: Array[CardData]) -> Array:
+## The Basic Darkners among cards that player may place now, one option per card id. A hand
+## whose only Basic Darkners cannot be placed (only Titans) is a mulligan (Design Document 7.8).
+func _basic_options(player: PlayerState, cards: Array[CardData]) -> Array:
 	var options: Array = []
 	var offered: Array[String] = []
 	for card in cards:
-		if card.is_basic_pokemon() and not offered.has(card.id):
+		if card.is_basic_pokemon() and not offered.has(card.id) and PlayConditions.allows(_effects, player, card):
 			offered.append(card.id)
 			options.append({"value": card})
 	return options

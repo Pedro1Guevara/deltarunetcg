@@ -88,6 +88,29 @@ static func _power_ready(engine: MatchEngine, user: CardInPlay, power: PowerData
 	return _requirements_met(engine, binding, power_context(engine, user, EffectContext.KIND_POWER))
 
 
+## The on_knocked_out Abilities of a Darkner knocked out during its owner's opponent's turn
+## that its owner may use now (Hazy Memory: with 25% TP). Their player is the owner.
+static func knockout_powers(engine: MatchEngine, user: CardInPlay, owner_index: int) -> Array[PowerData]:
+	var ready: Array[PowerData] = []
+	for power in user.powers():
+		var binding := power_binding(engine, user, power)
+		if binding.get(EffectLibrary.TIMING_KEY) == EffectLibrary.TIMING_ON_KNOCKED_OUT \
+				and _requirements_met(engine, binding, owner_context(engine, user, owner_index)):
+			ready.append(power)
+	return ready
+
+
+## The context of an Ability its owner uses outside their own turn (Hazy Memory): its player is
+## the Darkner's owner.
+static func owner_context(engine: MatchEngine, user: CardInPlay, owner_index: int) -> EffectContext:
+	var context := _context(engine, EffectContext.KIND_TRIGGER)
+	context.source = user
+	context.player = engine.players[owner_index]
+	context.opponent = engine.players[1 - owner_index]
+	context.defender = context.opponent.active
+	return context
+
+
 ## An Area's binding is its effect while in play, not when played, so it never stops the Area
 ## from being played.
 static func trainer_requirements_met(engine: MatchEngine, card: CardData) -> bool:

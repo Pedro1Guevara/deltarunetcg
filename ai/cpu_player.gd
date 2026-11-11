@@ -403,6 +403,10 @@ func _effect_value(view: PlayerView, card_id: String, section: String, name: Str
 					delta = -(1.5 + 0.5 * me.active.attached_energy.size())
 			"spend_tp":
 				delta = -TP_WORTH * _amount(args, "amount")
+			"return_to_hand":
+				# A Darkner back in the hand instead of the discard pile can be played again.
+				if args.get("target") == EffectTypes.SELF:
+					delta = 2.0
 			"heal_benched":
 				for darkner in me.bench:
 					if darkner.damage > 0:

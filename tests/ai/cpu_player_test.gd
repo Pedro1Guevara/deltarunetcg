@@ -438,6 +438,15 @@ func _run() -> void:
 	shop_cpu.current_player().bench.append(in_play("jevil", []))
 	expect(decide(shop_cpu)["type"] == "play_trainer", "it casts Workshop to give a bare Jevil on its Field the Energy it lacks")
 
+	var hazy_cpu := battle("jevil", ["chaos_energy"], "titan_spawn")
+	hazy_cpu.opponent_player().tp = 4
+	hazy_cpu.opponent_player().active.damage = 50
+	hazy_cpu.opponent_player().bench.append(in_play("guei", []))
+	hazy_cpu.apply({"type": "attack", "attack_index": 0})
+	var hazy_answer := decide(hazy_cpu)
+	expect(hazy_cpu.choice_kind() == PendingChoice.KIND_USE_ABILITY and bool(hazy_cpu.choice_option(int(hazy_answer["option"]))["value"]),
+			"it uses Hazy Memory: Titan Spawn back in the hand is worth 25% TP")
+
 	print("== a cheaper knockout")
 	var melt_or_overrun := func(holy: int, koody_damage: int) -> Dictionary:
 		var energy: Array = []

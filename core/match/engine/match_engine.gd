@@ -40,6 +40,11 @@ var _triggers: Array[Dictionary] = []
 ## The Darkner just played from the hand and its Abilities still to be offered (on play).
 var _on_play_user: CardInPlay = null
 var _on_play_queue: Array[PowerData] = []
+## Knocked out Darkners whose on_knocked_out Abilities their owners are still to be offered,
+## before the knockouts resolve: {"darkner": CardInPlay, "owner": int}. Filled once per
+## resolution (_knockout_powers_found).
+var _knockout_power_queue: Array[Dictionary] = []
+var _knockout_powers_found := false
 var _turn_ends_after_promotions: bool = false
 ## This round so far, to play it again (MatchReplay).
 var _replay: MatchReplay = null
@@ -78,13 +83,15 @@ func start(deck_a: Array[CardData], deck_b: Array[CardData], match_rules: MatchR
 	_triggers.clear()
 	_on_play_user = null
 	_on_play_queue.clear()
+	_knockout_power_queue.clear()
+	_knockout_powers_found = false
 	_turn_ends_after_promotions = false
 	fighting = -1
 	extra_draws_next_round = [0, 0]
 	match_log = MatchLog.new(players)
 	operations = MatchOperations.new(players, _rng, match_log)
 	_knockouts = KnockoutResolver.new(players, match_log)
-	_setup = MatchSetup.new(players, rules, _rng, match_log)
+	_setup = MatchSetup.new(players, rules, _rng, match_log, effects)
 	_setup.deal(deck_a, deck_b)
 	_continue_setup(_setup.advance())
 
@@ -595,6 +602,8 @@ func _do_choose(option: int) -> void:
 				_end_turn(true)
 		PendingChoice.RESUME_TAKE_PRIZE:
 			_answer_prize(int(picked["value"]), choice.data)
+		PendingChoice.RESUME_KNOCKOUT_POWER:
+			_answer_knockout_power(bool(picked["value"]), choice.data)
 		PendingChoice.RESUME_SPARE_FIGHT:
 			_answer_spare_fight(choice.chooser, picked["value"] == PendingChoice.SPARE, choice.data)
 		PendingChoice.RESUME_RETREAT:
@@ -705,6 +714,29 @@ func _resolve_field_entries() -> void:
 ## Spare or to Fight. then says how the turn goes on once those questions are answered.
 func _resolve_knockouts(then: Dictionary) -> bool:
 	_resolve_field_entries()
+	# First, the owner of a Darkner knocked out during their opponent's turn may use its
+	# on_knocked_out Ability (Hazy Memory), one question each.
+	if not _knockout_powers_found:
+		_knockout_powers_found = true
+		_knockout_power_queue.clear()
+		for index in players.size():
+			if index == current_index:
+				continue
+			for darkner: CardInPlay in [players[index].active] + players[index].bench:
+				if darkner != null and darkner.is_knocked_out():
+					_knockout_power_queue.append({"darkner": darkner, "owner": index})
+	while not _knockout_power_queue.is_empty():
+		var next: Dictionary = _knockout_power_queue.pop_front()
+		var knocked := next["darkner"] as CardInPlay
+		var ready := EffectBindings.knockout_powers(self, knocked, int(next["owner"]))
+		if ready.is_empty():
+			continue
+		_pending = PendingChoice.new(int(next["owner"]), PendingChoice.KIND_USE_ABILITY, {"power": ready[0].name}, [
+			{"value": true, "shows": knocked},
+			{"value": false},
+		], PendingChoice.RESUME_KNOCKOUT_POWER, {"then": then, "darkner": knocked, "owner": int(next["owner"]), "power": ready[0]})
+		return false
+	_knockout_powers_found = false
 	var result := _knockouts.resolve(_opponent_index(), rules, fighting)
 	if result == KnockoutResolver.CHOOSING_PRIZES:
 		_pending = _knockouts.next_prize_choice(then)
@@ -728,6 +760,27 @@ func _settle_knockouts(result: int, then: Dictionary) -> bool:
 				[{"value": PendingChoice.SPARE}, {"value": PendingChoice.FIGHT}], PendingChoice.RESUME_SPARE_FIGHT, then)
 		return false
 	return true
+
+
+## The owner of a knocked out Darkner answered whether to use its on_knocked_out Ability. Used,
+## it resolves (Hazy Memory: 25% TP, the Darkner to the hand) and the knockout still counts;
+## then the knockouts resolve and the turn goes on.
+func _answer_knockout_power(used: bool, data: Dictionary) -> void:
+	var then := data["then"] as Dictionary
+	if used:
+		var knocked := data["darkner"] as CardInPlay
+		var owner := int(data["owner"])
+		var power := data["power"] as PowerData
+		match_log.add(MatchEvent.KNOCKED_OUT, owner, {"darkner": match_log.darkner(knocked)})
+		match_log.add(MatchEvent.POWER_USED, owner, {"darkner": match_log.darkner(knocked), "power": power.name, "timing": EffectLibrary.TIMING_ON_KNOCKED_OUT})
+		var binding := EffectBindings.power_binding(self, knocked, power)
+		if EffectBindings.run(self, binding, EffectBindings.owner_context(self, knocked, owner)) != null:
+			push_error("MatchEngine: %s asked a question while resolving on_knocked_out" % power.name)
+		var side := players[owner]
+		if side.active != knocked and not side.bench.has(knocked):
+			_knockouts.note_left_play(knocked, owner)
+	if _resolve_knockouts(then):
+		_go_on_after_knockouts(then)
 
 
 ## The next Mercy Card is picked; after the last one the knockouts settle and the turn goes on.

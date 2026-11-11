@@ -454,5 +454,21 @@
     "steps": [
       {"call": "swap_battling_weakness_resistance", "args": {}}
     ]
+  },
+  "playable_only_with_in_play": {
+    "params": { "card_id": "card_id", "count": "int" },
+    "steps": [
+      {"call": "play_only_with_in_play", "args": {"player": "$player", "card_id": "$card_id", "count": "$count"}}
+    ]
+  },
+  "spend_tp_then_return_self_to_hand": {
+    "params": { "tp": "int" },
+    "requires": [
+      {"check": "has_tp", "args": {"player": "$player", "amount": "$tp"}}
+    ],
+    "steps": [
+      {"call": "spend_tp", "args": {"player": "$player", "amount": "$tp"}},
+      {"call": "return_to_hand", "args": {"target": "$self"}}
+    ]
   }
 }

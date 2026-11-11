@@ -20,6 +20,10 @@ var _prize_queue: Array[int] = []
 ## players who lost their Battling Darkner.
 var _owners: Array[int] = []
 var _lost_battling: Array[int] = []
+## Darkners knocked out that an Ability took out of play before the knockouts resolved (Hazy
+## Memory): {"darkner": CardInPlay, "owner": int}. Still knockouts, so their Mercy Cards are
+## taken; their knockout was already logged.
+var _left_play: Array[Dictionary] = []
 
 
 func _init(players: Array[PlayerState], match_log: MatchLog) -> void:
@@ -60,10 +64,15 @@ func resolve(defender_index: int, rules: MatchRules, fighting: int) -> int:
 				owners.append(index)
 				if darkner == side.active:
 					lost_battling.append(index)
+	var logged := knocked_out.size()
+	for gone in _left_play:
+		knocked_out.append(gone["darkner"] as CardInPlay)
+		owners.append(int(gone["owner"]))
+	_left_play.clear()
 	if knocked_out.is_empty() and lost_battling.is_empty():
 		return MatchEngine.NO_WINNER
 
-	for position in knocked_out.size():
+	for position in logged:
 		var side := _players[owners[position]]
 		var darkner := knocked_out[position]
 		_log.add(MatchEvent.KNOCKED_OUT, owners[position], {"darkner": _log.darkner(darkner)})
@@ -127,6 +136,12 @@ func settle(rules: MatchRules, fighting: int) -> int:
 
 	_promotion_queue.assign(lost_battling)
 	return MatchEngine.NO_WINNER
+
+
+## A knocked out Darkner an Ability took out of play before resolve() (Hazy Memory): the next
+## resolve() counts it as a knockout without discarding it.
+func note_left_play(darkner: CardInPlay, owner: int) -> void:
+	_left_play.append({"darkner": darkner, "owner": owner})
 
 
 ## The player who chooses to Spare or to Fight after the last resolve(), or -1. Reading it clears it.

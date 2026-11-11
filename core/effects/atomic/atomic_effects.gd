@@ -173,6 +173,12 @@ const DECLARATIONS := {
 	"swap_battling_weakness_resistance": {
 		"role": ROLE_MODIFIER, "params": {}, "returns": "", "attack_only": false,
 	},
+	"play_only_with_in_play": {
+		"role": ROLE_MODIFIER, "params": {"player": "player", "card_id": "card_id", "count": "int"}, "returns": "", "attack_only": false,
+	},
+	"return_to_hand": {
+		"role": ROLE_EFFECT, "params": {"target": "pokemon"}, "returns": "int", "attack_only": false,
+	},
 	"in_battle_zone": {
 		"role": ROLE_CHECK, "params": {"target": "pokemon"}, "returns": "", "attack_only": false,
 	},
@@ -288,6 +294,8 @@ static func execute(name: String, context: EffectContext, args: Dictionary) -> V
 			return operations.discard_from_deck(milled, top)
 		"shuffle_into_deck":
 			return operations.shuffle_into_deck(args["target"] as CardInPlay)
+		"return_to_hand":
+			return operations.return_to_hand(args["target"] as CardInPlay)
 		"spend_tp":
 			var spender := args["player"] as PlayerState
 			if not operations.can_spend_tp(spender, int(args["amount"])):

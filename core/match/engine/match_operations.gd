@@ -131,6 +131,30 @@ func shuffle_into_deck(target: CardInPlay) -> int:
 	return cards.size()
 
 
+## Puts a Darkner in play into its owner's hand, with the cards under it; the cards attached to
+## it go to the discard pile (Hazy Memory). Its slot is left empty, as shuffle_into_deck()
+## leaves it. Returns how many cards went to the hand.
+func return_to_hand(target: CardInPlay) -> int:
+	var owner := owner_of(target)
+	if owner == null:
+		return 0
+	var returned_ref := _log.darkner(target)
+	var cards: Array[CardData] = []
+	cards.append_array(target.evolved_from)
+	cards.append(target.card)
+	var discarded := target.attached_energy.size()
+	owner.discard.append_array(target.attached_energy)
+	target.evolved_from.clear()
+	target.attached_energy.clear()
+	if owner.active == target:
+		owner.active = null
+	else:
+		owner.bench.erase(target)
+	owner.hand.append_array(cards)
+	_log.add(MatchEvent.DARKNER_RETURNED_TO_HAND, int(returned_ref["side"]), {"darkner": returned_ref, "count": cards.size(), "discarded": discarded})
+	return cards.size()
+
+
 ## An attack with no printed damage deals none, so nothing is logged for it.
 func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender

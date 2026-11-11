@@ -19,7 +19,8 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 			continue
 		offered[card.id] = true
 		if card.is_basic_pokemon():
-			if player.bench.size() < engine.rules.bench_limit and not ContinuousEffects.bench_from_hand_blocked(engine, player):
+			if player.bench.size() < engine.rules.bench_limit and not ContinuousEffects.bench_from_hand_blocked(engine, player) \
+					and PlayConditions.allows(engine.effects, player, card):
 				actions.append({
 					"type": "bench",
 					"hand_index": hand_index,

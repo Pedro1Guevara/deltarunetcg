@@ -165,11 +165,17 @@
   "titan": {
     "attacks": {
       "Reckless Shatter": {"function": "damage_then_discard_top_of_both_decks", "args": {"own_count": 1, "opponent_count": 2}}
+    },
+    "powers": {
+      "Pure Darkness": {"function": "playable_only_with_in_play", "args": {"card_id": "titan_spawn", "count": 3}, "timing": "play_condition", "per_turn": 0}
     }
   },
   "titan_spawn": {
     "attacks": {
       "Bump": {"function": "damage_then_opponent_switches_active", "args": {}}
+    },
+    "powers": {
+      "Hazy Memory": {"function": "spend_tp_then_return_self_to_hand", "args": {"tp": 1}, "timing": "on_knocked_out", "per_turn": 0}
     }
   },
   "addison": {
