@@ -1,6 +1,6 @@
 {
 	"deltarune_chaos": {
-		"name": "Chaos Test",
+		"name": "Jevil (test)",
 		"cards": {
 			"jevil": 4.0,
 			"old_man": 3.0,
@@ -11,7 +11,7 @@
 		}
 	},
 	"deltarune_holy": {
-		"name": "Holy Test",
+		"name": "Balthizard (test)",
 		"cards": {
 			"water_cooler": 4.0,
 			"miss_mizzle": 3.0,
@@ -21,7 +21,7 @@
 		}
 	},
 	"creative": {
-		"name": "Creative",
+		"name": "Hammer of Justice / Dummy",
 		"cards": {
 			"old_man": 4.0,
 			"hammer_of_justice": 3.0,
@@ -41,7 +41,7 @@
 		}
 	},
 	"holy": {
-		"name": "Holy",
+		"name": "Guei / Miss Mizzle",
 		"cards": {
 			"water_cooler": 2.0,
 			"miss_mizzle": 2.0,
@@ -65,7 +65,7 @@
 		}
 	},
 	"chaos": {
-		"name": "Chaos",
+		"name": "Jevil",
 		"cards": {
 			"jevil": 4.0,
 			"shuttah": 3.0,
@@ -88,7 +88,7 @@
 		}
 	},
 	"darkness": {
-		"name": "Darkness",
+		"name": "Titan / Dummy",
 		"cards": {
 			"titan_spawn": 4.0,
 			"titan": 2.0,

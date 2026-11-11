@@ -420,5 +420,39 @@
       {"call": "spend_tp", "args": {"player": "$player", "amount": "$tp"}},
       {"call": "search_deck", "args": {"player": "$player", "filter": "$filter", "count": "$count"}}
     ]
+  },
+  "damage_with_cost_less_per_benched": {
+    "params": { "per_benched": "int" },
+    "steps": [
+      {"call": "attack_cost_less_per_benched", "args": {"player": "$player", "per_benched": "$per_benched"}},
+      {"call": "attack_damage", "args": {"times": 1, "plus": 0}}
+    ]
+  },
+  "block_basic_bench_from_hand_while_battling": {
+    "params": {},
+    "requires": [
+      {"check": "in_battle_zone", "args": {"target": "$self"}}
+    ],
+    "steps": [
+      {"call": "cannot_bench_basic_from_hand", "args": {"player": "$player"}}
+    ]
+  },
+  "spell_cost_more_up_to": {
+    "params": { "up_to": "int", "amount": "int" },
+    "steps": [
+      {"call": "spell_tp_cost_more", "args": {"up_to": "$up_to", "amount": "$amount"}}
+    ]
+  },
+  "flee_cost_more_except_type": {
+    "params": { "amount": "int", "except_type": "energy_type" },
+    "steps": [
+      {"call": "retreat_cost_more_except_type", "args": {"amount": "$amount", "except_type": "$except_type"}}
+    ]
+  },
+  "battling_weakness_resistance_swapped": {
+    "params": {},
+    "steps": [
+      {"call": "swap_battling_weakness_resistance", "args": {}}
+    ]
   }
 }

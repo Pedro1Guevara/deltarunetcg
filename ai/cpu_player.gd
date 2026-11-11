@@ -347,7 +347,7 @@ func _trainer_value(view: PlayerView, card: CardData) -> float:
 	if card.trainer_type == CardData.TRAINER_STADIUM:
 		var replaces_theirs := view.stadium != null and view.stadium_owner != view.viewer
 		return maxf(value, 0.0) + (1.0 if replaces_theirs or view.stadium == null else -1.0)
-	return value - card.tp_cost * TP_WORTH
+	return value - int(view.spell_costs.get(card.id, card.tp_cost)) * TP_WORTH
 
 
 ## What a card's effect is worth to it now, in card worth (_worth()): each step adds what it

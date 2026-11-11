@@ -873,7 +873,7 @@ func _run() -> void:
 	dark.apply({"type": "end_turn", "label": "End turn"})
 	expect(has_label(dark, "Use Dark Zone (Area)"), "the opponent may use it during their own turn too")
 
-	var cold := battle("jevil", [], "tenna")
+	var cold := battle("jevil", [], "koody")
 	var cooler := cold.current_player()
 	cooler.hand.assign(cards(["cold_place", "guei", "balthizard"]))
 	cooler.deck.assign(cards(["water_cooler", "kris"]))
@@ -1360,6 +1360,97 @@ func _run() -> void:
 	g1_broke.current_player().hand.assign(cards(["addison"]))
 	play(g1_broke, "Put Addison on the Field")
 	expect(not g1_broke.is_waiting_for_choice(), "without 25% TP it is not offered")
+
+	print("== Showtime!, Captive Audience, Mewers Live, Cyber City, Second Sanctuary")
+	var g2_show := battle("tenna", ["fun_energy", "fun_energy"], "titan")
+	var g2_shower := g2_show.current_player()
+	g2_shower.bench.append_array([in_play("koody", []), in_play("guei", [])])
+	expect(not has_action(g2_show, "attack") and g2_show.attack_cost(g2_shower.active, g2_shower.active.attacks()[0]).size() == 3,
+			"Showtime!: 1 Energy less for each Darkner on the Field, so 3 with two there; 2 Fun is not enough")
+	g2_shower.bench.append(in_play("dummy", []))
+	var g2_shown := g2_show.opponent_player()
+	expect(g2_show.attack_cost(g2_shower.active, g2_shower.active.attacks()[0]) == ["Fun", "Fun"] and attack(g2_show, "Showtime!") and g2_shown.active.damage == 70,
+			"with three it costs 2 Fun, and Tenna attacks for 70")
+
+	var g2_captive := battle("tenna", [], "jevil")
+	var g2_captor := g2_captive.current_player()
+	g2_captor.hand.assign(cards(["guei", "miss_mizzle"]))
+	g2_captor.bench.append(in_play("water_cooler", []))
+	expect(not has_label(g2_captive, "Put Guei on the Field"), "Captive Audience: with Tenna in the Battle Zone no Basic Darkner goes onto the Field from the hand")
+	g2_captive.apply({"type": "end_turn"})
+	g2_captive.apply({"type": "end_turn"})
+	expect(not has_label(g2_captive, "Put Guei on the Field") and has_action(g2_captive, "evolve"), "evolving still does, on a later turn")
+	g2_captor.active = in_play("jevil", [])
+	g2_captor.bench.append(in_play("tenna", []))
+	expect(has_label(g2_captive, "Put Guei on the Field"), "with Tenna on the Field it does not apply")
+	var g2_their := battle("jevil", [], "tenna")
+	g2_their.current_player().hand.assign(cards(["guei"]))
+	expect(has_label(g2_their, "Put Guei on the Field"), "nor to the opponent of Tenna's owner")
+	var g2_setup := MatchEngine.new()
+	g2_setup.effects = library
+	g2_setup.start(deck({"tenna": 4, "guei": 4, "chaos_energy": 22}), deck({"tenna": 4, "guei": 4, "chaos_energy": 22}), rules, Rng.new(5))
+	var g2_tenna_set := false
+	var g2_setup_labels: Array[String] = []
+	while g2_setup.is_waiting_for_choice() and g2_setup.turn == 0:
+		var g2_options := option_labels(g2_setup)
+		if g2_setup.choice_kind() == PendingChoice.KIND_BATTLING_DARKNER and g2_options.has("Make Tenna the Battling Darkner"):
+			g2_tenna_set = true
+			play(g2_setup, "Make Tenna the Battling Darkner")
+			continue
+		if g2_setup.choice_kind() == PendingChoice.KIND_SETUP_BENCH and g2_tenna_set and g2_setup_labels.is_empty():
+			g2_setup_labels = g2_options
+		var g2_pick := 0
+		for g2_index in g2_options.size():
+			if g2_options[g2_index].begins_with("Finish") or g2_options[g2_index].begins_with("Draw 0"):
+				g2_pick = g2_index
+		g2_setup.apply({"type": "choose", "option": g2_pick})
+	expect(g2_tenna_set and g2_setup_labels.has("Put Guei on the Field"), "during setup Darkners go onto the Field as usual, Tenna or not (%s)" % [g2_setup_labels])
+
+	var g2_mewers := battle("jevil", [], "guei")
+	var g2_caster := g2_mewers.current_player()
+	g2_caster.tp = 4
+	g2_caster.hand.assign(cards(["rude_buster", "workshop"]))
+	g2_mewers.opponent_player().active.attached_energy.append(db.make("holy_energy"))
+	g2_caster.bench.append(in_play("dummy", []))
+	g2_caster.discard.assign(cards(["chaos_energy"]))
+	expect(has_label(g2_mewers, "Cast Rude Buster (25% TP)") and has_label(g2_mewers, "Cast Workshop (50% TP)"), "without Mewers Live: 25% and 50%")
+	g2_mewers.stadium = db.make("mewers_live")
+	g2_mewers.stadium_owner = 1 - g2_mewers.current_index
+	expect(has_label(g2_mewers, "Cast Rude Buster (50% TP)") and has_label(g2_mewers, "Cast Workshop (75% TP)"), "Mewers Live: each costs 25% more, and says so")
+	play(g2_mewers, "Cast Workshop (75% TP)")
+	expect(g2_caster.tp == 1, "casting Workshop takes 75%")
+	g2_caster.tp = 1
+	expect(not has_action(g2_mewers, "play_trainer"), "Rude Buster cannot be cast with 25% left")
+
+	var g2_cyber := battle("tenna", [], "jevil")
+	var g2_cyber_side := g2_cyber.current_player()
+	g2_cyber_side.bench.append(in_play("addison", []))
+	expect(g2_cyber.retreat_cost(g2_cyber_side.active).size() == 2 and g2_cyber.retreat_cost(g2_cyber_side.bench[0]).size() == 1, "Flee costs as printed: Tenna 2, Addison 1")
+	g2_cyber.stadium = db.make("cyber_city")
+	g2_cyber.stadium_owner = g2_cyber.current_index
+	expect(g2_cyber.retreat_cost(g2_cyber_side.active).size() == 3 and g2_cyber.retreat_cost(g2_cyber_side.bench[0]).size() == 1,
+			"Cyber City: 1 more for Tenna, none more for Addison, an Electric Darkner")
+	g2_cyber_side.active.attached_energy.assign(cards(["fun_energy", "fun_energy"]))
+	expect(not has_action(g2_cyber, "retreat"), "so Tenna cannot flee with 2 Energy")
+
+	var g2_swap := battle("jevil", ["chaos_energy"], "guei")
+	var g2_swapped := g2_swap.opponent_player()
+	g2_swap.stadium = db.make("second_sanctuary")
+	g2_swap.stadium_owner = g2_swap.current_index
+	g2_swapped.bench.append(in_play("balthizard", []))
+	attack(g2_swap, "Slash")
+	expect(g2_swapped.active.damage == 40, "Second Sanctuary: Guei resists Chaos, so Slash does 20 + 20 to it (%d)" % g2_swapped.active.damage)
+	var g2_plain := battle("jevil", ["chaos_energy"], "guei")
+	var g2_unswapped := g2_plain.opponent_player()
+	attack(g2_plain, "Slash")
+	expect(g2_unswapped.active.damage == 0, "without it, 20 - 20")
+	var g2_bench_swap := battle("jevil", ["chaos_energy", "chaos_energy"], "koody")
+	var g2_bench_side := g2_bench_swap.opponent_player()
+	g2_bench_swap.stadium = db.make("second_sanctuary")
+	g2_bench_swap.stadium_owner = g2_bench_swap.current_index
+	g2_bench_side.bench.append(in_play("guei", []))
+	attack(g2_bench_swap, "Chaos Bomb")
+	expect(g2_bench_side.bench[0].damage == 20, "only Battling Darkners swap: Chaos Bomb's 20 on the Field are untouched")
 
 	print("== picking Mercy Cards")
 	var mc_picked := battle("jevil", ["chaos_energy", "chaos_energy"], "koody")

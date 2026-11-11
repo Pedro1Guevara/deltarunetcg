@@ -41,7 +41,7 @@ const TIMINGS := [TIMING_ACTIVATED, TIMING_ON_ATTACK_DAMAGE, TIMING_ON_PLAY, TIM
 ## during their turn, from the hand or the deck; $subject is that Darkner.
 const TIMING_AREA_ACTION := "area_action"
 const TIMING_ON_PUT_ONTO_FIELD := "on_put_onto_field"
-const AREA_TIMINGS := [TIMING_AREA_ACTION, TIMING_ON_PUT_ONTO_FIELD]
+const AREA_TIMINGS := [TIMING_AREA_ACTION, TIMING_ON_PUT_ONTO_FIELD, TIMING_CONTINUOUS]
 ## How many times its owner may use an Ability with this name during one turn, counting every
 ## copy in play together ("You can't use more than 1 Way of the Worm ability during your turn").
 ## Every Ability binding declares it; 0 means no limit.
@@ -440,7 +440,7 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 		errors.append("%s: timing must be one of %s" % [where, TIMINGS])
 	if is_area and not AREA_TIMINGS.has(binding.get(TIMING_KEY)):
 		errors.append("%s: timing must be one of %s" % [where, AREA_TIMINGS])
-	var continuous: bool = section == SECTION_POWERS and binding.get(TIMING_KEY) == TIMING_CONTINUOUS
+	var continuous: bool = (section == SECTION_POWERS or is_area) and binding.get(TIMING_KEY) == TIMING_CONTINUOUS
 	if timed:
 		var per_turn: Variant = binding.get(PER_TURN_KEY)
 		if not EffectTypes.literal_matches(EffectTypes.INT, per_turn) or int(per_turn) < 0:
@@ -451,8 +451,8 @@ func _validate_binding(where: String, card_id: String, section: String, printed_
 		return
 	if _invalid_functions.has(function_name):
 		errors.append("%s: function '%s' has errors" % [where, function_name])
-	if continuous != is_modifier_function(function_name):
-		errors.append("%s: a continuous Ability needs a function that only names modifiers, and only it may use one" % where)
+	if timed and continuous != is_modifier_function(function_name):
+		errors.append("%s: a continuous Ability or Area needs a function that only names modifiers, and only it may use one" % where)
 
 	var kind := str(SECTION_KINDS[section])
 	if kind != EffectContext.KIND_ATTACK and is_attack_only(function_name):

@@ -184,5 +184,22 @@
         "per_turn": 1
       }
     }
+  },
+  "tenna": {
+    "attacks": {
+      "Showtime!": {"function": "damage_with_cost_less_per_benched", "args": {"per_benched": 1}}
+    },
+    "powers": {
+      "Captive Audience": {"function": "block_basic_bench_from_hand_while_battling", "args": {}, "timing": "continuous", "per_turn": 0}
+    }
+  },
+  "mewers_live": {
+    "trainer": {"function": "spell_cost_more_up_to", "args": {"up_to": 2, "amount": 1}, "timing": "continuous", "per_turn": 0}
+  },
+  "cyber_city": {
+    "trainer": {"function": "flee_cost_more_except_type", "args": {"amount": 1, "except_type": "Electric"}, "timing": "continuous", "per_turn": 0}
+  },
+  "second_sanctuary": {
+    "trainer": {"function": "battling_weakness_resistance_swapped", "args": {}, "timing": "continuous", "per_turn": 0}
   }
 }

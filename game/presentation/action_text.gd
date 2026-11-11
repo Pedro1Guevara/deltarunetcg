@@ -31,7 +31,8 @@ static func label(view: PlayerView, action: Dictionary, cards: CardDatabase) -> 
 			var slot := int(action["slot"])
 			return "Attach %s to %s (%s)" % [me.hand[int(action["hand_index"])].name, _in_play(me, slot).card.name, slot_name(slot)]
 		"play_trainer":
-			return trainer_label(me.hand[int(action["hand_index"])])
+			var played := me.hand[int(action["hand_index"])]
+			return trainer_label(played, int(view.spell_costs.get(played.id, played.tp_cost)))
 		"evolve":
 			var slot := int(action["slot"])
 			return "Evolve %s into %s (%s)" % [_in_play(me, slot).card.name, me.hand[int(action["hand_index"])].name, slot_name(slot)]
@@ -54,15 +55,15 @@ static func label(view: PlayerView, action: Dictionary, cards: CardDatabase) -> 
 
 
 ## Playing an ACT card: "Play X (Item)", "Play X (Lightner)", "Play X (Area)", "Cast X (25% TP)".
-## A Spell shows its printed TP cost, which is its cost while no card changes it.
-static func trainer_label(card: CardData) -> String:
+## A Spell shows tp_cost, what casting it costs now in quarters (PlayerView.spell_costs).
+static func trainer_label(card: CardData, tp_cost: int) -> String:
 	match card.trainer_type:
 		CardData.TRAINER_SUPPORTER:
 			return "Play %s (Lightner)" % card.name
 		CardData.TRAINER_STADIUM:
 			return "Play %s (Area)" % card.name
 		CardData.TRAINER_SPELL:
-			return "Cast %s (%d%% TP)" % [card.name, card.tp_cost * 25]
+			return "Cast %s (%d%% TP)" % [card.name, tp_cost * 25]
 	return "Play %s (Item)" % card.name
 
 

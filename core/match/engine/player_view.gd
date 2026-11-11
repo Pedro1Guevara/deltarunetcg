@@ -58,6 +58,9 @@ var choice_details: Dictionary = {}
 var choice_options: Array[Dictionary] = []
 ## Cards shown to the chooser, such as their deck during a search.
 var revealed: Array[CardData] = []
+## What each Spell in the viewer's hand costs to cast now, in quarters of TP, by card id: its
+## printed cost as the continuous effects change it (Mewers Live).
+var spell_costs: Dictionary = {}
 ## The viewer's legal actions: empty unless they are the one to act.
 var legal_actions: Array[Dictionary] = []
 

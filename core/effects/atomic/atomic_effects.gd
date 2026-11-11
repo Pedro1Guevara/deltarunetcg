@@ -158,6 +158,21 @@ const DECLARATIONS := {
 	"prevent_attack_damage_to_bench": {
 		"role": ROLE_MODIFIER, "params": {"player": "player"}, "returns": "", "attack_only": false,
 	},
+	"attack_cost_less_per_benched": {
+		"role": ROLE_MODIFIER, "params": {"player": "player", "per_benched": "int"}, "returns": "", "attack_only": false,
+	},
+	"cannot_bench_basic_from_hand": {
+		"role": ROLE_MODIFIER, "params": {"player": "player"}, "returns": "", "attack_only": false,
+	},
+	"spell_tp_cost_more": {
+		"role": ROLE_MODIFIER, "params": {"up_to": "int", "amount": "int"}, "returns": "", "attack_only": false,
+	},
+	"retreat_cost_more_except_type": {
+		"role": ROLE_MODIFIER, "params": {"amount": "int", "except_type": "energy_type"}, "returns": "", "attack_only": false,
+	},
+	"swap_battling_weakness_resistance": {
+		"role": ROLE_MODIFIER, "params": {}, "returns": "", "attack_only": false,
+	},
 	"in_battle_zone": {
 		"role": ROLE_CHECK, "params": {"target": "pokemon"}, "returns": "", "attack_only": false,
 	},

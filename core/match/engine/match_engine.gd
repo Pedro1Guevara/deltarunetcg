@@ -137,6 +137,9 @@ func view_for(player_index: int) -> PlayerView:
 		side.index = index
 		if index == player_index:
 			side.hand = player.hand.duplicate()
+			for card in player.hand:
+				if card.trainer_type == CardData.TRAINER_SPELL:
+					view.spell_costs[card.id] = spell_cost(card)
 		side.hand_size = player.hand.size()
 		side.deck_size = player.deck.size()
 		side.prize_count = player.prizes.size()
@@ -763,26 +766,25 @@ func _go_on_after_knockouts(then: Dictionary) -> void:
 
 
 # --- Effective costs --------------------------------------------------------------------
-# Legality reads these, never a printed cost (Design Document 5). Today each returns the
-# printed cost; the continuous-effects layer will change them (Mewers Live, Cyber City,
-# Showtime!).
+# Legality reads these, never a printed cost (Design Document 5): the continuous-effects layer
+# changes them (Showtime!, Cyber City, Mewers Live).
 
 ## The Energy an attack costs this Darkner now.
-func attack_cost(_attacker: CardInPlay, attack: AttackData) -> Array[String]:
-	return attack.cost.duplicate()
+func attack_cost(attacker: CardInPlay, attack: AttackData) -> Array[String]:
+	return ContinuousEffects.attack_cost(self, attacker, attack)
 
 
 ## The Energy fleeing costs this Darkner now, one Colorless per unit.
 func retreat_cost(pokemon: CardInPlay) -> Array[String]:
 	var cost: Array[String] = []
-	for _i in pokemon.base_card().retreat_cost:
+	for _i in pokemon.base_card().retreat_cost + ContinuousEffects.retreat_cost_more(self, pokemon):
 		cost.append(CardTypes.COLORLESS)
 	return cost
 
 
 ## The TP, in quarters, casting this Spell costs now.
 func spell_cost(spell: CardData) -> int:
-	return spell.tp_cost
+	return ContinuousEffects.spell_cost(self, spell)
 
 
 ## The Darkner at a slot: -1 is the Battle Zone, 0 and up are Field positions.

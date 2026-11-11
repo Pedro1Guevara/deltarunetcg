@@ -136,7 +136,11 @@ func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
 	if defender == null or base_damage <= 0 or _attack_damage_prevented(context, defender):
 		return 0
-	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.base_card(), base_damage), DAMAGE_ATTACK)
+	var defender_owner := owner_of(defender)
+	var swapped := defender_owner != null and defender_owner.active == defender and ContinuousEffects.swaps_weakness_resistance(context.engine)
+	var dealt := Damage.apply_modifiers_swapped(context.source.card, defender.base_card(), base_damage) if swapped \
+			else Damage.apply_modifiers(context.source.card, defender.base_card(), base_damage)
+	return _apply_damage(defender, dealt, DAMAGE_ATTACK)
 
 
 ## Whether a continuous effect prevents attack damage to target, logging which one.
