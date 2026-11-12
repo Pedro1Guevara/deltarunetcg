@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://lfgxc8esbcp1"
-path="res://.godot/imported/FightingEnergy.png-51678d2aaabdd2267ffc4b396184bd57.ctex"
+uid="uid://cwigasni27yix"
+path="res://.godot/imported/ACT.png-c06cd3cbc94a64888bda545709689393.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/FightingEnergy.png"
-dest_files=["res://.godot/imported/FightingEnergy.png-51678d2aaabdd2267ffc4b396184bd57.ctex"]
+source_file="res://assets/ui/energy/ACT.png"
+dest_files=["res://.godot/imported/ACT.png-c06cd3cbc94a64888bda545709689393.ctex"]
 
 [params]
 

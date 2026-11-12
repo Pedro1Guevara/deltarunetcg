@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mjui8147yjed"
-path="res://.godot/imported/DarknessEnergy.png-e79a059997e9d1537a197c719a024905.ctex"
+uid="uid://cq755ckyxhhod"
+path="res://.godot/imported/ABILITY.png-6cfcba2fb34d239368c4fffdcbf98f05.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/DarknessEnergy.png"
-dest_files=["res://.godot/imported/DarknessEnergy.png-e79a059997e9d1537a197c719a024905.ctex"]
+source_file="res://assets/ui/energy/ABILITY.png"
+dest_files=["res://.godot/imported/ABILITY.png-6cfcba2fb34d239368c4fffdcbf98f05.ctex"]
 
 [params]
 

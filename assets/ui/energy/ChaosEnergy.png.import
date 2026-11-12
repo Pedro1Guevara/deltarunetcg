@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://k0k021r5yqlf"
-path="res://.godot/imported/CreativeEnergy.png-b670b7d3f73f7187aa27e9d2a288df41.ctex"
+uid="uid://dn7bd2dhpf7nj"
+path="res://.godot/imported/ChaosEnergy.png-59e7f35ba068d5043740b3717e5cd2ff.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/CreativeEnergy.png"
-dest_files=["res://.godot/imported/CreativeEnergy.png-b670b7d3f73f7187aa27e9d2a288df41.ctex"]
+source_file="res://assets/ui/energy/ChaosEnergy.png"
+dest_files=["res://.godot/imported/ChaosEnergy.png-59e7f35ba068d5043740b3717e5cd2ff.ctex"]
 
 [params]
 

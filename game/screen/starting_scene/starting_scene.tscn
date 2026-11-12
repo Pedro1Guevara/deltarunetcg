@@ -1,16 +1,69 @@
 [gd_scene format=3 uid="uid://cpuodim48ti2s"]
 
 [ext_resource type="Script" uid="uid://cfbeqg2hbptio" path="res://game/screen/starting_scene/starting_scene.gd" id="1_ogc2t"]
-[ext_resource type="Texture2D" uid="uid://bvn7h1060mgr7" path="res://assets/ui/ui_assets/GameTitleTransparent.png" id="2_5hqqx"]
+[ext_resource type="Texture2D" uid="uid://b8xi3sv3l0okx" path="res://assets/ui/ui_assets/FountainSpriteSheet.png" id="2_5ayw8"]
 [ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="2_ogc2t"]
+[ext_resource type="Texture2D" uid="uid://bb604toqsd2bm" path="res://assets/ui/ui_assets/GameNameWithBorder.png" id="3_01eag"]
 [ext_resource type="Texture2D" uid="uid://b3ix7knarbuxo" path="res://assets/ui/ui_assets/Base.png" id="3_gaw06"]
+[ext_resource type="Texture2D" uid="uid://cxagl7kqj3d3o" path="res://assets/ui/ui_assets/DTCG_ONLINE_Logo.png" id="3_wjucs"]
 [ext_resource type="Texture2D" uid="uid://b73l8hmne83tb" path="res://assets/ui/ui_assets/BaseSelect.png" id="4_ve2en"]
 [ext_resource type="Texture2D" uid="uid://cuxntcbj5ruhc" path="res://assets/ui/ui_assets/YouTubeLogo.png" id="6_x2lv2"]
 [ext_resource type="Script" uid="uid://bvm0snq81toxt" path="res://game/screen/starting_scene/ExternalLinks/youtube_link.gd" id="7_5hqqx"]
 [ext_resource type="Texture2D" uid="uid://cdxyeoaf3mcv8" path="res://assets/ui/ui_assets/DiscordLogo.png" id="7_vx54s"]
 [ext_resource type="Texture2D" uid="uid://bilnt138tmc51" path="res://assets/ui/ui_assets/TwitterXLogo.jpg" id="8_kku1n"]
+[ext_resource type="Texture2D" uid="uid://cn3pnyixphhrs" path="res://assets/ui/ui_assets/Mail.png" id="8_yx1ua"]
 [ext_resource type="Script" uid="uid://dygpfax4n2mx5" path="res://game/screen/starting_scene/ExternalLinks/discord_link.gd" id="9_5ayw8"]
 [ext_resource type="Script" uid="uid://deiy7ws5un6dj" path="res://game/screen/starting_scene/ExternalLinks/twitter_link.gd" id="11_wjucs"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wjucs"]
+atlas = ExtResource("2_5ayw8")
+region = Rect2(0, 0, 1920, 1080)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_01eag"]
+atlas = ExtResource("2_5ayw8")
+region = Rect2(1920, 0, 1920, 1080)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_yx1ua"]
+atlas = ExtResource("2_5ayw8")
+region = Rect2(0, 1080, 1920, 1080)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lwsg2"]
+atlas = ExtResource("2_5ayw8")
+region = Rect2(1920, 1080, 1920, 1080)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mc31w"]
+atlas = ExtResource("2_5ayw8")
+region = Rect2(0, 2160, 1920, 1080)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_we0ic"]
+atlas = ExtResource("2_5ayw8")
+region = Rect2(1920, 2160, 1920, 1080)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_8htv4"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wjucs")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_01eag")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_yx1ua")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lwsg2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mc31w")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_we0ic")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_033pi"]
 texture = ExtResource("3_gaw06")
@@ -32,6 +85,48 @@ texture = ExtResource("4_ve2en")
 expand_margin_top = 10.0
 expand_margin_bottom = 10.0
 
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_id3uy"]
+texture = ExtResource("3_gaw06")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_tnel0"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ma7ay"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_iu6h8"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_dxg5c"]
+texture = ExtResource("3_gaw06")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ki5vh"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b4ck3"]
+texture = ExtResource("4_ve2en")
+expand_margin_top = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_lwosr"]
+texture = ExtResource("4_ve2en")
+expand_margin_left = 10.0
+expand_margin_top = 5.0
+expand_margin_right = 10.0
+expand_margin_bottom = 5.0
+
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_rutrf"]
 texture = ExtResource("3_gaw06")
 expand_margin_top = 10.0
@@ -52,33 +147,17 @@ texture = ExtResource("4_ve2en")
 expand_margin_top = 10.0
 expand_margin_bottom = 10.0
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_dxg5c"]
-texture = ExtResource("3_gaw06")
-expand_margin_left = 10.0
-expand_margin_top = 5.0
-expand_margin_right = 10.0
-expand_margin_bottom = 5.0
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_wjucs"]
+texture = ExtResource("8_yx1ua")
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ki5vh"]
-texture = ExtResource("4_ve2en")
-expand_margin_left = 10.0
-expand_margin_top = 5.0
-expand_margin_right = 10.0
-expand_margin_bottom = 5.0
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_memfa"]
+texture = ExtResource("8_yx1ua")
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b4ck3"]
-texture = ExtResource("4_ve2en")
-expand_margin_left = 10.0
-expand_margin_top = 5.0
-expand_margin_right = 10.0
-expand_margin_bottom = 5.0
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_0inee"]
+texture = ExtResource("8_yx1ua")
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_lwosr"]
-texture = ExtResource("4_ve2en")
-expand_margin_left = 10.0
-expand_margin_top = 5.0
-expand_margin_right = 10.0
-expand_margin_bottom = 5.0
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_1y3mf"]
+texture = ExtResource("8_yx1ua")
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_qu24l"]
 texture = ExtResource("6_x2lv2")
@@ -120,6 +199,22 @@ texture = ExtResource("8_kku1n")
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7o16j"]
 texture = ExtResource("8_kku1n")
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_033pi"]
+bg_color = Color(0.93333334, 0, 0.023529412, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3gsa5"]
+bg_color = Color(0.6156863, 0, 0.007843138, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8htv4"]
+bg_color = Color(0.6156863, 0, 0.007843138, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yo1j3"]
+bg_color = Color(0.6156863, 0, 0.007843138, 1)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vd2v8"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vxkl8"]
+
 [node name="StartingScene" type="Control" unique_id=627057487]
 layout_mode = 3
 anchors_preset = 15
@@ -138,13 +233,35 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
+[node name="Fountain" type="Sprite2D" parent="." unique_id=802453683]
+
+[node name="animation" type="AnimatedSprite2D" parent="Fountain" unique_id=861043698]
+position = Vector2(961, 540)
+sprite_frames = SubResource("SpriteFrames_8htv4")
+autoplay = "default"
+frame_progress = 0.12628888
+speed_scale = 2.0
+metadata/_edit_lock_ = true
+
 [node name="GameTitle" type="TextureRect" parent="." unique_id=1102272399]
 layout_mode = 0
-offset_left = 394.0
+offset_left = 371.0
 offset_top = -324.0
-offset_right = 1574.0
+offset_right = 1553.0
 offset_bottom = 811.0
-texture = ExtResource("2_5hqqx")
+texture = ExtResource("3_01eag")
+expand_mode = 1
+
+[node name="GameLogo" type="TextureRect" parent="." unique_id=1784481559]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 7.0
+offset_top = -95.0
+offset_right = 113.0
+grow_vertical = 0
+texture = ExtResource("3_wjucs")
 expand_mode = 1
 
 [node name="MidButtons" type="VBoxContainer" parent="." unique_id=1238456098]
@@ -154,10 +271,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -263.0
-offset_top = -43.0
-offset_right = 267.0
-offset_bottom = 355.0
+offset_left = -246.0
+offset_top = -98.0
+offset_right = 246.0
+offset_bottom = 289.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -174,13 +291,39 @@ theme_override_styles/hover = SubResource("StyleBoxTexture_3gsa5")
 theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_yo1j3")
 text = "PLAY"
 
+[node name="OptionsButton" type="Button" parent="MidButtons" unique_id=1542639370]
+layout_mode = 2
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 80
+theme_override_styles/normal = SubResource("StyleBoxTexture_id3uy")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_tnel0")
+theme_override_styles/hover = SubResource("StyleBoxTexture_ma7ay")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_iu6h8")
+text = "OPTIONS"
+
+[node name="CreditsButton" type="Button" parent="MidButtons" unique_id=1694677999]
+layout_mode = 2
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 80
+theme_override_styles/normal = SubResource("StyleBoxTexture_dxg5c")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_ki5vh")
+theme_override_styles/hover = SubResource("StyleBoxTexture_b4ck3")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_lwosr")
+text = "CREDITS"
+
 [node name="ExitButton" type="Button" parent="MidButtons" unique_id=312740949]
 layout_mode = 2
 theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
 theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
 theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
 theme_override_fonts/font = ExtResource("2_ogc2t")
-theme_override_font_sizes/font_size = 90
+theme_override_font_sizes/font_size = 80
 theme_override_styles/normal = SubResource("StyleBoxTexture_rutrf")
 theme_override_styles/pressed = SubResource("StyleBoxTexture_tvdex")
 theme_override_styles/hover = SubResource("StyleBoxTexture_7063l")
@@ -194,47 +337,38 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -162.0
+offset_left = -1798.0
 offset_top = -41.0
+offset_right = -1522.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_fonts/font = ExtResource("2_ogc2t")
 theme_override_font_sizes/font_size = 35
-text = "Ver. 1.0"
-
-[node name="CreditsButton" type="Button" parent="." unique_id=1694677999]
-layout_mode = 0
-offset_left = 26.0
-offset_top = 13.0
-offset_right = 236.0
-offset_bottom = 68.0
-theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
-theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
-theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
-theme_override_fonts/font = ExtResource("2_ogc2t")
-theme_override_font_sizes/font_size = 45
-theme_override_styles/normal = SubResource("StyleBoxTexture_dxg5c")
-theme_override_styles/pressed = SubResource("StyleBoxTexture_ki5vh")
-theme_override_styles/hover = SubResource("StyleBoxTexture_b4ck3")
-theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_lwosr")
-text = "Credits"
+text = "Ver. 1.3"
 
 [node name="LearnMoreStuff" type="HBoxContainer" parent="." unique_id=995788226]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 13.0
+offset_left = 1600.0
 offset_top = -72.0
-offset_right = 1344.0
+offset_right = 1911.0
 offset_bottom = -8.0
 grow_vertical = 0
 
-[node name="ProjectPromo" type="Label" parent="LearnMoreStuff" unique_id=340220477]
+[node name="NewsButton" type="Button" parent="LearnMoreStuff" unique_id=942962070]
 layout_mode = 2
+theme_override_colors/font_pressed_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 0.7764706, 0, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 0.7764706, 0, 1)
 theme_override_fonts/font = ExtResource("2_ogc2t")
-theme_override_font_sizes/font_size = 35
-text = "Learn more about the project:"
+theme_override_font_sizes/font_size = 45
+theme_override_styles/normal = SubResource("StyleBoxTexture_wjucs")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_memfa")
+theme_override_styles/hover = SubResource("StyleBoxTexture_0inee")
+theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_1y3mf")
+text = "   "
 
 [node name="YoutubeLink" type="Button" parent="LearnMoreStuff" unique_id=1476939377]
 layout_mode = 2
@@ -263,9 +397,41 @@ theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_7o16j")
 text = "                "
 script = ExtResource("11_wjucs")
 
+[node name="PlayerDataResetButton" type="Button" parent="." unique_id=1919970251]
+layout_mode = 0
+offset_left = 1428.0
+offset_top = 694.0
+offset_right = 1828.0
+offset_bottom = 807.0
+theme_override_colors/font_disabled_color = Color(0.8745098, 0.8745098, 0.8745098, 0)
+theme_override_colors/icon_disabled_color = Color(0.8745098, 0.8745098, 0.8745098, 0)
+theme_override_fonts/font = ExtResource("2_ogc2t")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxFlat_033pi")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_3gsa5")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8htv4")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_yo1j3")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_vd2v8")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_vxkl8")
+text = "Self Destruction
+Button :D"
+
+[node name="SelfDestructiveLabel" type="Label" parent="PlayerDataResetButton" unique_id=533981620]
+layout_mode = 0
+offset_left = 3.0
+offset_top = -90.0
+offset_right = 399.0
+offset_bottom = -18.0
+theme_override_font_sizes/font_size = 20
+text = "This button resets all of PlayerData.gd
+Disable it in Public Playtests"
+horizontal_alignment = 1
+
 [connection signal="pressed" from="MidButtons/PlayButton" to="." method="_on_play_button_pressed"]
+[connection signal="pressed" from="MidButtons/CreditsButton" to="." method="_on_credits_button_pressed"]
 [connection signal="pressed" from="MidButtons/ExitButton" to="." method="_on_exit_button_pressed"]
-[connection signal="pressed" from="CreditsButton" to="." method="_on_credits_button_pressed"]
+[connection signal="pressed" from="LearnMoreStuff/NewsButton" to="." method="_on_news_button_pressed"]
 [connection signal="button_down" from="LearnMoreStuff/YoutubeLink" to="LearnMoreStuff/YoutubeLink" method="_on_button_down"]
 [connection signal="button_down" from="LearnMoreStuff/DiscordLink" to="LearnMoreStuff/DiscordLink" method="_on_button_down"]
 [connection signal="button_down" from="LearnMoreStuff/TwitterLink" to="LearnMoreStuff/TwitterLink" method="_on_button_down"]
+[connection signal="pressed" from="PlayerDataResetButton" to="." method="_on_player_data_reset_button_pressed"]

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bxnldvhukdlj0"
-path="res://.godot/imported/FlowerEnergy.png-b3840e9a5bbcbe399c2a8bc669c00746.ctex"
+uid="uid://cxagl7kqj3d3o"
+path="res://.godot/imported/DTCG_ONLINE_Logo.png-08a8487d4c7bbf37bf46efb7ff12b8de.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/FlowerEnergy.png"
-dest_files=["res://.godot/imported/FlowerEnergy.png-b3840e9a5bbcbe399c2a8bc669c00746.ctex"]
+source_file="res://assets/ui/ui_assets/DTCG_ONLINE_Logo.png"
+dest_files=["res://.godot/imported/DTCG_ONLINE_Logo.png-08a8487d4c7bbf37bf46efb7ff12b8de.ctex"]
 
 [params]
 

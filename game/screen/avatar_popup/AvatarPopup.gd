@@ -33,7 +33,7 @@ func populate_avatar_grid() -> void:
 func _on_avatar_selected(path: String) -> void:
 	update_preview(path)
 	PlayerData.equipped_avatar = path
-	PlayerData.save_game()
+	SaveService.save_json("player_data.save", PlayerData.to_dict())
 	emit_signal("avatar_changed", path)
 	print("Avatar alterado para: ", path)
 

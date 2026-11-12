@@ -11,7 +11,7 @@ var is_owner: bool = true
 @onready var profile_pic_button: TextureButton = $ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/ProfileCut/ProfilePicButton
 @onready var name_button: Button = $ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/NameButton
 @onready var name_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/NameButton/NameLabel
-
+@onready var title_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/LeftIdentificationColumn/TitleLabel
 
 # Statistics
 @onready var battles_label: Label = $ScrollContainer/VBoxContainer/ProfileHeaderBox/StatsColumn/BattlesLabel
@@ -55,9 +55,24 @@ func _on_profile_pic_button_pressed() -> void:
 
 func setup_profile_view() -> void:
 	if is_owner:
-		# --- PROFILE'S OWNER VIEW ---
+		# Profile's owner view
 		name_label.text = PlayerData.player_name
-		name_label.modulate = Color(PlayerData.equipped_title_color) # Aplica a cor do título/nome
+		
+		if PlayerData.equipped_title != "":
+			if PlayerData.is_title_animated:
+				title_label.visible = false
+				name_label.modulate = Color.WHITE
+			else:
+				title_label.visible = true
+				title_label.text = PlayerData.equipped_title
+				 
+				var parsed_color = Color.html(PlayerData.equipped_title_color)
+				name_label.modulate = parsed_color
+				title_label.modulate = parsed_color
+		else:
+			title_label.text = ""
+			title_label.visible = false
+			name_label.modulate = Color.WHITE
 		
 		battles_label.text = "Battles Won: " + str(PlayerData.battles_won)
 		cards_label.text = "Cards Owned: " + str(PlayerData.total_cards_owned)
@@ -76,9 +91,11 @@ func setup_profile_view() -> void:
 		pending_grid.visible = true
 		change_hint_label.visible = true
 	else:
-		# --- OTHER PLAYER VIEW (Visitor) ---
+		# Other player's view (Visitor)
 		name_label.text = PlayerData.player_name
 		name_label.modulate = Color(PlayerData.equipped_title_color)
+		
+		
 		
 		battles_label.text = "Battles Won: " + str(PlayerData.battles_won)
 		cards_label.text = "Cards Owned: " + str(PlayerData.total_cards_owned)
@@ -97,9 +114,6 @@ func setup_profile_view() -> void:
 		pending_grid.visible = false
 		change_hint_label.visible = false
 
-# --- BUTTONS CONNECTIONS ---
-func _on_back_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://game/screen/main_scene/main_scene.tscn") 
 
 
 func _on_avatar_updated_externally(new_path: String) -> void:
@@ -107,6 +121,10 @@ func _on_avatar_updated_externally(new_path: String) -> void:
 	if ResourceLoader.exists(new_path):
 		profile_pic_button.texture_normal = load(new_path)
 
+
+# Buttons Conections
+func _on_back_button_pressed() -> void:
+	get_tree().change_scene_to_file("res://game/screen/main_scene/main_scene.tscn") 
 
 func _on_name_button_pressed() -> void:
 	if is_owner:

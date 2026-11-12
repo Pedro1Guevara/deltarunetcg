@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwigasni27yix"
-path="res://.godot/imported/ACT.png-84fa639bfc43d02ea306d5f1228c54b0.ctex"
+uid="uid://bb604toqsd2bm"
+path="res://.godot/imported/GameNameWithBorder.png-0699d7ef6d185100cfa4d225cf5373fc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/ACT.png"
-dest_files=["res://.godot/imported/ACT.png-84fa639bfc43d02ea306d5f1228c54b0.ctex"]
+source_file="res://assets/ui/ui_assets/GameNameWithBorder.png"
+dest_files=["res://.godot/imported/GameNameWithBorder.png-0699d7ef6d185100cfa4d225cf5373fc.ctex"]
 
 [params]
 

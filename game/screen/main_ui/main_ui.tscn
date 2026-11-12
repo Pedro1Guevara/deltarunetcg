@@ -1,6 +1,24 @@
 [gd_scene format=3 uid="uid://bv8gfcot3fpdp"]
 
 [ext_resource type="Script" uid="uid://dxd1el046ifbo" path="res://game/screen/main_ui/main_ui.gd" id="1_drvkt"]
+[ext_resource type="VideoStream" uid="uid://o73y4keppj5y" path="res://assets/ui/Video/NameMakerBackground.ogv" id="2_p4dlj"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="3_s3kbl"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_mi1sa"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_xqww1"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hvhil"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2xdsl"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p4dlj"]
+bg_color = Color(0.39435276, 0.3943528, 0.39435264, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g0e4p"]
+bg_color = Color(0.47918278, 0.47918278, 0.4791826, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s3kbl"]
 
 [node name="MainUI" type="Control" unique_id=1498917185]
 layout_mode = 3
@@ -10,6 +28,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_drvkt")
+
+[node name="Background" type="VideoStreamPlayer" parent="." unique_id=1485516281]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stream = ExtResource("2_p4dlj")
+autoplay = true
+expand = true
+loop = true
 
 [node name="NameInputScreen" type="Panel" parent="." unique_id=1920334963]
 layout_mode = 1
@@ -21,55 +51,57 @@ anchor_bottom = 0.5
 offset_left = -357.0
 offset_top = -117.5
 offset_right = 375.0
-offset_bottom = 21.0
+offset_bottom = -18.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_mi1sa")
 
-[node name="Label" type="Label" parent="NameInputScreen" unique_id=1442718513]
+[node name="CreateAName" type="Label" parent="NameInputScreen" unique_id=1442718513]
 custom_minimum_size = Vector2(0.445, 0.1)
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -281.0
+offset_left = -385.0
 offset_top = -165.5
-offset_right = 281.0
-offset_bottom = -55.5
+offset_right = 402.0
+offset_bottom = -52.5
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 80
+theme_override_fonts/font = ExtResource("3_s3kbl")
+theme_override_font_sizes/font_size = 110
 text = "CREATE A NAME."
 
 [node name="LineEdit" type="LineEdit" parent="NameInputScreen" unique_id=1150532609]
 layout_mode = 0
 offset_right = 732.0
 offset_bottom = 138.5
+theme_override_fonts/font = ExtResource("3_s3kbl")
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxEmpty_xqww1")
+theme_override_styles/read_only = SubResource("StyleBoxEmpty_hvhil")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_2xdsl")
+alignment = 1
+max_length = 25
 
-[node name="Button" type="Button" parent="NameInputScreen" unique_id=1596122281]
+[node name="ConfirmButton" type="Button" parent="NameInputScreen" unique_id=1596122281]
 layout_mode = 0
 offset_left = 214.0
-offset_top = 192.5
+offset_top = 140.5
 offset_right = 521.0
-offset_bottom = 248.0
-theme_override_font_sizes/font_size = 50
+offset_bottom = 227.5
+theme_override_fonts/font = ExtResource("3_s3kbl")
+theme_override_font_sizes/font_size = 65
+theme_override_styles/pressed = SubResource("StyleBoxFlat_p4dlj")
+theme_override_styles/hover = SubResource("StyleBoxFlat_g0e4p")
+theme_override_styles/hover_pressed = SubResource("StyleBoxFlat_s3kbl")
 text = "Confirm"
+flat = true
 
-[node name="MainMenu" type="Control" parent="." unique_id=1963472180]
-layout_mode = 1
-anchors_preset = 14
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_bottom = 74.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="WelcomeBack" type="Label" parent="MainMenu" unique_id=1708594566]
+[node name="CoolLine" type="ColorRect" parent="NameInputScreen" unique_id=851416285]
 layout_mode = 0
-offset_left = 20.0
-offset_top = 140.0
-offset_right = 307.0
-offset_bottom = 168.0
-theme_override_font_sizes/font_size = 20
-text = "Welcome back to Sylk's DTCG"
+offset_top = 93.5
+offset_right = 730.0
+offset_bottom = 95.5
 
-[connection signal="pressed" from="NameInputScreen/Button" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="NameInputScreen/ConfirmButton" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="NameInputScreen/ConfirmButton" to="." method="_on_confirm_button_pressed"]

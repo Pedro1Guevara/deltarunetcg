@@ -1,0 +1,92 @@
+[gd_scene format=3 uid="uid://y7bryw608s3x"]
+
+[ext_resource type="Script" uid="uid://b5t7r3cm0hpwk" path="res://game/screen/News/news.gd" id="1_2dada"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="2_hysys"]
+[ext_resource type="Texture2D" uid="uid://cuwx0ruq3msso" path="res://assets/ui/ui_assets/AvatarSelectBorder.png" id="3_8fhcn"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_033pi"]
+bg_color = Color(0, 0, 0, 1)
+
+[node name="News" type="Control" unique_id=1413401031]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_2dada")
+
+[node name="BackgroundDimmer" type="ColorRect" parent="." unique_id=1237301560]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.3137255)
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=382959649]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -495.0
+offset_top = -541.0
+offset_right = 520.0
+offset_bottom = 545.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_033pi")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="PanelContainer" unique_id=204889236]
+layout_mode = 2
+
+[node name="NewsLayout" type="VBoxContainer" parent="PanelContainer/ScrollContainer" unique_id=44935719]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="space" type="Label" parent="PanelContainer/ScrollContainer/NewsLayout" unique_id=1727156618]
+layout_mode = 2
+
+[node name="NewsLabel" type="Label" parent="PanelContainer/ScrollContainer/NewsLayout" unique_id=1555239454]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_hysys")
+theme_override_font_sizes/font_size = 90
+text = "NEWS"
+horizontal_alignment = 1
+
+[node name="NEWSNEWS" type="RichTextLabel" parent="PanelContainer/ScrollContainer/NewsLayout" unique_id=1389357950]
+custom_minimum_size = Vector2(970, 0)
+custom_maximum_size = Vector2(920, -1)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+offset_transform_enabled = true
+theme_override_fonts/normal_font = ExtResource("2_hysys")
+theme_override_fonts/bold_font = ExtResource("2_hysys")
+theme_override_fonts/bold_italics_font = ExtResource("2_hysys")
+theme_override_fonts/italics_font = ExtResource("2_hysys")
+theme_override_fonts/mono_font = ExtResource("2_hysys")
+theme_override_font_sizes/normal_font_size = 50
+theme_override_font_sizes/bold_font_size = 70
+theme_override_font_sizes/bold_italics_font_size = 50
+theme_override_font_sizes/italics_font_size = 50
+theme_override_font_sizes/mono_font_size = 50
+bbcode_enabled = true
+text = "*11/11/26
+-News Added
+-Self Destructive Button Added
+-Major starting_scene upgrades
+-main_ui is now connected to the main project
+-Minor bug fixes"
+scroll_active = false
+
+[node name="Frame" type="TextureRect" parent="PanelContainer" unique_id=1874324945]
+layout_mode = 2
+texture = ExtResource("3_8fhcn")
+expand_mode = 1

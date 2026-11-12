@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dn7bd2dhpf7nj"
-path="res://.godot/imported/ChaosEnergy.png-36513cb7762fe799e00d120cd35a512d.ctex"
+uid="uid://bh8hybbticlo8"
+path="res://.godot/imported/OrderEnergy.png-aba6d807321b5af2579f483c822f01b3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/ChaosEnergy.png"
-dest_files=["res://.godot/imported/ChaosEnergy.png-36513cb7762fe799e00d120cd35a512d.ctex"]
+source_file="res://assets/ui/energy/OrderEnergy.png"
+dest_files=["res://.godot/imported/OrderEnergy.png-aba6d807321b5af2579f483c822f01b3.ctex"]
 
 [params]
 

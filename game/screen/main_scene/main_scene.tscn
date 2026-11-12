@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://dpiigputsqeqf" path="res://assets/ui/ui_assets/ConfigSelect.png" id="6_3n7ww"]
 [ext_resource type="Texture2D" uid="uid://b3ix7knarbuxo" path="res://assets/ui/ui_assets/Base.png" id="7_4tkk2"]
 [ext_resource type="Texture2D" uid="uid://b73l8hmne83tb" path="res://assets/ui/ui_assets/BaseSelect.png" id="8_em62p"]
+[ext_resource type="Texture2D" uid="uid://b5a3jiocslob0" path="res://assets/ui/ui_assets/SylksGreetings.png" id="9_s6oag"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xsyfj"]
 corner_radius_top_left = 150
@@ -443,6 +444,41 @@ theme_override_styles/pressed = SubResource("StyleBoxTexture_jc2ka")
 theme_override_styles/hover = SubResource("StyleBoxTexture_02hmq")
 theme_override_styles/hover_pressed = SubResource("StyleBoxTexture_bg43q")
 text = " STORY "
+
+[node name="WelcomePopup" type="Control" parent="." unique_id=2098765987]
+visible = false
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -692.0
+offset_top = -177.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="PopupImage" type="TextureRect" parent="WelcomePopup" unique_id=765028740]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -59.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("9_s6oag")
+expand_mode = 1
+
+[node name="WelcomeText" type="Label" parent="WelcomePopup" unique_id=168598298]
+custom_minimum_size = Vector2(507, 131)
+layout_mode = 0
+offset_left = 165.0
+offset_top = 25.0
+offset_right = 672.0
+offset_bottom = 156.0
+theme_override_fonts/font = ExtResource("4_l56wb")
+theme_override_font_sizes/font_size = 36
+autowrap_mode = 3
 
 [connection signal="pressed" from="TopBar/ProfileCut/ProfileButton" to="." method="_on_profile_button_pressed"]
 [connection signal="pressed" from="TopBar/NameLabel" to="." method="_on_name_label_pressed"]

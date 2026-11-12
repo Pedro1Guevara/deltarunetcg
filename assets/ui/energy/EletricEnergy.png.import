@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cq755ckyxhhod"
-path="res://.godot/imported/ABILITY.png-62047a7d40bdfd76c674244bfcf78fcf.ctex"
+uid="uid://bvfk5c346uvlp"
+path="res://.godot/imported/EletricEnergy.png-3591f3e62fdc651dd207d6aa80387fc2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/ABILITY.png"
-dest_files=["res://.godot/imported/ABILITY.png-62047a7d40bdfd76c674244bfcf78fcf.ctex"]
+source_file="res://assets/ui/energy/EletricEnergy.png"
+dest_files=["res://.godot/imported/EletricEnergy.png-3591f3e62fdc651dd207d6aa80387fc2.ctex"]
 
 [params]
 

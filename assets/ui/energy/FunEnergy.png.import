@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://s0gjrnnsyeer"
-path="res://.godot/imported/VirusEnergy.png-28e403f1039d7f70f48b312d97d88028.ctex"
+uid="uid://coe5uds5wffhq"
+path="res://.godot/imported/FunEnergy.png-041f489e51937cbbc91d742ec56ebbf5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/VirusEnergy.png"
-dest_files=["res://.godot/imported/VirusEnergy.png-28e403f1039d7f70f48b312d97d88028.ctex"]
+source_file="res://assets/ui/energy/FunEnergy.png"
+dest_files=["res://.godot/imported/FunEnergy.png-041f489e51937cbbc91d742ec56ebbf5.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyl7ucenhgjqv"
-path="res://.godot/imported/HolyEnergy.png-56a45d5ded343be912fe762fc623fb13.ctex"
+uid="uid://lfgxc8esbcp1"
+path="res://.godot/imported/FightingEnergy.png-07d4f9086cdb39ba76546945c663c562.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/energy/HolyEnergy.png"
-dest_files=["res://.godot/imported/HolyEnergy.png-56a45d5ded343be912fe762fc623fb13.ctex"]
+source_file="res://assets/ui/energy/FightingEnergy.png"
+dest_files=["res://.godot/imported/FightingEnergy.png-07d4f9086cdb39ba76546945c663c562.ctex"]
 
 [params]
 
