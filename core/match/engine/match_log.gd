@@ -4,6 +4,9 @@ extends RefCounted
 ## nothing else does. It holds no words: game/presentation writes the log from the events.
 
 var entries: Array[MatchEvent] = []
+## True for a round nobody reads (a sandbox the CPU tries actions on): events are made but not
+## kept, which saves the time of keeping them.
+var quiet := false
 var _players: Array[PlayerState]
 
 
@@ -89,5 +92,6 @@ func _add(type: String, player: int, visibility: String, data: Dictionary, hidde
 	event.visibility = visibility
 	event.data = data
 	event.hidden_data = hidden_data
-	entries.append(event)
+	if not quiet:
+		entries.append(event)
 	return event

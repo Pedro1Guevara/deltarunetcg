@@ -26,8 +26,11 @@ class SideView:
 	var retreated_this_turn := false
 	var supporter_played_this_turn := false
 	var stadium_played_this_turn := false
+	var attack_used_this_turn: String = ""
 	var attack_used_last_turn: String = ""
 	var powers_used_this_turn: Dictionary = {}
+	## Turns this player has started: the first-turn rules read it.
+	var turns_started: int = 0
 
 
 var viewer: int
@@ -36,6 +39,8 @@ var turn: int
 var current: int
 var is_over: bool
 var winner: int
+## Whether the player taking the turn takes another turn after it (Quick Selfie).
+var extra_turn := false
 ## The player who chose to Fight, or -1 (Design Document 4.5).
 var fighting: int = -1
 ## A copy of the round's rules, as they stand now (effects can change some).

@@ -49,6 +49,10 @@ var _turn_ends_after_promotions: bool = false
 ## This round so far, to play it again (MatchReplay).
 var _replay: MatchReplay = null
 
+## The modifiers in force while legal_actions() runs, so it reads them once instead of once per
+## question (ContinuousEffects.active()). Null outside it: nothing changes the round meanwhile.
+var modifier_cache: Variant = null
+
 ## The player who chose to Fight after taking their last Mercy Card, or -1 (Design Document 4.5).
 var fighting: int = -1
 ## Extra cards each player draws at the start of their first turn of the next round, by player
@@ -100,6 +104,96 @@ func is_over() -> bool:
 	return winner != NO_WINNER
 
 
+# --- Sandboxes ----------------------------------------------------------------------------
+# A sandbox is a round to try actions on, for a CPU that plans (Design Document 8.7): a real
+# engine with the same rules, its own Rng, a quiet log and an empty replay. Changing it changes
+# nothing in the round it came from.
+
+## A sandbox of this round as it stands, playing with rng (a fresh Rng for a guess, or
+## Rng.duplicate_rng() of this round's to play exactly as it would). Only between actions: null
+## while a question is open or during setup.
+func copy(rng: Rng) -> MatchEngine:
+	if _pending != null or _setup != null:
+		return null
+	var sides: Array[PlayerState] = []
+	for player in players:
+		sides.append(player.copy())
+	return _sandbox(sides, MatchRules.from_dict(rules.to_dict()), effects, rng, turn, current_index, stadium, stadium_owner, winner, fighting,
+			operations.extra_turn)
+
+
+## A copy of this round's Rng in its current state. For tests that check a sandbox plays as the
+## round does; a CPU never sees it.
+func rng_state() -> Rng:
+	return _rng.duplicate_rng()
+
+
+## A sandbox of the round as view shows it to its viewer, with what the viewer cannot see
+## filled in from hidden: {"hands": [cards of player 1, of player 2], "decks": […], "prizes": […]},
+## each Array[CardData] as long as the view says (a deck's top card last). The viewer's own hand
+## comes from the view and its entry in "hands" is ignored. It plays with rng. Null while a
+## question is open, during setup, or when a guess does not match the view's counts.
+static func from_view(view: PlayerView, hidden: Dictionary, effects: EffectLibrary, rng: Rng) -> MatchEngine:
+	if view.chooser != -1 or view.turn == 0:
+		return null
+	var sides: Array[PlayerState] = []
+	for side in view.sides:
+		var player := PlayerState.new()
+		var guessed_hand: Array = (hidden["hands"] as Array)[side.index]
+		var guessed_deck: Array = (hidden["decks"] as Array)[side.index]
+		var guessed_prizes: Array = (hidden["prizes"] as Array)[side.index]
+		if side.index == view.viewer:
+			player.hand.assign(side.hand)
+		else:
+			player.hand.assign(guessed_hand)
+		player.deck.assign(guessed_deck)
+		player.prizes.assign(guessed_prizes)
+		if player.hand.size() != side.hand_size or player.deck.size() != side.deck_size or player.prizes.size() != side.prize_count:
+			push_error("MatchEngine.from_view: the guesses for player %d do not match the view's counts" % (side.index + 1))
+			return null
+		player.discard.assign(side.discard)
+		player.active = null if side.active == null else side.active.snapshot()
+		for darkner in side.bench:
+			player.bench.append(darkner.snapshot())
+		player.tp = side.tp
+		player.mulligans = side.mulligans
+		player.turns_started = side.turns_started
+		player.energy_attached_this_turn = side.energy_attached_this_turn
+		player.retreated_this_turn = side.retreated_this_turn
+		player.supporter_played_this_turn = side.supporter_played_this_turn
+		player.stadium_played_this_turn = side.stadium_played_this_turn
+		player.attack_used_this_turn = side.attack_used_this_turn
+		player.attack_used_last_turn = side.attack_used_last_turn
+		player.powers_used_this_turn = side.powers_used_this_turn.duplicate()
+		sides.append(player)
+	return _sandbox(sides, MatchRules.from_dict(view.rules.to_dict()), effects, rng, view.turn, view.current, view.stadium, view.stadium_owner,
+			view.winner, view.fighting, view.extra_turn)
+
+
+static func _sandbox(sides: Array[PlayerState], round_rules: MatchRules, card_effects: EffectLibrary, rng: Rng, at_turn: int, current: int,
+		area: CardData, area_owner: int, round_winner: int, fighter: int, extra_turn: bool) -> MatchEngine:
+	var engine := MatchEngine.new()
+	engine.effects = card_effects
+	engine.rules = round_rules
+	engine._rng = rng
+	engine.players.assign(sides)
+	engine.turn = at_turn
+	engine.current_index = current
+	engine.stadium = area
+	engine.stadium_owner = area_owner
+	engine.winner = round_winner
+	engine.fighting = fighter
+	engine.match_log = MatchLog.new(engine.players)
+	engine.match_log.quiet = true
+	engine.operations = MatchOperations.new(engine.players, engine._rng, engine.match_log)
+	engine.operations.extra_turn = extra_turn
+	engine._knockouts = KnockoutResolver.new(engine.players, engine.match_log)
+	engine._replay = MatchReplay.new()
+	engine._replay.rng_seed = rng.seed_value
+	engine._replay.rules = round_rules.to_dict()
+	return engine
+
+
 func current_player() -> PlayerState:
 	return players[current_index]
 
@@ -133,6 +227,7 @@ func view_for(player_index: int) -> PlayerView:
 	view.is_over = is_over()
 	view.winner = winner
 	view.fighting = fighting
+	view.extra_turn = operations.extra_turn
 	view.rules = MatchRules.from_dict(rules.to_dict())
 	view.stadium = stadium
 	view.stadium_owner = stadium_owner
@@ -160,7 +255,9 @@ func view_for(player_index: int) -> PlayerView:
 		side.retreated_this_turn = player.retreated_this_turn
 		side.supporter_played_this_turn = player.supporter_played_this_turn
 		side.stadium_played_this_turn = player.stadium_played_this_turn
+		side.attack_used_this_turn = player.attack_used_this_turn
 		side.attack_used_last_turn = player.attack_used_last_turn
+		side.turns_started = player.turns_started
 		side.powers_used_this_turn = player.powers_used_this_turn.duplicate()
 		view.sides.append(side)
 	if _pending != null:
@@ -230,7 +327,10 @@ func legal_actions() -> Array[Dictionary]:
 			actions.append({"type": "choose", "option": index})
 		return actions
 
-	return LegalActions.for_turn(self)
+	modifier_cache = ContinuousEffects.active(self)
+	actions = LegalActions.for_turn(self)
+	modifier_cache = null
+	return actions
 
 
 ## Applies a legal action. An action is identified by its fields: {"type": "end_turn"}. A

@@ -9,6 +9,8 @@ extends RefCounted
 ## Every modifier in force: [{"name", "args", "source": CardInPlay, "power": PowerData}] for a
 ## continuous Ability, [{"name", "args", "area": CardData}] for the Area in play.
 static func active(engine: MatchEngine) -> Array[Dictionary]:
+	if engine.modifier_cache != null:
+		return engine.modifier_cache as Array[Dictionary]
 	var result: Array[Dictionary] = []
 	if engine.effects == null:
 		return result
