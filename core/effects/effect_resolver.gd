@@ -41,6 +41,8 @@ func modifiers(function_name: String, args: Dictionary) -> Array[Dictionary]:
 	var definition := _library.functions.get(function_name, {}) as Dictionary
 	for step: Variant in definition.get("steps", []) as Array:
 		var callee := str((step as Dictionary)["call"])
+		if AtomicEffects.role_of(callee) != AtomicEffects.ROLE_MODIFIER:
+			continue
 		var bound: Variant = _bind(_library.params_of(callee), (step as Dictionary)["args"] as Dictionary, args, callee)
 		if bound != null:
 			result.append({"name": callee, "args": bound})
@@ -80,6 +82,9 @@ func resume() -> bool:
 			continue
 
 		var callee := str(step["call"])
+		# A modifier is read by the continuous-effects layer, never run (Showtime!'s cost).
+		if AtomicEffects.role_of(callee) == AtomicEffects.ROLE_MODIFIER:
+			continue
 		var bound: Variant = _bind(_library.params_of(callee), step["args"] as Dictionary, scope, callee)
 		if bound == null:
 			continue

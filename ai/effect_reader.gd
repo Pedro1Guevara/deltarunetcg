@@ -120,6 +120,14 @@ func self_harm(card_id: String, section: String, name: String) -> int:
 	return harm
 
 
+## Whether the effect takes its own Darkner out of play (Close Tab shuffles it into the deck).
+func removes_self(card_id: String, section: String, name: String) -> bool:
+	for step in steps(card_id, section, name):
+		if step["call"] == "shuffle_into_deck" and step["args"].get("target") == EffectTypes.SELF:
+			return true
+	return false
+
+
 ## How many Energy cards attacker gives up by using attack: those it shuffles into its deck
 ## (Flash Melt) or discards from itself.
 func energy_given_up(attacker: CardInPlay, attack: AttackData) -> int:

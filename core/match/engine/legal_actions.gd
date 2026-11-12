@@ -18,11 +18,13 @@ static func for_turn(engine: MatchEngine) -> Array[Dictionary]:
 		if offered.has(card.id):
 			continue
 		offered[card.id] = true
-		if card.is_basic_pokemon() and player.bench.size() < engine.rules.bench_limit:
-			actions.append({
-				"type": "bench",
-				"hand_index": hand_index,
-			})
+		if card.is_basic_pokemon():
+			if player.bench.size() < engine.rules.bench_limit and not ContinuousEffects.bench_from_hand_blocked(engine, player) \
+					and PlayConditions.allows(engine.effects, player, card):
+				actions.append({
+					"type": "bench",
+					"hand_index": hand_index,
+				})
 		elif card.is_energy() and not player.energy_attached_this_turn:
 			for slot in range(-1, player.bench.size()):
 				var target := MatchEngine.in_play_at(player, slot)

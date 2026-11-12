@@ -22,6 +22,14 @@ func coin_flip() -> bool:
 	return _generator.randi_range(0, 1) == 1
 
 
+## An Rng in the same state, which gives the same flips and shuffles from here on (a sandbox
+## that must play exactly as the round would).
+func duplicate_rng() -> Rng:
+	var other := Rng.new(seed_value)
+	other._generator.state = _generator.state
+	return other
+
+
 ## A seed for another Rng, such as the next round of a combat.
 func next_seed() -> int:
 	return _generator.randi()

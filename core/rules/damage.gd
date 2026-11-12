@@ -17,6 +17,20 @@ static func apply_modifiers(attacker: CardData, defender: CardData, base_damage:
 	return maxi(result, 0)
 
 
+## The same, with the defender's Weakness and Resistance swapped (Second Sanctuary): its
+## Resistance types take the Weakness modifier of the rules and its Weakness types the Resistance
+## one, so a Darkner with only a Weakness ends with only a Resistance.
+static func apply_modifiers_swapped(attacker: CardData, defender: CardData, base_damage: int) -> int:
+	if base_damage <= 0:
+		return 0
+	var result := base_damage
+	if _shares_type(attacker.types, defender.resistance_types):
+		result = _modified(result, DeltaruneCardTranslator.WEAKNESS_MODIFIER, defender.id)
+	if _shares_type(attacker.types, defender.weakness_types):
+		result = _modified(result, DeltaruneCardTranslator.RESISTANCE_MODIFIER, defender.id)
+	return maxi(result, 0)
+
+
 ## Applies a printed modifier: "×2" or "x2" multiplies, "+20" adds, "-20" subtracts.
 ## An unreadable modifier changes nothing and is reported.
 static func _modified(damage: int, modifier: String, card_id: String) -> int:

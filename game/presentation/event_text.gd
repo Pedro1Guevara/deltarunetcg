@@ -116,6 +116,14 @@ static func line(event: MatchEvent, cards: CardDatabase) -> String:
 		MatchEvent.ENERGY_SHUFFLED_INTO_DECK:
 			var count := int(data["count"])
 			return INDENT + "%s shuffles %d Energy card%s into the deck" % [_name(data["darkner"], cards), count, _plural(count)]
+		MatchEvent.DARKNER_SHUFFLED_INTO_DECK:
+			var attached := int(data["count"]) - 1
+			var with_cards := "" if attached == 0 else " and %d card%s with it" % [attached, _plural(attached)]
+			return INDENT + "%s goes back into the deck%s" % [_name(data["darkner"], cards), with_cards]
+		MatchEvent.DARKNER_RETURNED_TO_HAND:
+			var energy := int(data["discarded"])
+			var dropped := "" if energy == 0 else "; %d attached card%s to the discard pile" % [energy, _plural(energy)]
+			return INDENT + "%s goes back to its owner's hand%s" % [_name(data["darkner"], cards), dropped]
 		MatchEvent.ENERGY_DISCARDED:
 			return INDENT + "%s discards %s" % [_name(data["darkner"], cards), _name(data["card"], cards)]
 		MatchEvent.SWITCHED:

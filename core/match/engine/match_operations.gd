@@ -107,12 +107,64 @@ func shuffle_energy_into_deck(target: CardInPlay) -> int:
 	return count
 
 
+## Shuffles a Darkner in play into its owner's deck with every card under it and attached to it
+## (Close Tab). Its Battle Zone or Field slot is left empty; an empty Battle Zone is filled after
+## the effect, as after a knockout (KnockoutResolver). Returns how many cards went into the deck.
+func shuffle_into_deck(target: CardInPlay) -> int:
+	var owner := owner_of(target)
+	if owner == null:
+		return 0
+	var shuffled_ref := _log.darkner(target)
+	var cards: Array[CardData] = []
+	cards.append_array(target.evolved_from)
+	cards.append(target.card)
+	cards.append_array(target.attached_energy)
+	target.evolved_from.clear()
+	target.attached_energy.clear()
+	if owner.active == target:
+		owner.active = null
+	else:
+		owner.bench.erase(target)
+	owner.deck.append_array(cards)
+	_rng.shuffle(owner.deck)
+	_log.add(MatchEvent.DARKNER_SHUFFLED_INTO_DECK, int(shuffled_ref["side"]), {"darkner": shuffled_ref, "count": cards.size()})
+	return cards.size()
+
+
+## Puts a Darkner in play into its owner's hand, with the cards under it; the cards attached to
+## it go to the discard pile (Hazy Memory). Its slot is left empty, as shuffle_into_deck()
+## leaves it. Returns how many cards went to the hand.
+func return_to_hand(target: CardInPlay) -> int:
+	var owner := owner_of(target)
+	if owner == null:
+		return 0
+	var returned_ref := _log.darkner(target)
+	var cards: Array[CardData] = []
+	cards.append_array(target.evolved_from)
+	cards.append(target.card)
+	var discarded := target.attached_energy.size()
+	owner.discard.append_array(target.attached_energy)
+	target.evolved_from.clear()
+	target.attached_energy.clear()
+	if owner.active == target:
+		owner.active = null
+	else:
+		owner.bench.erase(target)
+	owner.hand.append_array(cards)
+	_log.add(MatchEvent.DARKNER_RETURNED_TO_HAND, int(returned_ref["side"]), {"darkner": returned_ref, "count": cards.size(), "discarded": discarded})
+	return cards.size()
+
+
 ## An attack with no printed damage deals none, so nothing is logged for it.
 func deal_attack_damage(context: EffectContext, base_damage: int) -> int:
 	var defender := context.defender
 	if defender == null or base_damage <= 0 or _attack_damage_prevented(context, defender):
 		return 0
-	return _apply_damage(defender, Damage.apply_modifiers(context.source.card, defender.base_card(), base_damage), DAMAGE_ATTACK)
+	var defender_owner := owner_of(defender)
+	var swapped := defender_owner != null and defender_owner.active == defender and ContinuousEffects.swaps_weakness_resistance(context.engine)
+	var dealt := Damage.apply_modifiers_swapped(context.source.card, defender.base_card(), base_damage) if swapped \
+			else Damage.apply_modifiers(context.source.card, defender.base_card(), base_damage)
+	return _apply_damage(defender, dealt, DAMAGE_ATTACK)
 
 
 ## Whether a continuous effect prevents attack damage to target, logging which one.

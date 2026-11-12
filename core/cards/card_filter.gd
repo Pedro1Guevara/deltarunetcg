@@ -9,8 +9,10 @@ const POKEMON := "pokemon"
 const BASIC_POKEMON := "basic_pokemon"
 const STADIUM := "stadium"
 const TRAINER := "trainer"
+## A Lightner (an ACT card of trainer_type Supporter).
+const SUPPORTER := "supporter"
 const ANY := "any"
-const NAMES := [BASIC_ENERGY, POKEMON, BASIC_POKEMON, STADIUM, TRAINER, ANY]
+const NAMES := [BASIC_ENERGY, POKEMON, BASIC_POKEMON, STADIUM, TRAINER, SUPPORTER, ANY]
 
 ## True for a non-empty list of known names.
 static func is_valid(filters: Variant) -> bool:
@@ -39,6 +41,9 @@ static func matches(card: CardData, filters: Array) -> bool:
 					return true
 			TRAINER:
 				if card.is_trainer():
+					return true
+			SUPPORTER:
+				if card.trainer_type == CardData.TRAINER_SUPPORTER:
 					return true
 			ANY:
 				return true

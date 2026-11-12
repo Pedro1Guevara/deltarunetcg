@@ -101,12 +101,15 @@ static func hand_without_card_played(context: EffectContext, player: PlayerState
 
 
 ## player attaches 1 card that matches filters from pile (their discard pile, or their hand
-## when from_hand) to 1 Darkner on their Field. They choose the card with
+## when from_hand) to 1 Darkner on their Field that matches target_filters (DarknerFilter).
+## They choose the card with
 ## EffectChoices.pick_cards(), then the Darkner, each only when the choice matters. Returns 1
 ## when a card was attached, 0 when there was nothing to attach or nowhere to attach it.
-static func attach_to_benched(context: EffectContext, player: PlayerState, pile: Array[CardData], filters: Array, from_hand: bool) -> Variant:
+static func attach_to_benched(context: EffectContext, player: PlayerState, pile: Array[CardData], filters: Array, target_filters: Array,
+		from_hand: bool) -> Variant:
 	var candidates := CardFilter.select(pile, filters, [])
-	if candidates.is_empty() or player.bench.is_empty():
+	var eligible := DarknerFilter.matching_slots(player.bench, target_filters)
+	if candidates.is_empty() or eligible.is_empty():
 		return 0
 	var picked: Variant = EffectChoices.pick_cards(context, player, candidates, 1, {"about": PendingChoice.ABOUT_ATTACH_FROM},
 			PendingChoice.ZONE_HAND if from_hand else PendingChoice.ZONE_DISCARD, "attach")
@@ -114,12 +117,12 @@ static func attach_to_benched(context: EffectContext, player: PlayerState, pile:
 		return picked
 	var energy := (picked as Array[CardData])[0]
 	var answers := EffectChoices.answers_after_choice(context)
-	var slot := 0
+	var slot := eligible[0]
 	if not answers.is_empty():
 		slot = int(answers[0])
-	elif player.bench.size() > 1:
+	elif eligible.size() > 1:
 		var targets: Array = []
-		for index in player.bench.size():
+		for index in eligible:
 			targets.append({"value": index, "shows": player.bench[index]})
 		var details := {"side": PendingChoice.SIDE_OWN, "purpose": PendingChoice.PURPOSE_ATTACH, "card": energy.id}
 		return context.ask(player, PendingChoice.KIND_CHOOSE_DARKNER, details, targets)
