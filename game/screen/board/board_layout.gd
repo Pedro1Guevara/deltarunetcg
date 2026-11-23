@@ -1,0 +1,50 @@
+extends RefCounted
+
+const BOARD_SIZE := Vector2(1920, 1080)
+const FIELD_COUNT := 4
+const FIELD_ORIGIN := Vector2(560, 874)
+const FIELD_SPACING := 220.0
+const FIELD_CARD_SIZE := Vector2(140, 196)
+const OPPONENT_FIELD_OFFSET := Vector2(0, 38)
+const BATTLE_ORIGIN := Vector2(875, 570)
+const BATTLE_CARD_SIZE := Vector2(170, 238)
+const DECK_ORIGIN := Vector2(1470, 620)
+const DISCARD_ORIGIN := Vector2(1470, 850)
+const MERCY_ORIGIN := Vector2(275, 860)
+const MERCY_CARD_SIZE := Vector2(196, 140)
+const OPPONENT_PILE_OFFSET := Vector2(0, 30)
+const AREA_ORIGIN := Vector2(620, 442)
+const BREAK_OUTLINE_OFFSET := Vector2(-28, -42)
+const BREAK_OUTLINE_SIZE := Vector2(196, 140)
+const PASS_ORIGIN := Vector2(1130, 510)
+const SCORE_ORIGIN := Vector2(1065, 460)
+const SCORE_SIZE := Vector2(330, 40)
+const TP_ORIGIN := Vector2(1640, 585)
+const TP_SIZE := Vector2(112, 460)
+
+const INSPECTION_AREA := Rect2(1107.5, 162.5, 645, 675)
+const CHOICE_CARD_AREA := Rect2(1380, 294, 480, 660)
+const DIALOGUE_ORIGIN := Vector2(560, 64)
+const DIALOGUE_SIZE := Vector2(800, 210)
+const CHOICES_ORIGIN := Vector2(560, 294)
+const CHOICES_SIZE := Vector2(800, 650)
+const CONTROLS_ORIGIN := Vector2(560, 930)
+const CONTROLS_SIZE := Vector2(800, 140)
+const EYE_ORIGIN := Vector2(1372, 64)
+const EYE_SIZE := Vector2(60, 48)
+const BROWSER_ORIGIN := Vector2(0, 390)
+const BROWSER_SIZE := Vector2(1920, 390)
+
+const PAUSE_RESUME_Y := 100.0
+const PAUSE_SETTINGS_Y := 200.0
+const PAUSE_CONCEDE_Y := 300.0
+const PAUSE_EXIT_Y := 400.0
+const MULTIPLAYER_MENU_OFFSET := -50.0
+
+const BOARD_HOVER_DELAY := 0.75
+const CPU_ACTION_DELAY := 0.5
+const DRAG_THRESHOLD := 20.0
+const TRAINER_DRAG_THRESHOLD := 120.0
+const DRAG_CARD_WIDTH := 180.0
+const FIELD_ENERGY_SIZE := 24.0
+const INSPECTION_ENERGY_SIZE := 30.0

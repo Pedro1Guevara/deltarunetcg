@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/ui/board/board_card.gd" id="1"]
+
+[node name="BoardCard" type="Control"]
+offset_right = 160.0
+offset_bottom = 224.0
+script = ExtResource("1")
+
+[node name="FrontFace" type="Control" parent="."]
+mouse_filter = 2
+
+[node name="TextureRect" type="TextureRect" parent="FrontFace"]
+mouse_filter = 2
+expand_mode = 1
+
+[node name="BackFace" type="Control" parent="."]
+mouse_filter = 2
+
+[node name="TextureRect" type="TextureRect" parent="BackFace"]
+mouse_filter = 2
+expand_mode = 1

@@ -1,0 +1,94 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://dli8oarqbenla"]
+
+[ext_resource type="Texture2D" uid="uid://cfvoscjqb360c" path="res://assets/ui/board/eye_closing.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://jqgsr04uuoh8" path="res://assets/ui/board/eye_opening.png" id="2"]
+
+[sub_resource type="AtlasTexture" id="closing_0"]
+atlas = ExtResource("1")
+region = Rect2(64, 128, 592, 440)
+
+[sub_resource type="AtlasTexture" id="closing_1"]
+atlas = ExtResource("1")
+region = Rect2(784, 128, 592, 440)
+
+[sub_resource type="AtlasTexture" id="closing_2"]
+atlas = ExtResource("1")
+region = Rect2(1504, 128, 592, 440)
+
+[sub_resource type="AtlasTexture" id="closing_3"]
+atlas = ExtResource("1")
+region = Rect2(64, 848, 592, 440)
+
+[sub_resource type="AtlasTexture" id="closing_4"]
+atlas = ExtResource("1")
+region = Rect2(784, 848, 592, 440)
+
+[sub_resource type="AtlasTexture" id="closing_5"]
+atlas = ExtResource("1")
+region = Rect2(1504, 848, 592, 440)
+
+[sub_resource type="AtlasTexture" id="opening_0"]
+atlas = ExtResource("2")
+region = Rect2(64, 128, 592, 440)
+
+[sub_resource type="AtlasTexture" id="opening_1"]
+atlas = ExtResource("2")
+region = Rect2(784, 128, 592, 440)
+
+[sub_resource type="AtlasTexture" id="opening_2"]
+atlas = ExtResource("2")
+region = Rect2(1504, 128, 592, 440)
+
+[sub_resource type="AtlasTexture" id="opening_3"]
+atlas = ExtResource("2")
+region = Rect2(64, 848, 592, 440)
+
+[sub_resource type="AtlasTexture" id="opening_4"]
+atlas = ExtResource("2")
+region = Rect2(784, 848, 592, 440)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.001,
+"texture": SubResource("closing_0")
+}, {
+"duration": 1.001,
+"texture": SubResource("closing_1")
+}, {
+"duration": 1.001,
+"texture": SubResource("closing_2")
+}, {
+"duration": 1.001,
+"texture": SubResource("closing_3")
+}, {
+"duration": 1.001,
+"texture": SubResource("closing_4")
+}, {
+"duration": 2.002,
+"texture": SubResource("closing_5")
+}],
+"loop": 0,
+"name": &"closing",
+"speed": 13.0
+}, {
+"frames": [{
+"duration": 2.002,
+"texture": SubResource("opening_0")
+}, {
+"duration": 1.001,
+"texture": SubResource("opening_1")
+}, {
+"duration": 1.001,
+"texture": SubResource("opening_2")
+}, {
+"duration": 1.001,
+"texture": SubResource("opening_3")
+}, {
+"duration": 2.002,
+"texture": SubResource("opening_4")
+}],
+"loop": 0,
+"name": &"opening",
+"speed": 13.0
+}]

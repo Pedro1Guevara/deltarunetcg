@@ -1,0 +1,129 @@
+{
+  "frames": [
+    {
+      "duration": 154,
+      "filename": "0",
+      "frame": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 0
+      },
+      "rotated": false,
+      "sourceSize": {
+        "h": 720,
+        "w": 720
+      },
+      "spriteSourceSize": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 0
+      },
+      "trimmed": false
+    },
+    {
+      "duration": 77,
+      "filename": "1",
+      "frame": {
+        "h": 720,
+        "w": 720,
+        "x": 720,
+        "y": 0
+      },
+      "rotated": false,
+      "sourceSize": {
+        "h": 720,
+        "w": 720
+      },
+      "spriteSourceSize": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 0
+      },
+      "trimmed": false
+    },
+    {
+      "duration": 77,
+      "filename": "2",
+      "frame": {
+        "h": 720,
+        "w": 720,
+        "x": 1440,
+        "y": 0
+      },
+      "rotated": false,
+      "sourceSize": {
+        "h": 720,
+        "w": 720
+      },
+      "spriteSourceSize": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 0
+      },
+      "trimmed": false
+    },
+    {
+      "duration": 77,
+      "filename": "3",
+      "frame": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 720
+      },
+      "rotated": false,
+      "sourceSize": {
+        "h": 720,
+        "w": 720
+      },
+      "spriteSourceSize": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 0
+      },
+      "trimmed": false
+    },
+    {
+      "duration": 154,
+      "filename": "4",
+      "frame": {
+        "h": 720,
+        "w": 720,
+        "x": 720,
+        "y": 720
+      },
+      "rotated": false,
+      "sourceSize": {
+        "h": 720,
+        "w": 720
+      },
+      "spriteSourceSize": {
+        "h": 720,
+        "w": 720,
+        "x": 0,
+        "y": 0
+      },
+      "trimmed": false
+    }
+  ],
+  "meta": {
+    "app": "FlipaClip",
+    "format": "RGBA8888",
+    "fps": 13,
+    "frameTags": [],
+    "image": "sheet.png",
+    "layers": [],
+    "scale": "1",
+    "size": {
+      "h": 1440,
+      "w": 2160
+    },
+    "slices": [],
+    "version": ""
+  }
+}

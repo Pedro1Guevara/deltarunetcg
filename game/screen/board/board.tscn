@@ -1,0 +1,963 @@
+[gd_scene format=3 uid="uid://cq4xfntyh1uq7"]
+
+[ext_resource type="Script" uid="uid://bog25noawiqxw" path="res://game/screen/board/board.gd" id="1"]
+[ext_resource type="Script" uid="uid://clqgq1n7v0ar" path="res://addons/card-framework/card_manager.gd" id="2"]
+[ext_resource type="PackedScene" path="res://game/ui/board/board_card_factory.tscn" id="3"]
+[ext_resource type="Script" uid="uid://bth6isq8ou8i4" path="res://game/ui/board/board_slot.gd" id="4"]
+[ext_resource type="Script" uid="uid://c2mh1sjo8lgq3" path="res://game/ui/board/board_hand.gd" id="5"]
+[ext_resource type="FontFile" uid="uid://wo3ml440raxs" path="res://assets/textFonts/DeterminationMonoWebRegular-Z5oq.ttf" id="6"]
+[ext_resource type="Texture2D" uid="uid://decrrolwehtma" path="res://assets/ui/Avatars/KingAvatar.png" id="7"]
+[ext_resource type="Texture2D" uid="uid://bsehum4eyh8p6" path="res://assets/ui/Avatars/RedSoul.png" id="8"]
+[ext_resource type="Script" uid="uid://f4b2m7byv7bs" path="res://game/ui/board/tp_bar.gd" id="9"]
+
+[sub_resource type="StyleBoxFlat" id="Hover"]
+bg_color = Color(0.12, 0.12, 0.12, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 0, 1)
+
+[sub_resource type="StyleBoxFlat" id="Zone"]
+bg_color = Color(0.025, 0.025, 0.03, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.45, 0.45, 0.5, 1)
+
+[sub_resource type="Theme" id="Theme"]
+default_font = ExtResource("6")
+default_font_size = 24
+Button/styles/focus = SubResource("Hover")
+Button/styles/hover = SubResource("Hover")
+Button/styles/normal = SubResource("Zone")
+Panel/styles/panel = SubResource("Zone")
+
+[sub_resource type="StyleBoxFlat" id="Outline"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.25, 0.28, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sp3j1"]
+bg_color = Color(0, 0, 0, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gsqkg"]
+bg_color = Color(0.14, 0.14, 0, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qi1o0"]
+bg_color = Color(0, 0, 0, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.4, 0.4, 0.4, 1)
+
+[sub_resource type="Shader" id="Circle"]
+code = "shader_type canvas_item; void fragment() { float d = length(UV * 2.0 - 1.0); vec4 c = texture(TEXTURE, UV); if(d > 1.0) { discard; } COLOR = d > 0.94 ? vec4(1.0) : c; }"
+
+[sub_resource type="ShaderMaterial" id="CircleMaterial"]
+shader = SubResource("Circle")
+
+[sub_resource type="StyleBoxFlat" id="Dialogue"]
+bg_color = Color(0, 0, 0, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+
+[node name="BoardScreen" type="Control" unique_id=1296171837]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme")
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1376995465]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="CardManager" type="Control" parent="." unique_id=682134242]
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+script = ExtResource("2")
+card_size = Vector2(140, 196)
+card_factory_scene = ExtResource("3")
+
+[node name="PlayerBattle" type="Control" parent="CardManager" unique_id=1657315906]
+anchors_preset = 0
+offset_left = 875.0
+offset_top = 570.0
+offset_right = 1045.0
+offset_bottom = 808.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(170, 238)
+metadata/zone_kind = "Battle"
+
+[node name="Border" type="Panel" parent="CardManager/PlayerBattle" unique_id=601840369]
+layout_mode = 0
+offset_right = 170.0
+offset_bottom = 238.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerBattle" unique_id=392735364]
+layout_mode = 0
+offset_top = 103.0
+offset_right = 170.0
+offset_bottom = 135.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "BATTLE ZONE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerField1" type="Control" parent="CardManager" unique_id=226528017]
+anchors_preset = 0
+offset_left = 560.0
+offset_top = 874.0
+offset_right = 700.0
+offset_bottom = 1070.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/PlayerField1" unique_id=312252730]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/PlayerField1" unique_id=1448429639]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerField1" unique_id=1624156138]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerField2" type="Control" parent="CardManager" unique_id=844092072]
+anchors_preset = 0
+offset_left = 780.0
+offset_top = 874.0
+offset_right = 920.0
+offset_bottom = 1070.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/PlayerField2" unique_id=1752025198]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/PlayerField2" unique_id=346225218]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerField2" unique_id=1950475467]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerField3" type="Control" parent="CardManager" unique_id=1268137120]
+anchors_preset = 0
+offset_left = 1000.0
+offset_top = 874.0
+offset_right = 1140.0
+offset_bottom = 1070.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/PlayerField3" unique_id=1230795345]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/PlayerField3" unique_id=1829235484]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerField3" unique_id=1407707573]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerField4" type="Control" parent="CardManager" unique_id=433127564]
+anchors_preset = 0
+offset_left = 1220.0
+offset_top = 874.0
+offset_right = 1360.0
+offset_bottom = 1070.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/PlayerField4" unique_id=1246961463]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/PlayerField4" unique_id=1970359398]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerField4" unique_id=1294977843]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerDeck" type="Control" parent="CardManager" unique_id=1532566218]
+anchors_preset = 0
+offset_left = 1470.0
+offset_top = 620.0
+offset_right = 1610.0
+offset_bottom = 816.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 3
+max_stack_display = 4
+card_face_up = false
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Deck"
+
+[node name="Border" type="Panel" parent="CardManager/PlayerDeck" unique_id=185317311]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerDeck" unique_id=980303282]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "DECK"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Count" type="Label" parent="CardManager/PlayerDeck" unique_id=883125482]
+layout_mode = 0
+offset_top = 198.0
+offset_right = 140.0
+offset_bottom = 223.0
+text = "30"
+horizontal_alignment = 1
+
+[node name="PlayerDiscard" type="Control" parent="CardManager" unique_id=650717470]
+anchors_preset = 0
+offset_left = 1470.0
+offset_top = 850.0
+offset_right = 1610.0
+offset_bottom = 1046.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Discard"
+
+[node name="Border" type="Panel" parent="CardManager/PlayerDiscard" unique_id=1311000063]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerDiscard" unique_id=338079416]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "DISCARD
+PILE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerMercy" type="Control" parent="CardManager" unique_id=370506748]
+anchors_preset = 0
+offset_left = 275.0
+offset_top = 860.0
+offset_right = 471.0
+offset_bottom = 1000.0
+mouse_filter = 2
+script = ExtResource("4")
+face_rotation = 90.0
+stack_display_gap = 105
+max_stack_display = 4
+card_face_up = false
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Mercy"
+
+[node name="Border" type="Panel" parent="CardManager/PlayerMercy" unique_id=876474701]
+layout_mode = 0
+offset_right = 196.0
+offset_bottom = 140.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/PlayerMercy" unique_id=1842752342]
+layout_mode = 0
+offset_top = 54.0
+offset_right = 196.0
+offset_bottom = 86.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "MERCY CARDS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentBattle" type="Control" parent="CardManager" unique_id=900734663]
+anchors_preset = 0
+offset_left = 875.0
+offset_top = 272.0
+offset_right = 1045.0
+offset_bottom = 510.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(170, 238)
+metadata/zone_kind = "Battle"
+
+[node name="Border" type="Panel" parent="CardManager/OpponentBattle" unique_id=1763080889]
+layout_mode = 0
+offset_right = 170.0
+offset_bottom = 238.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentBattle" unique_id=814324386]
+layout_mode = 0
+offset_top = 103.0
+offset_right = 170.0
+offset_bottom = 135.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "BATTLE ZONE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentField1" type="Control" parent="CardManager" unique_id=761530026]
+anchors_preset = 0
+offset_left = 1220.0
+offset_top = 48.0
+offset_right = 1360.0
+offset_bottom = 244.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/OpponentField1" unique_id=739349782]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/OpponentField1" unique_id=1828981950]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentField1" unique_id=1779446900]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentField2" type="Control" parent="CardManager" unique_id=529101734]
+anchors_preset = 0
+offset_left = 1000.0
+offset_top = 48.0
+offset_right = 1140.0
+offset_bottom = 244.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/OpponentField2" unique_id=30386470]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/OpponentField2" unique_id=39833352]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentField2" unique_id=135771590]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentField3" type="Control" parent="CardManager" unique_id=801609817]
+anchors_preset = 0
+offset_left = 780.0
+offset_top = 48.0
+offset_right = 920.0
+offset_bottom = 244.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/OpponentField3" unique_id=1990250915]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/OpponentField3" unique_id=710523820]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentField3" unique_id=1500883536]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentField4" type="Control" parent="CardManager" unique_id=1935780660]
+anchors_preset = 0
+offset_left = 560.0
+offset_top = 48.0
+offset_right = 700.0
+offset_bottom = 244.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Field"
+
+[node name="LandscapeOutline" type="Panel" parent="CardManager/OpponentField4" unique_id=2051459678]
+layout_mode = 0
+offset_left = -28.0
+offset_top = -42.0
+offset_right = 168.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")
+
+[node name="Border" type="Panel" parent="CardManager/OpponentField4" unique_id=279443572]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentField4" unique_id=503627314]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "FIELD"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentDeck" type="Control" parent="CardManager" unique_id=1024507392]
+anchors_preset = 0
+offset_left = 310.0
+offset_top = 294.0
+offset_right = 450.0
+offset_bottom = 490.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 3
+max_stack_display = 4
+card_face_up = false
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Deck"
+
+[node name="Border" type="Panel" parent="CardManager/OpponentDeck" unique_id=885708376]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentDeck" unique_id=95030657]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "DECK"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Count" type="Label" parent="CardManager/OpponentDeck" unique_id=542446310]
+layout_mode = 0
+offset_top = 216.0
+offset_right = 140.0
+offset_bottom = 241.0
+text = "30"
+horizontal_alignment = 1
+
+[node name="OpponentDiscard" type="Control" parent="CardManager" unique_id=80565076]
+anchors_preset = 0
+offset_left = 310.0
+offset_top = 64.0
+offset_right = 450.0
+offset_bottom = 260.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+max_stack_display = 4
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Discard"
+
+[node name="Border" type="Panel" parent="CardManager/OpponentDiscard" unique_id=820363575]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentDiscard" unique_id=1126531095]
+layout_mode = 0
+offset_top = 82.0
+offset_right = 140.0
+offset_bottom = 114.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "DISCARD
+PILE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentMercy" type="Control" parent="CardManager" unique_id=1464306494]
+anchors_preset = 0
+offset_left = 1449.0
+offset_top = 80.0
+offset_right = 1645.0
+offset_bottom = 220.0
+mouse_filter = 2
+script = ExtResource("4")
+face_rotation = 270.0
+stack_display_gap = 105
+max_stack_display = 4
+card_face_up = false
+layout = 1
+allow_card_movement = false
+enable_drop_zone = false
+metadata/display_size = Vector2(140, 196)
+metadata/zone_kind = "Mercy"
+
+[node name="Border" type="Panel" parent="CardManager/OpponentMercy" unique_id=587771237]
+layout_mode = 0
+offset_right = 196.0
+offset_bottom = 140.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/OpponentMercy" unique_id=22721531]
+layout_mode = 0
+offset_top = 54.0
+offset_right = 196.0
+offset_bottom = 86.0
+theme_override_colors/font_color = Color(0.6, 0.6, 0.65, 1)
+text = "MERCY CARDS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Area" type="Control" parent="CardManager" unique_id=1750768040]
+anchors_preset = 0
+offset_left = 620.0
+offset_top = 442.0
+offset_right = 760.0
+offset_bottom = 638.0
+mouse_filter = 2
+script = ExtResource("4")
+stack_display_gap = 0
+allow_card_movement = false
+enable_drop_zone = false
+metadata/zone_kind = "Area"
+
+[node name="Border" type="Panel" parent="CardManager/Area" unique_id=221156347]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="ZoneLabel" type="Label" parent="CardManager/Area" unique_id=838692545]
+layout_mode = 0
+offset_top = 80.0
+offset_right = 140.0
+offset_bottom = 110.0
+text = "AREA"
+horizontal_alignment = 1
+
+[node name="PlayerHand" type="Control" parent="CardManager" unique_id=1182508019]
+z_index = 50
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("5")
+max_hand_size = 100
+max_hand_spread = 720
+enable_drop_zone = false
+
+[node name="OpponentHand" type="Control" parent="CardManager" unique_id=442556685]
+z_index = 50
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("5")
+opponent = true
+max_hand_size = 100
+max_hand_spread = 720
+enable_drop_zone = false
+
+[node name="Interface" type="Control" parent="." unique_id=1595859684]
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+
+[node name="Score" type="Label" parent="Interface" unique_id=290730801]
+layout_mode = 0
+offset_left = 1065.0
+offset_top = 460.0
+offset_right = 1395.0
+offset_bottom = 500.0
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="PlayerName" type="Label" parent="Interface" unique_id=1277289172]
+layout_mode = 0
+offset_left = -8.0
+offset_top = 1020.0
+offset_right = 172.0
+offset_bottom = 1060.0
+text = "Player"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="OpponentName" type="Label" parent="Interface" unique_id=770076745]
+layout_mode = 0
+offset_left = 1732.0
+offset_top = 180.0
+offset_right = 1912.0
+offset_bottom = 220.0
+text = "Opponent"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Pass" type="Button" parent="Interface" unique_id=2037023405]
+layout_mode = 0
+offset_left = 1130.0
+offset_top = 510.0
+offset_right = 1330.0
+offset_bottom = 570.0
+theme_override_colors/font_color = Color(1, 1, 0, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 0, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 0, 1)
+theme_override_colors/font_disabled_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_sp3j1")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_gsqkg")
+theme_override_styles/hover = SubResource("StyleBoxFlat_gsqkg")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_qi1o0")
+disabled = true
+text = "PASS TURN"
+
+[node name="PlayerTP" type="Control" parent="Interface" unique_id=1138595931]
+texture_filter = 1
+anchors_preset = 0
+offset_left = 1640.0
+offset_top = 585.0
+offset_right = 1752.0
+offset_bottom = 1045.0
+pivot_offset = Vector2(56, 230)
+mouse_filter = 2
+script = ExtResource("9")
+value = 75.0
+
+[node name="PlayerAvatar" type="TextureRect" parent="Interface" unique_id=84463191]
+material = SubResource("CircleMaterial")
+layout_mode = 0
+offset_left = 20.0
+offset_top = 880.0
+offset_right = 144.0
+offset_bottom = 1004.0
+mouse_filter = 2
+texture = ExtResource("8")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="OpponentTP" type="Control" parent="Interface" unique_id=889038201]
+texture_filter = 1
+anchors_preset = 0
+offset_left = 168.0
+offset_top = 35.0
+offset_right = 280.0
+offset_bottom = 495.0
+pivot_offset = Vector2(56, 230)
+mouse_filter = 2
+script = ExtResource("9")
+value = 75.0
+
+[node name="OpponentAvatar" type="TextureRect" parent="Interface" unique_id=1673901557]
+material = SubResource("CircleMaterial")
+layout_mode = 0
+offset_left = 1760.0
+offset_top = 40.0
+offset_right = 1884.0
+offset_bottom = 164.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Status" type="Label" parent="Interface" unique_id=626404321]
+visible = false
+layout_mode = 0
+offset_left = 1090.0
+offset_top = 590.0
+offset_right = 1370.0
+offset_bottom = 740.0
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Inspection" type="ColorRect" parent="." unique_id=421820631]
+visible = false
+z_index = 4070
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 0.92)
+
+[node name="Pause" type="ColorRect" parent="." unique_id=1358555402]
+visible = false
+z_index = 4090
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 0.88)
+
+[node name="Panel" type="Panel" parent="Pause" unique_id=40036390]
+layout_mode = 0
+offset_left = 710.0
+offset_top = 290.0
+offset_right = 1210.0
+offset_bottom = 790.0
+theme_override_styles/panel = SubResource("Dialogue")
+
+[node name="Title" type="Label" parent="Pause/Panel" unique_id=497292975]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 25.0
+offset_right = 470.0
+offset_bottom = 85.0
+theme_override_font_sizes/font_size = 38
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="Resume" type="Button" parent="Pause/Panel" unique_id=754266735]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 100.0
+offset_right = 430.0
+offset_bottom = 165.0
+text = "RESUME"
+
+[node name="Settings" type="Button" parent="Pause/Panel" unique_id=2033848182]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 200.0
+offset_right = 430.0
+offset_bottom = 265.0
+text = "SETTINGS"
+
+[node name="Concede" type="Button" parent="Pause/Panel" unique_id=311908235]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 300.0
+offset_right = 430.0
+offset_bottom = 365.0
+tooltip_text = "Not available yet"
+disabled = true
+text = "CONCEDE"
+
+[node name="Exit" type="Button" parent="Pause/Panel" unique_id=695662908]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 400.0
+offset_right = 430.0
+offset_bottom = 465.0
+text = "EXIT GAME"
+
+[node name="SpeedLabel" type="Label" parent="Pause/Panel" unique_id=406881847]
+visible = false
+layout_mode = 0
+offset_left = 45.0
+offset_top = 140.0
+offset_right = 455.0
+offset_bottom = 190.0
+text = "Animation speed"
+horizontal_alignment = 1
+
+[node name="Speed" type="HSlider" parent="Pause/Panel" unique_id=1658282172]
+visible = false
+layout_mode = 0
+offset_left = 70.0
+offset_top = 220.0
+offset_right = 430.0
+offset_bottom = 260.0
+min_value = 0.5
+max_value = 2.0
+step = 0.1
+value = 1.0
+
+[node name="Back" type="Button" parent="Pause/Panel" unique_id=1830952521]
+visible = false
+layout_mode = 0
+offset_left = 70.0
+offset_top = 330.0
+offset_right = 430.0
+offset_bottom = 395.0
+text = "BACK"

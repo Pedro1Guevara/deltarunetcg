@@ -1,0 +1,46 @@
+ assets/cards/fronts/KrisAltCard.png.import |   2 [32m+[m[31m-[m
+ assets/ui/board/eye_closing.json           | 151 [32m+++++[m
+ assets/ui/board/eye_closing.png            | Bin [31m0[m -> [32m62525[m bytes
+ assets/ui/board/eye_closing.png.import     |  40 [32m++[m
+ assets/ui/board/eye_frames.tres            |  94 [32m+++[m
+ assets/ui/board/eye_opening.json           | 129 [32m++++[m
+ assets/ui/board/eye_opening.png            | Bin [31m0[m -> [32m54102[m bytes
+ assets/ui/board/eye_opening.png.import     |  40 [32m++[m
+ assets/ui/board/max_lettering.png          | Bin [31m0[m -> [32m70260[m bytes
+ assets/ui/board/max_lettering.png.import   |  40 [32m++[m
+ assets/ui/board/tp_lettering.png           | Bin [31m0[m -> [32m38489[m bytes
+ assets/ui/board/tp_lettering.png.import    |  40 [32m++[m
+ game/presentation/board_text.gd            | 102 [32m+++[m
+ game/presentation/board_text.gd.uid        |   1 [32m+[m
+ game/screen/board/board.gd                 | 643 [32m+++++++++++++++++++[m
+ game/screen/board/board.gd.uid             |   1 [32m+[m
+ game/screen/board/board.tscn               | 963 [32m+++++++++++++++++++++++++++++[m
+ game/screen/board/board_coin.gd            |  39 [32m++[m
+ game/screen/board/board_coin.gd.uid        |   1 [32m+[m
+ game/screen/board/board_dialogue.gd        |  70 [32m+++[m
+ game/screen/board/board_dialogue.gd.uid    |   1 [32m+[m
+ game/screen/board/board_interaction.gd     | 622 [32m+++++++++++++++++++[m
+ game/screen/board/board_interaction.gd.uid |   1 [32m+[m
+ game/screen/board/board_layout.gd          |  50 [32m++[m
+ game/screen/board/board_layout.gd.uid      |   1 [32m+[m
+ game/screen/board/board_selection.gd       | 357 [32m+++++++++++[m
+ game/screen/board/board_selection.gd.uid   |   1 [32m+[m
+ game/screen/board/card_inspection.gd       | 139 [32m+++++[m
+ game/screen/board/card_inspection.gd.uid   |   1 [32m+[m
+ game/screen/board/card_regions.gd          | 351 [32m+++++++++++[m
+ game/screen/board/card_regions.gd.uid      |   1 [32m+[m
+ game/screen/board/snd_text.wav             | Bin [31m0[m -> [32m11448[m bytes
+ game/screen/board/snd_text.wav.import      |  24 [32m+[m
+ game/ui/board/board_card.gd                |  71 [32m+++[m
+ game/ui/board/board_card.gd.uid            |   1 [32m+[m
+ game/ui/board/board_card.tscn              |  22 [32m+[m
+ game/ui/board/board_card_factory.gd        |  64 [32m++[m
+ game/ui/board/board_card_factory.gd.uid    |   1 [32m+[m
+ game/ui/board/board_card_factory.tscn      |   6 [32m+[m
+ game/ui/board/board_hand.gd                | 160 [32m+++++[m
+ game/ui/board/board_hand.gd.uid            |   1 [32m+[m
+ game/ui/board/board_slot.gd                |  19 [32m+[m
+ game/ui/board/board_slot.gd.uid            |   1 [32m+[m
+ game/ui/board/tp_bar.gd                    | 105 [32m++++[m
+ game/ui/board/tp_bar.gd.uid                |   1 [32m+[m
+ 45 files changed, 4356 insertions(+), 1 deletion(-)
